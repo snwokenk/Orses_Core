@@ -26,7 +26,7 @@ class WalletServices:
 
         filename = Filenames_VariableNames.username_wallets.format(self.username)
         folder_name = Filenames_VariableNames.wallet_details_folder
-        username_wallets = FileAction.FileAction.open_file_into_json(filename=filename,
+        username_wallets = FileAction.FileAction.open_file_from_json(filename=filename,
                                                                      in_folder=folder_name)
         if username_wallets:
             self.associated_wallets = username_wallets

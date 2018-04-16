@@ -1,11 +1,17 @@
 from Orses_Cryptography_Core.PKIGeneration import PKI
 from Orses_Database_Core.CreateDatabase import CreateDatabase
 from Orses_Util_Core.Filenames_VariableNames import admins_folder
+from Orses_Database_Core.StoreData import StoreData
+from Orses_Database_Core.RetrieveData import RetrieveData
+from Orses_Util_Core.FileAction import FileAction
+from Orses_Util_Core import Filenames_VariableNames
 
 
 from Crypto.Hash import SHA256, RIPEMD160
 import time, os, pathlib, json
 
+
+# TODO; make sure created database is same as database name to store and retrieve data
 
 class Admin:
 
@@ -82,3 +88,128 @@ class Admin:
 
         step1 = SHA256.new(self.pubkey).digest()
         return "ID-" + RIPEMD160.new(step1).hexdigest()
+
+    def save_admin(self):
+        StoreData.store_admin_info_in_db(admin_id=self.admin_id, pubkey=self.pubkey.hex(), username=self.admin_name,
+                                        timestamp_of_creation=self.creation_time)
+
+    def load_user(self):
+        admin_data = RetrieveData.get_admin_info(self.admin_name)
+
+        pki = PKI(username=self.admin_name, password=self.password)
+        if admin_data:
+            self.admin_id = admin_data[0]
+            self.creation_time = admin_data[1]
+            self.pubkey = pki.load_pub_key(importedKey=False)
+            self.privkey = pki.load_priv_key(importedKey=True)
+
+
+        else:  # no user info, user not created
+            return None
+
+        if self.privkey:  # everything is well
+            # creates user info database and wallet info database
+            CreateDatabase()
+            return self
+        else: # wrong password
+            return False
+
+    def export_user(self):
+        """
+        used to export user into a file, which can then be taken anywhere else
+        :return:
+        """
+
+        pki = PKI(username=self.admin_name, password=self.password)
+        exp_path = os.path.join(pathlib.Path.home(), "Desktop", "CryptoHub_External_Files", "Exported_Accounts",
+                                self.admin_name + ".cryptohub")
+
+        FileAction.create_folder("Exported_Accounts")
+
+        user_info_dict = dict()
+        user_info_dict["admin_name"] = self.admin_name
+        user_info_dict["admin_id"] = self.admin_id
+        user_info_dict["creation_time"] = self.creation_time
+        user_info_dict["pubkey_hex"] = self.pubkey.hex()
+        user_info_dict["encrypted_private_key"] = pki.load_priv_key(importedKey=False, encrypted=True)
+
+        with open(exp_path, "w") as outfile:
+            json.dump(user_info_dict, outfile)
+
+        return True
+
+    def import_user(self, different_admin_name=None):
+        """
+        used to import using username and password
+
+        first checks to make sure no user by the same
+
+        -if no file found with username on Imported_Accounts folder  returns none
+
+        -if username found but password is wrong, returns False
+
+        -if user found and everything okay returns self (or instance of user class)
+        :return: None, False or self (instance of user).
+        """
+
+        imp_path = os.path.join(pathlib.Path.home(), "Desktop", "CryptoHub_External_Files", "Imported_Accounts",
+                                self.admin_name + ".cryptohub")
+
+
+
+        try:
+            with open(imp_path, "r") as infile:
+                admin_data = json.load(infile)
+        except FileNotFoundError:
+            return None
+
+        # instantiate a pki class
+        pki = PKI(username=self.admin_name, password=self.password)
+
+        # get privkey name for user to see if any file exist
+        priv_filename = Filenames_VariableNames.priv_key_filename.format(self.admin_name)
+        rsp = FileAction.open_file_from_json(filename=priv_filename, in_folder=Filenames_VariableNames.admin_data)
+
+        if rsp:
+            if different_admin_name is None:
+                # this will raise an exception if user already exists
+                raise Exception("Admin With admin_name '{}' Already Exists".format(self.admin_name))
+
+        # if different username is specified, then user will be saved under that name
+        if different_admin_name:
+            self.admin_name = different_admin_name
+            priv_filename = Filenames_VariableNames.priv_key_filename.format(self.admin_name)
+            pki = PKI(username=self.admin_name, password=self.password)
+
+        # save and load privkey
+        FileAction.save_json_into_file(priv_filename,
+                                       python_json_serializable_object=admin_data["encrypted_private_key"],
+                                       in_folder=Filenames_VariableNames.admin_data)
+
+        self.privkey = pki.load_priv_key(importedKey=True)
+
+        # if priv key is false
+        if not self.privkey:
+            FileAction.delete_file(filename=priv_filename, in_folder=Filenames_VariableNames.admin_data)
+            return False
+
+        # save pubkey hex to file and set pubkey, pubkey saved in hex format, self.pubkey is set to bytes format
+        pub_filename = Filenames_VariableNames.pub_key_filename.format(self.admin_name)
+        FileAction.save_json_into_file(pub_filename, python_json_serializable_object=admin_data["pubkey_hex"],
+                                       in_folder=Filenames_VariableNames.admin_data)
+        self.pubkey = pki.load_pub_key(importedKey=False)
+
+
+        # set client id
+        self.admin_id = admin_data["admin_id"]
+
+        # set creation time
+        self.creation_time = admin_data["creation_time"]
+
+
+
+        # create database and save (will also create general client id and wallet id info database)
+        CreateDatabase().create_admin_db(self.admin_name)
+        self.save_admin()
+
+        return self

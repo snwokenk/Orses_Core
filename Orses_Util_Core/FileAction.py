@@ -65,7 +65,7 @@ class FileAction:
         return True
 
     @staticmethod
-    def open_file_into_json(filename, in_folder=None):
+    def open_file_from_json(filename, in_folder=None):
         if in_folder:
             try:
                 os.mkdir(in_folder)

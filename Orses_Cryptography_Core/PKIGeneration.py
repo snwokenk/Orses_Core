@@ -6,8 +6,8 @@ RSA-3072 used
 
 from Crypto.PublicKey import RSA
 from Orses_Cryptography_Core.Encryption import Encrypt
-from CryptoHub_Util.FileAction import FileAction
-from CryptoHub_Util import Filenames_VariableNames
+from Orses_Util_Core.FileAction import FileAction
+from Orses_Util_Core import Filenames_VariableNames
 from Orses_Cryptography_Core.Decryption import Decrypt
 
 
@@ -59,10 +59,10 @@ class PKI:
 
         # load encryped private key list with tag, nonce and salt
         if user_or_wallet == "user":
-            list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_into_json(
-                filename=self.privkey_file, in_folder=Filenames_VariableNames.users_folder)
+            list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
+                filename=self.privkey_file, in_folder=Filenames_VariableNames.admin_data)
         else:
-            list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_into_json(
+            list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
                 filename=self.privkey_file, in_folder=Filenames_VariableNames.wallets_folder)
 
         # if it is an empty list then no key created and saved on username so generate new key
@@ -85,10 +85,10 @@ class PKI:
     def load_pub_key(self, importedKey=True, user_or_wallet="user"):
 
         if user_or_wallet == "user":
-            pubkey_hex = FileAction.open_file_into_json(
-                self.pubkey_file, in_folder=Filenames_VariableNames.users_folder)
+            pubkey_hex = FileAction.open_file_from_json(
+                self.pubkey_file, in_folder=Filenames_VariableNames.admins_folder)
         else:
-           pubkey_hex =  FileAction.open_file_into_json(
+           pubkey_hex =  FileAction.open_file_from_json(
                self.pubkey_file, in_folder=Filenames_VariableNames.wallets_folder)
 
         if not pubkey_hex:

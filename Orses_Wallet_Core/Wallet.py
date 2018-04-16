@@ -244,7 +244,7 @@ class Wallet:
 
     @staticmethod
     def load_wallet_details(wallet_id, wallet_nickname, password):
-        wallet_details = FileAction.FileAction.open_file_into_json(filename=wallet_id,
+        wallet_details = FileAction.FileAction.open_file_from_json(filename=wallet_id,
                                                                    in_folder=Filenames_VariableNames.wallet_details_folder)
         wallet_details = [bytes.fromhex(i) for i in wallet_details]
         wallet_details = WalletDecrypt(ciphertext_tag_nonce_salt=wallet_details, password=password).decrypt()

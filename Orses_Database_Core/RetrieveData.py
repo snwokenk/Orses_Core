@@ -16,6 +16,27 @@ def wid_check(wid):
 class RetrieveData:
 
     @staticmethod
+    def get_admin_info(username):
+        db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
+                             in_folder=Filenames_VariableNames.admin_data)
+        columnToSelect = "client_id, timestamp_of_creation"
+        try:
+
+            response = db.select_data_from_table(tableName=Filenames_VariableNames.admin_info_tname.format(username),
+                                                 columnsToSelect=columnToSelect)
+        except OperationalError:
+            response = None
+            db.delete_database()
+
+
+
+        # returns [client_id, pubkey in hex format, timestamp_of_creation
+        if response:
+            db.close_connection()
+            return response[0]
+        return None
+
+    @staticmethod
     def get_pubkey_of_wallet(wid):
         """
         returns pubkey of wallet id
@@ -27,7 +48,7 @@ class RetrieveData:
         if wid_check(wid=wid):
 
             db = Sqlite3Database(dbName=Filenames_VariableNames.wallet_id_dbname,
-                                 in_folder=Filenames_VariableNames.data_folder)
+                                 in_folder=Filenames_VariableNames.admin_data)
 
             columnToSelect = "wallet_pubkey"
             boolCriteria = "wallet_id = '{}'".format(wid)
@@ -56,7 +77,7 @@ class RetrieveData:
         :return:
         """
         db = Sqlite3Database(dbName=Filenames_VariableNames.ttx_dbname,
-                             in_folder=Filenames_VariableNames.data_folder)
+                             in_folder=Filenames_VariableNames.admin_data)
         columnToSelect = ['tx_hash', 'json_ttx_dict', 'sig_base85']
         boolCriteria = "tx_hash = '{}'".format(tx_hash) if tx_hash else None
         ttx = db.select_data_from_table(
@@ -81,7 +102,7 @@ class RetrieveData:
         :return: dict
         """
         db = Sqlite3Database(dbName=Filenames_VariableNames.trr_dbname,
-                             in_folder=Filenames_VariableNames.data_folder)
+                             in_folder=Filenames_VariableNames.admin_data)
         columnToSelect = ['tx_hash', 'json_trr_dict', 'sig_base85']
         boolCriteria = "tx_hash = '{}'".format(tx_hash) if tx_hash else None
         trr = db.select_data_from_table(
@@ -100,7 +121,7 @@ class RetrieveData:
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.trx_dbname,
-                             in_folder=Filenames_VariableNames.data_folder)
+                             in_folder=Filenames_VariableNames.admin_data)
         columnToSelect = ['tx_hash', 'json_trx_dict', 'sig_base85']
         boolCriteria = "tx_hash = '{}'".format(tx_hash) if tx_hash else None
 
