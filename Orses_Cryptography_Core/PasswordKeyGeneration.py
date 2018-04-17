@@ -5,7 +5,7 @@ contains class for deriving encryption key from password using pbkdf2 algorithm
 from Crypto.Protocol import KDF
 from Crypto.Random import random
 
-from CryptoHub_Util.FileAction import FileAction
+from Orses_Util_Core.FileAction import FileAction
 
 
 class PasswordKey:

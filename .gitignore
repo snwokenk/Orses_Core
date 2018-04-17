@@ -105,3 +105,9 @@ data_folder/
 practice2.py
 practice_test.py
 Orses_Core.iml
+Admin Data/
+admins/
+blockchain Data/
+data_admin/
+data_client_wallet/
+data_mempool/

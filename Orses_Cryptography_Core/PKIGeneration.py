@@ -60,7 +60,7 @@ class PKI:
         # load encryped private key list with tag, nonce and salt
         if user_or_wallet == "user":
             list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
-                filename=self.privkey_file, in_folder=Filenames_VariableNames.admin_data)
+                filename=self.privkey_file, in_folder=Filenames_VariableNames.admins_folder)
         else:
             list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
                 filename=self.privkey_file, in_folder=Filenames_VariableNames.wallets_folder)

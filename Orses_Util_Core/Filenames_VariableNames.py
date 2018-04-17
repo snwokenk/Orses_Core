@@ -14,10 +14,11 @@ wallet_pub_key_filename = "{}_wallet_pubkey"
 
 
 # database names and tables
-
+network_client_data ="network"
 client_id_dbname = "client_id_info_db"
 client_id_tname = "client_id_info"
-admin_data = "Admin Data"
+admin_data = "data_admin"
+clients_wallets_data = "data_client_wallet"
 
 
 wallet_id_dbname = "wallet_id_info_db"
@@ -26,6 +27,7 @@ wallet_id_tname = "wallet_id_info"
 admin_dbname = "{}_admin_data"
 admin_info_tname = "{}_admin_info"
 
+mempool_data = "data_mempool"
 asgn_stmt_dbname = "cond_asgn_stmt_db"
 asgn_stmt_tname = "cond_asgn_stmt"
 fulfilled_asgn_stmt_dbname = "fulfilled_asgn_stmt_db"

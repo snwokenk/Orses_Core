@@ -91,7 +91,7 @@ class Admin:
 
     def save_admin(self):
         StoreData.store_admin_info_in_db(admin_id=self.admin_id, pubkey=self.pubkey.hex(), username=self.admin_name,
-                                        timestamp_of_creation=self.creation_time)
+                                            timestamp_of_creation=self.creation_time)
 
     def load_user(self):
         admin_data = RetrieveData.get_admin_info(self.admin_name)
