@@ -6,13 +6,13 @@ from Orses_Util_Core import Filenames_VariableNames
 class StoreData:
 
     @staticmethod
-    def store_admin_info_in_db(admin_id, pubkey, username, timestamp_of_creation):
+    def store_admin_info_in_db(admin_id, pubkey, username, timestamp_of_creation, isCompetitor):
         db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
                              in_folder=Filenames_VariableNames.admin_data)
 
         db.insert_into_table(tableName=Filenames_VariableNames.admin_info_tname.format(username),
                              admin_id=admin_id, pubkey=pubkey, username=username,
-                             timestamp_of_creation=timestamp_of_creation)
+                             timestamp_of_creation=timestamp_of_creation, isCompetitor=isCompetitor)
 
         db.close_connection()
 

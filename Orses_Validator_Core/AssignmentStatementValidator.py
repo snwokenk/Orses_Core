@@ -12,7 +12,7 @@ class AssignmentStatementValidator:
     if message is validated, node sends a ver message
     else a rej message is sent if invalid
     """
-    def __init__(self, asgn_stmt_dict, wallet_pubkey=None):
+    def __init__(self, asgn_stmt_dict, wallet_pubkey=None, q_object=None):
         """
 
         :param asgn_stmt_dict: assignment statement dict with
@@ -26,7 +26,9 @@ class AssignmentStatementValidator:
         asgn_stmt key: 'snd_wid|rcv_wid|bk_conn_wid|amt|fee|timestamp|timelimit'
 
         :param wallet_pubkey:
+        :param q_object: a queue.Queue instance (or similar)
         """
+        self.asgn_stmt_dict = asgn_stmt_dict
         self.asgn_stmt= asgn_stmt_dict["asgn_stmt"]
         self.asgn_stmt_list = asgn_stmt_dict["asgn_stmt"].split(sep='|')
         self.sending_wallet_pubkey = wallet_pubkey
@@ -37,6 +39,7 @@ class AssignmentStatementValidator:
         self.timestamp = self.asgn_stmt_list[-2]
         self.timelimit = self.asgn_stmt_list[-1]
         self.unknown_wallet = True if wallet_pubkey else False
+        self.q_object = q_object
 
         self.set_sending_wallet_pubkey()
 
@@ -90,6 +93,10 @@ class AssignmentStatementValidator:
                 tx_hash=self.stmt_hash
 
             )
+
+            # pass validated message to network propagator and competing process(if active)
+            if self.q_object:
+                self.q_object.put([self.stmt_hash,  self.sending_wallet_pubkey,self.asgn_stmt_dict])
             return True
         else:
 

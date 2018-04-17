@@ -15,7 +15,7 @@ import time, os, pathlib, json
 
 class Admin:
 
-    def __init__(self, admin_name, password, newAdmin=False):
+    def __init__(self, admin_name, password, newAdmin=False, isCompetitor=None):
         """
         class representing the admin.
         This class should allow for an admin to:
@@ -34,6 +34,8 @@ class Admin:
         :param admin_name: string, keys and admin details are stored under admin_name
         :param password: password used to encrypt private keys and/or details
         :param newAdmin: bool, true if new admin, false if not
+        :param isCompetitor: None, True, False, none if never set, True if admin_id identified as competitor on
+            blockchain, False if specifically set by user (will not be prompted to set)
         """
         self.admin_name = admin_name
         self.password = password
@@ -43,6 +45,7 @@ class Admin:
         self.privkey = None
         self.newAdmin = newAdmin
         self.isNewAdmin = newAdmin
+        self.isCompetitor = isCompetitor
 
         self.__set_or_create_pki_pair()
 
@@ -87,11 +90,11 @@ class Admin:
     def __create_admin_id(self):
 
         step1 = SHA256.new(self.pubkey).digest()
-        return "ID-" + RIPEMD160.new(step1).hexdigest()
+        return "VID-" + RIPEMD160.new(step1).hexdigest()
 
     def save_admin(self):
         StoreData.store_admin_info_in_db(admin_id=self.admin_id, pubkey=self.pubkey.hex(), username=self.admin_name,
-                                            timestamp_of_creation=self.creation_time)
+                                            timestamp_of_creation=self.creation_time, isCompetitor=self.isCompetitor)
 
     def load_user(self):
         admin_data = RetrieveData.get_admin_info(self.admin_name)
@@ -100,6 +103,7 @@ class Admin:
         if admin_data:
             self.admin_id = admin_data[0]
             self.creation_time = admin_data[1]
+            self.isCompetitor = admin_data[2]
             self.pubkey = pki.load_pub_key(importedKey=False)
             self.privkey = pki.load_priv_key(importedKey=True)
 
@@ -108,7 +112,7 @@ class Admin:
             return None
 
         if self.privkey:  # everything is well
-            # creates user info database and wallet info database
+            # creates user info database and wallet info database (if not already created)
             CreateDatabase()
             return self
         else: # wrong password
@@ -121,8 +125,8 @@ class Admin:
         """
 
         pki = PKI(username=self.admin_name, password=self.password)
-        exp_path = os.path.join(pathlib.Path.home(), "Desktop", "CryptoHub_External_Files", "Exported_Accounts",
-                                self.admin_name + ".cryptohub")
+        exp_path = os.path.join(pathlib.Path.home(), "Desktop", "Orses_External_Files", "Exported_Accounts",
+                                self.admin_name + ".orses")
 
         FileAction.create_folder("Exported_Accounts")
 
@@ -152,8 +156,8 @@ class Admin:
         :return: None, False or self (instance of user).
         """
 
-        imp_path = os.path.join(pathlib.Path.home(), "Desktop", "CryptoHub_External_Files", "Imported_Accounts",
-                                self.admin_name + ".cryptohub")
+        imp_path = os.path.join(pathlib.Path.home(), "Desktop", "Orses_External_Files", "Imported_Accounts",
+                                self.admin_name + ".orses")
 
 
 

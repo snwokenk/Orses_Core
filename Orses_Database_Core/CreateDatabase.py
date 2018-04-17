@@ -53,7 +53,7 @@ class CreateDatabase:
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.admin_info_tname.format(username),
                                      A_admin_id="TEXT", B_pubkey="TEXT", C_username="TEXT",
-                                     D_timestamp_of_creation="INT")
+                                     D_timestamp_of_creation="INT", E_isCompetitor="BLOB")
         db.close_connection()
 
     @staticmethod

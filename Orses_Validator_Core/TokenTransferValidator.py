@@ -6,7 +6,8 @@ import time, json
 
 
 class TokenTransferValidator:
-    def __init__(self, transfer_tx_dict, wallet_pubkey=None,  timelimit=300):
+    def __init__(self, transfer_tx_dict, wallet_pubkey=None,  timelimit=300, q_object=None):
+        self.transfer_tx_dict = transfer_tx_dict
         self.transfer_tx_dict_json = json.dumps(transfer_tx_dict["ttx"])
         self.sending_wallet_pubkey = wallet_pubkey
         self.sending_wid = transfer_tx_dict["ttx"]["snd_wid"]
@@ -19,6 +20,7 @@ class TokenTransferValidator:
         self.fee = transfer_tx_dict["ttx"]["fee"]
         self.timelimit = timelimit
         self.unknown_wallet = True if wallet_pubkey else False
+        self.q_object = q_object
         self.set_sending_wallet_pubkey()
 
     def set_sending_wallet_pubkey(self):
@@ -58,6 +60,10 @@ class TokenTransferValidator:
 
 
             )
+
+            # pass validated message to network propagator and competing process(if active)
+            if self.q_object:
+                self.q_object.put([self.tx_hash,  self.sending_wallet_pubkey, self.transfer_tx_dict])
             return True
         else:
             return False

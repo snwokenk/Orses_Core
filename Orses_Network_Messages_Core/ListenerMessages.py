@@ -62,7 +62,7 @@ class ListenerMessages:
 
 class ListenerForSendingTokens(ListenerMessages):
 
-    def __init__(self, messages_heard, netmsginst, msg_type):
+    def __init__(self, messages_heard, netmsginst, msg_type, q_object=None):
         """
         :param messages_heard: this is the two initial messages already heard, list
         :param netmsginst: used to pass the
@@ -70,6 +70,7 @@ class ListenerForSendingTokens(ListenerMessages):
         """
         super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type)
         self.need_pubkey = b'wpk'
+        self.q_object = q_object
 
     def speak(self):
         """
@@ -89,7 +90,9 @@ class ListenerForSendingTokens(ListenerMessages):
                 # self.msg_type will determine the validator to use
 
                 rsp = validator_dict_callable[self.msg_type](
-                    json.loads(self.messages_heard[2].decode())).check_validity()
+                    json.loads(self.messages_heard[2].decode()),
+                    q_object=self.q_object
+                ).check_validity()
 
                 if rsp is None: # wallet_pubkey not in database
                     return self.need_pubkey

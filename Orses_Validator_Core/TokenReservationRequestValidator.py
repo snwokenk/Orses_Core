@@ -8,7 +8,8 @@ import time, json
 # Todo: complete validator class, after checking validity store in db for token reservation
 class TokenReservationRequestValidator:
 
-    def __init__(self, tkn_rsv_dict, wallet_pubkey=None):
+    def __init__(self, tkn_rsv_dict, wallet_pubkey=None, q_object=None):
+        self.tkn_rsv_dict = tkn_rsv_dict
         self.rsv_req_json = json.dumps(tkn_rsv_dict["rsv_req"])
         self.amount = tkn_rsv_dict["rsv_req"]["amt"]
         self.fee = tkn_rsv_dict["rsv_req"]["fee"]
@@ -19,6 +20,7 @@ class TokenReservationRequestValidator:
         self.wallet_id = tkn_rsv_dict["rsv_req"]["req_wid"]
         self.signature = tkn_rsv_dict["sig"]
         self.tx_hash = tkn_rsv_dict["tx_hash"]
+        self.q_object = q_object
 
         self.unknown_wallet = True if wallet_pubkey else False
 
@@ -52,6 +54,10 @@ class TokenReservationRequestValidator:
                 json_trr_dict=self.rsv_req_json
 
             )
+
+            # pass validated message to network propagator and competing process(if active)
+            if self.q_object:
+                self.q_object.put([self.tx_hash,  self.wallet_pubkey,self.tkn_rsv_dict])
             return True
         else:
             return False

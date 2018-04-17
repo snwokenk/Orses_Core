@@ -19,7 +19,7 @@ class RetrieveData:
     def get_admin_info(username):
         db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
                              in_folder=Filenames_VariableNames.admin_data)
-        columnToSelect = "admin_id, timestamp_of_creation"
+        columnToSelect = "admin_id, timestamp_of_creation, isCompetitor"
         try:
 
             response = db.select_data_from_table(tableName=Filenames_VariableNames.admin_info_tname.format(username),

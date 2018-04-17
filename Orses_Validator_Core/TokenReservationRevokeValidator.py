@@ -6,7 +6,7 @@ import time, json
 
 
 class TokenReservationRevokeValidator:
-    def __init__(self, tkn_rvk_dict, wallet_pubkey=None):
+    def __init__(self, tkn_rvk_dict, wallet_pubkey=None, q_object=None):
         self.tkn_rvk_dict = tkn_rvk_dict
         self.wallet_pubkey = wallet_pubkey
         self.rvk_req_json = json.dumps(tkn_rvk_dict["rvk_req"])
@@ -17,6 +17,7 @@ class TokenReservationRevokeValidator:
         self.signature = tkn_rvk_dict["sig"]
         self.tx_hash = tkn_rvk_dict["tx_hash"]
         self.trr_tx_hash = tkn_rvk_dict["rvk_req"]["trr_hash"]
+        self.q_object = q_object
 
         self.unknown_wallet = True if wallet_pubkey else False
 
@@ -58,6 +59,11 @@ class TokenReservationRevokeValidator:
                 json_trx_dict=self.rvk_req_json
 
             )
+
+            # pass validated message to network propagator and competing process(if active)
+            if self.q_object:
+                self.q_object.put([self.tx_hash,  self.wallet_pubkey, self.tkn_rvk_dict])
+
             return True
         else:
             return False
