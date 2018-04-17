@@ -1,5 +1,13 @@
 from Orses_Administrator_Core.Administrator import Admin
 from getpass import getpass
+from twisted.internet import reactor
+import sys
+
+p_version = sys.version_info
+
+assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
+                                                        "goto www.python.org to install/upgrade"
+
 
 """
 file used to start node
@@ -40,6 +48,9 @@ elif admin.isCompetitor is None:
         # todo: add logic to create new competitor network message for inclusion into the blockchain
     elif compete == "n":
         admin.isCompetitor = False
+
+
+# start network propagator process
 
 
 

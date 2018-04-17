@@ -56,8 +56,9 @@ class TokenReservationRequestValidator:
             )
 
             # pass validated message to network propagator and competing process(if active)
+            # 'c' reason message for token reservation request msg
             if self.q_object:
-                self.q_object.put([self.tx_hash,  self.wallet_pubkey,self.tkn_rsv_dict])
+                self.q_object.put(['c', self.tx_hash,  self.wallet_pubkey,self.tkn_rsv_dict])
             return True
         else:
             return False

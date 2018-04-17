@@ -1,12 +1,13 @@
 from twisted.internet.protocol import Protocol, Factory, connectionDone
 
 """
-The goal of the NetworkListener protocol and factory is to be used to listen for network messages from other nodes.
-This class is exclusively used for veri nodes or nodes (later on) offering internet facing services 
+The goal of the NetworkListener protocol and factory is to be used to listen for network messages from other 
+non veri nodes. For connections from veri nodes the VeriNodeListener and VeriNodeConnector classes will be used
+This class implementation is exclusively used by veri nodes or nodes (later on) offering internet facing services 
 on the orses network
 
 1. The classes in this file will be instantiated by methods in the NetworkManager class 
-    in folder "CryptoHub_Network_Core"
+    in folder "Orses_Network_Core"
 2. The classes in this file will be instantiated with a message object(depending on the type of message)
 3. This message object for a server protocol/factory will be a "Listener" message object and will manage network 
     conversations with a "Speaker" message object of a Client protocol/factory

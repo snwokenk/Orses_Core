@@ -61,8 +61,9 @@ class TokenReservationRevokeValidator:
             )
 
             # pass validated message to network propagator and competing process(if active)
+            # 'd' reason message for token reservation revoke msg
             if self.q_object:
-                self.q_object.put([self.tx_hash,  self.wallet_pubkey, self.tkn_rvk_dict])
+                self.q_object.put(['d', self.tx_hash,  self.wallet_pubkey, self.tkn_rvk_dict])
 
             return True
         else:

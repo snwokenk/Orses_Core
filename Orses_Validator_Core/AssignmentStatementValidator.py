@@ -95,8 +95,9 @@ class AssignmentStatementValidator:
             )
 
             # pass validated message to network propagator and competing process(if active)
+            # 'a' reason message for assignment statement
             if self.q_object:
-                self.q_object.put([self.stmt_hash,  self.sending_wallet_pubkey,self.asgn_stmt_dict])
+                self.q_object.put(['a', self.stmt_hash,  self.sending_wallet_pubkey,self.asgn_stmt_dict])
             return True
         else:
 
