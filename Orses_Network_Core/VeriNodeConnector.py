@@ -8,10 +8,12 @@ the protocol then receives/sends message through a queue object from/to NetworkP
 
 
 class VeriNodeConnector(Protocol):
-    def __init__(self, q_object_from_network_propagator):
+    def __init__(self, addr,factory, q_object_from_network_propagator):
         super().__init__()
 
+        self.factory = factory
         self.q_object = q_object_from_network_propagator
+        self.addr = addr
 
     def dataReceived(self, data):
         """
@@ -29,9 +31,25 @@ class VeriNodeConnector(Protocol):
         or transport.loseConnection() to end connection (if during shutdown or if node is malicious)
         :return:
         """
+        self.factory.number_of_connections += 1
         self.q_object(self)
 
+    def connectionLost(self, reason=connectionDone):
+        self.factory.number_of_connections -= 1
 
 
 class VeriNodeConnectorFactory(ReconnectingClientFactory):
-    pass
+
+    def __init__(self, q_object_from_network_propagator, number_of_connections_wanted=2):
+        super().__init__()
+        self.q_object_from_network_propagator = q_object_from_network_propagator
+        self.number_of_wanted_connections = number_of_connections_wanted
+        self.number_of_connections = 0
+        self.maxRetries = 2
+
+    def buildProtocol(self, addr):
+
+        if self.number_of_connections <= self.number_of_wanted_connections:
+            return VeriNodeConnector(addr, self, self.q_object_from_network_propagator)
+        else:
+            return None
