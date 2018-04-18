@@ -1,5 +1,6 @@
 from Orses_Administrator_Core.Administrator import Admin
 from Orses_Network_Core.NetworkManager import NetworkManager
+from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
 
 
 from getpass import getpass
@@ -12,6 +13,12 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: figure out how connection protocols can be saved, and messages coming from the connection is identified
+# todo: so far when connection is made, the Instance sends itself using queue, then when messages are received
+# todo: the instance sends itself as the key and msg as value.
+
+# todo: goal is to be able to signal when a new conversation(not new connection) is started between nodes and ways to
+# todo: signal new conversation and end existing conversation
 
 """
 file used to start node
@@ -52,14 +59,27 @@ elif admin.isCompetitor is None:
         # todo: add logic to create new competitor network message for inclusion into the blockchain
     elif compete == "n":
         admin.isCompetitor = False
+else:
+    compete = 'n'
+
 
 # instantiate queue variables
-
-q_for_compete = multiprocessing.Queue()
+q_for_compete = multiprocessing.Queue() if compete == 'y' else None
+q_for_validator = multiprocessing.Queue()
 q_for_propagate = queue.Queue()
 
 
-# start network propagator process
+# start network propagator a different process using multiprocessing
+propagator = NetworkPropagator(q_for_validator, q_for_propagate, q_for_compete)
+network_propagator_process = multiprocessing.Process(target=propagator.run_propagator)
+network_propagator_process.daemon = True
+network_propagator_process.start()
+
+
+# start network manaager and run veri node factory and regular factory using reactor.callFromThread
+network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate)
+reactor.callFromThread(network_manager.run_veri_node_network, reactor, q_for_propagate)
+reactor.callFromThread(network_manager.run_regular_node_network, reactor, q_for_propagate)
 
 
 

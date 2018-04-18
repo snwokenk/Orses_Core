@@ -14,7 +14,7 @@ class NetworkMessages:
     class is to listen for first 2 messages, then choose which ListenerMessages class to use
     """
 
-    def __init__(self):
+    def __init__(self, q_obj=None):
 
         self.first_two_msgs = list()
         self.message_object = None
@@ -23,6 +23,7 @@ class NetworkMessages:
         self.last_msg = b'end'
         self.ack_msg = b'ack'
         self.reject_msg = b'rej'
+        self.q_obj = q_obj
         self.end_convo = False
 
     def listen(self, msg):
@@ -39,7 +40,8 @@ class NetworkMessages:
                 self.message_object = dict_of_listening_types[type_key](
                     messages_heard=self.first_two_msgs,
                     netmsginst=self,
-                    msg_type=type_key
+                    msg_type=type_key,
+                    q_object=self.q_obj,
                 )
                 self.message_object.listen(msg)
             except KeyError:

@@ -43,7 +43,7 @@ class NetworkListener(Protocol):
 
 class NetworkListenerFactory(Factory):
 
-    def __init__(self, spkn_msg_obj_creator, admin):
+    def __init__(self, spkn_msg_obj_creator, admin, q_obj):
         """
 
         :param spkn_msg_obj_creator: a callable class, this is used to instatiate a spkn_msg class for each connection
@@ -52,6 +52,7 @@ class NetworkListenerFactory(Factory):
         Factory().__init__()
         self.message_object = spkn_msg_obj_creator
         self.admin = admin
+        self.q_object =q_obj
 
     def buildProtocol(self, addr):
-        return NetworkListener(factory=self, message_object=self.message_object())
+        return NetworkListener(factory=self, message_object=self.message_object(q_obj=self.q_object))

@@ -9,7 +9,8 @@ import json
 
 
 class NetworkPropagator:
-    def __init__(self, q_object_connected_to_validator, q_object_to_competing_process=None):
+
+    def __init__(self, q_object_connected_to_validator, q_for_propagate, q_object_to_competing_process=None):
         """
 
         :param q_object_connected_to_validator: q object used to get validated messages from Message validators
@@ -22,6 +23,13 @@ class NetworkPropagator:
 
         # dict with hash previews as dict keys ( this can be updated using binary search Tree) will do for now
         self.validated_message_dict_with_hash_preview = dict()
+
+    def run_propagator(self):
+
+        # this method will be run in in another process using multiprocessing.Process
+        # plan is to run NetworkPropagatorHearer
+        while True:
+            pass
 
 
 class NetworkPropagatorSpeaker:

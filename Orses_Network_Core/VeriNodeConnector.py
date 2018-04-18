@@ -5,6 +5,9 @@ When a connection is made, the instance of VeriNodeConnector Protocol sends itse
 passed to it. The process can then use the Protocol.transport.write and Protocol.transport.loseConnection methods
 
 
+another instance could be to instantiate a new NetworkPropagator class whenever a reason+hashpreview message is received and
+seting 
+
 """
 
 
@@ -24,7 +27,10 @@ class VeriNodeConnector(Protocol):
         :param data:
         :return:
         """
-        self.q_object.put(data)
+
+        # when data is received, self is sent with data, receiving process is able to identify the connection sending
+        # data using the key
+        self.q_object.put({self: data})
 
     def connectionMade(self):
         """
