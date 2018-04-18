@@ -1,7 +1,8 @@
 from twisted.internet.protocol import Protocol, ReconnectingClientFactory,connectionDone
 """
 Used to connect and maintain long lived connections, this is unlike non-admin nodes with short lived connection
-the protocol then receives/sends message through a queue object from/to NetworkPropagator class
+When a connection is made, the instance of VeriNodeConnector Protocol sends itself to another process using q_object 
+passed to it. The process can then use the Protocol.transport.write and Protocol.transport.loseConnection methods
 
 
 """

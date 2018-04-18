@@ -1,7 +1,11 @@
 from Orses_Administrator_Core.Administrator import Admin
+from Orses_Network_Core.NetworkManager import NetworkManager
+
+
 from getpass import getpass
 from twisted.internet import reactor
-import sys
+
+import sys, multiprocessing, queue
 
 p_version = sys.version_info
 
@@ -48,6 +52,11 @@ elif admin.isCompetitor is None:
         # todo: add logic to create new competitor network message for inclusion into the blockchain
     elif compete == "n":
         admin.isCompetitor = False
+
+# instantiate queue variables
+
+q_for_compete = multiprocessing.Queue()
+q_for_propagate = queue.Queue()
 
 
 # start network propagator process
