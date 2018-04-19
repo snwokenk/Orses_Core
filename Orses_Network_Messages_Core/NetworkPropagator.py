@@ -4,9 +4,14 @@ Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
     TokenReservationRequestValidator, TokenReservationRevokeValidator
+from twisted.internet.protocol import Protocol
 
 import json
 
+# todo: networkpropagator class can be written to instantiated once and used for any msg, the 1 letter reasons
+# todo: are appended to front of message allowing networtpropagator hearer to check for hash_preview
+# todo: in appropriate hash, instantiate correct validator and if walletpubkey is needed, the main_message
+# todo: is saved to a dict, with a way of identifying it when the wallet pubkey is sent.
 
 class NetworkPropagator:
 
@@ -19,8 +24,9 @@ class NetworkPropagator:
         """
         self.q_object_validator = q_object_connected_to_validator
         self.q_object_compete = q_object_to_competing_process
+        self.q_object_propagate = q_for_propagate
         self.validated_message_dict = dict()
-
+        self.connected_protocols_dict = dict()
         # dict with hash previews as dict keys ( this can be updated using binary search Tree) will do for now
         self.validated_message_dict_with_hash_preview = dict()
 
@@ -29,10 +35,19 @@ class NetworkPropagator:
         # this method will be run in in another process using multiprocessing.Process
         # plan is to run NetworkPropagatorHearer
         while True:
-            pass
+            rsp = self.q_object_propagate.get()
+
+            if isinstance(rsp, Protocol) and rsp not in self.connected_protocols_dict:
+                self.connected_protocols_dict[rsp] = dict()
+            elif isinstance(rsp, list):
+                pass
+
+
+
 
 
 class NetworkPropagatorSpeaker:
+    created = 0
 
     def __init__(self, validated_message_list):
         """
@@ -55,6 +70,9 @@ class NetworkPropagatorSpeaker:
         self.last_msg = b'end'
         self.need_pubkey = b'wpk'
 
+        NetworkPropagatorSpeaker.created += 1
+        self.id = NetworkPropagatorHearer.created
+
     def speak(self):
 
         if self.end_convo is True:
@@ -74,7 +92,10 @@ class NetworkPropagatorSpeaker:
 
 
 class NetworkPropagatorHearer:
+    created = 0
+
     def __init__(self, q_object_for_validator, NetworkPropagatorInstance):
+
         self.NetworkPropagatorInstance = NetworkPropagatorInstance
         self.q_object_for_validator = q_object_for_validator
         self.reason_validator_dict = {
@@ -97,6 +118,9 @@ class NetworkPropagatorHearer:
         self.need_pubkey = b'wpk'
         self.main_message = ""
         self.valid_main_message = ''  # can be None, False, True. None means need pubkey. empty string default
+
+        NetworkPropagatorHearer.created += 1
+        self.id = NetworkPropagatorHearer.created
 
     def listen(self, msg):
         if self.last_msg in self.message_heard:

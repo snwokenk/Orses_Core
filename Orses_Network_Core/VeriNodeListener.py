@@ -21,7 +21,7 @@ class VeriNodeListener(Protocol):
         :param data:
         :return:
         """
-        self.q_object.put({self: data})
+        self.q_object.put([self, data])
 
     def connectionMade(self):
         """

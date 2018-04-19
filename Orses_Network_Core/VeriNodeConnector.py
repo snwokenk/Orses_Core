@@ -29,8 +29,8 @@ class VeriNodeConnector(Protocol):
         """
 
         # when data is received, self is sent with data, receiving process is able to identify the connection sending
-        # data using the key
-        self.q_object.put({self: data})
+        # self is first in list, and data is second.
+        self.q_object.put([self, data])
 
     def connectionMade(self):
         """

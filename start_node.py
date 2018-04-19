@@ -63,13 +63,14 @@ else:
     compete = 'n'
 
 
-# instantiate queue variables
+# *** instantiate queue variables ***
+
 q_for_compete = multiprocessing.Queue() if compete == 'y' else None
 q_for_validator = multiprocessing.Queue()
 q_for_propagate = queue.Queue()
 
 
-# start network propagator a different process using multiprocessing
+# *** start network propagator a different process using multiprocessing ***
 propagator = NetworkPropagator(q_for_validator, q_for_propagate, q_for_compete)
 network_propagator_process = multiprocessing.Process(target=propagator.run_propagator)
 network_propagator_process.daemon = True
