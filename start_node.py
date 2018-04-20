@@ -72,15 +72,17 @@ q_for_propagate = multiprocessing.Queue()
 
 # *** start network propagator a different process using multiprocessing ***
 propagator = NetworkPropagator(q_for_validator, q_for_propagate, q_for_compete)
-network_propagator_process = multiprocessing.Process(target=propagator.run_propagator)
-network_propagator_process.daemon = True
-network_propagator_process.start()
+network_propagator_process = reactor.callInThread(target=propagator.run_propagator)
+# network_propagator_process.daemon = True
+# network_propagator_process.start()
 
 
 # start network manaager and run veri node factory and regular factory using reactor.callFromThread
-network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate)
+network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate, propagator=propagator)
 reactor.callFromThread(network_manager.run_veri_node_network, reactor, q_for_propagate)
 reactor.callFromThread(network_manager.run_regular_node_network, reactor, q_for_propagate)
+
+reactor.run()
 
 
 

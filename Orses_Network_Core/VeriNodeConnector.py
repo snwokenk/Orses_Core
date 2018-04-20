@@ -13,15 +13,20 @@ received and set
 
 
 class VeriNodeConnector(Protocol):
+    created = 1
 
-    def __init__(self, addr, factory, q_object_from_network_propagator):
+    def __init__(self, addr, factory, q_object_from_network_propagator, propagator):
+        self.proto_id = VeriNodeConnector.created
+        VeriNodeConnector.created += 1
         super().__init__()
-
+        self.propagator = propagator
         self.factory = factory
         self.q_object = q_object_from_network_propagator
         self.addr = addr
         self.sending_convo = 0
         self.receiving_convo = 0
+
+
 
     def dataReceived(self, data):
         """
@@ -39,7 +44,7 @@ class VeriNodeConnector(Protocol):
         # a: [propagator type, convo id, convo]
         # the propagator type can be either 'n', 'h', 's'. n is new convo, 'h' convo from hearer,
         # 's' convo from speaker,
-        self.q_object.put([self, data])
+        self.q_object.put([self.proto_id, data])
 
     def connectionMade(self):
         """
@@ -53,24 +58,35 @@ class VeriNodeConnector(Protocol):
         """
         self.factory.number_of_connections += 1
 
-        self.q_object({self: {"speaker": {}, "hearer": {}}})
+        self.propagator.add_protocol(self)
+        self.q_object(b'np')
 
     def connectionLost(self, reason=connectionDone):
+        # removes self from connected protocol
+        self.propagator.remove_protocol(self)
+
+        # instructs process that  a protocol has be removed and to update local dict
+        self.q_object.put(b'xp')
+
+        # reduces number of created
+        VeriNodeConnector.created -= 1
+
         self.factory.number_of_connections -= 1
 
 
 class VeriNodeConnectorFactory(ReconnectingClientFactory):
 
-    def __init__(self, q_object_from_network_propagator, number_of_connections_wanted=2):
+    def __init__(self, q_object_from_network_propagator, propagator, number_of_connections_wanted=2):
         super().__init__()
         self.q_object_from_network_propagator = q_object_from_network_propagator
         self.number_of_wanted_connections = number_of_connections_wanted
         self.number_of_connections = 0
         self.maxRetries = 2
+        self.propagator = propagator
 
     def buildProtocol(self, addr):
 
         if self.number_of_connections <= self.number_of_wanted_connections:
-            return VeriNodeConnector(addr, self, self.q_object_from_network_propagator)
+            return VeriNodeConnector(addr, self, self.q_object_from_network_propagator, self.propagator)
         else:
             return None

@@ -30,43 +30,52 @@ class NetworkPropagator:
         # dict with hash previews as dict keys ( this can be updated using binary search Tree) will do for now
         self.validated_message_dict_with_hash_preview = dict()
 
+    def add_protocol(self, protocol):
+        self.connected_protocols_dict.update({protocol.proto_id: [protocol, {"speaker": {}, "hearer": {}}]})
+
+    def remove_protocol(self, protocol):
+
+        del self.connected_protocols_dict[protocol.proto_id]
+
     def run_propagator(self):
 
         # this method will be run in in another process using multiprocessing.Process
         # plan is to run NetworkPropagatorHearer
 
         # thread to
+        proto_dict = self.connected_protocols_dict
+
         while True:
             rsp = self.q_object_propagate.get()
 
             # new protocol connection dictionary comming from VeriNodeConnector or VeriNodeListener
-            if isinstance(rsp, dict):
-                # rsp == {protocol_instance: {"speaker": {}, "hearer": {}}}
-                self.connected_protocols_dict.update(rsp)
-            elif isinstance(rsp, list) and len(rsp) == 3:
-                # rsp == [protocol_instance, data]
+            if rsp in {b'np', b'xp'}:
+                # if rsp = b'np' means new protocol added itself, so update local dict
+                proto_dict = self.connected_protocols_dict
+            elif isinstance(rsp, list) and len(rsp) == 2:
+                # rsp == [protocol_instance_id, data]
                 # data is json encoded python list (encoded into bytes)
                 # data == [propagator type('s', 'h' or 'n'), convo id(3 dit from 0-999), convo (main convo)]
                 data = json.loads(rsp[1].decode())
-                prop_type = data[0]
-                convo_id = data[1]
-                convo = data[2]
 
+                # prop_type = data[0]
+                # convo_id = data[1]
+                # convo = data[2]
                 if data[0] == 'n':
-                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]] = NetworkPropagatorHearer(
-                        convo_id=convo_id,
+                    proto_dict[rsp[0]]["hearer"][data[1]] = NetworkPropagatorHearer(
+                        convo_id=data[0],
                         NetworkPropagatorInstance=self,
                         q_object_for_validator=self.q_object_validator,
                         protocol=rsp[0]
 
                     )
-                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
+                    proto_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
 
                 elif data[0] == 's':
-                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
+                    proto_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
 
                 elif data[0] == "h":
-                    self.connected_protocols_dict[rsp[0]]["speaker"][data[1]].listen(data[2])
+                    proto_dict[rsp[0]]["speaker"][data[1]].listen(data[2])
 
                 pass
 
