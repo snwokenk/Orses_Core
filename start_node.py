@@ -72,7 +72,8 @@ q_for_propagate = multiprocessing.Queue()
 
 # *** start network propagator a different process using multiprocessing ***
 propagator = NetworkPropagator(q_for_validator, q_for_propagate, q_for_compete)
-network_propagator_process = reactor.callInThread(target=propagator.run_propagator)
+network_propagator_listener_process = reactor.callInThread(target=propagator.run_propagator_convo_manager)
+network_propagator_speaker_process = reactor.callInThread(target=propagator.run_propagator_convo_initiator)
 # network_propagator_process.daemon = True
 # network_propagator_process.start()
 
