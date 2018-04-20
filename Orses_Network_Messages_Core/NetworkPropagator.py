@@ -8,10 +8,10 @@ from twisted.internet.protocol import Protocol
 
 import json
 
-# todo: networkpropagator class can be written to instantiated once and used for any msg, the 1 letter reasons
-# todo: are appended to front of message allowing networtpropagator hearer to check for hash_preview
-# todo: in appropriate hash, instantiate correct validator and if walletpubkey is needed, the main_message
-# todo: is saved to a dict, with a way of identifying it when the wallet pubkey is sent.
+# todo: now that we able to keep track of protocol and keep track of multiple convos of each protocol we
+# todo: can, call listen() in a different thread, making sure that it does not block, then in that thread,
+# todo: once the listening is done, NetworkPropagatorHearer instance sends self to main reactor thread
+# todo: which uses the protocol attribute to send response
 
 class NetworkPropagator:
 
@@ -34,16 +34,41 @@ class NetworkPropagator:
 
         # this method will be run in in another process using multiprocessing.Process
         # plan is to run NetworkPropagatorHearer
+
+        # thread to
         while True:
             rsp = self.q_object_propagate.get()
 
-            if isinstance(rsp, Protocol) and rsp not in self.connected_protocols_dict:
-                self.connected_protocols_dict[rsp] = dict()
-            elif isinstance(rsp, list):
+            # new protocol connection dictionary comming from VeriNodeConnector or VeriNodeListener
+            if isinstance(rsp, dict):
+                # rsp == {protocol_instance: {"speaker": {}, "hearer": {}}}
+                self.connected_protocols_dict.update(rsp)
+            elif isinstance(rsp, list) and len(rsp) == 3:
+                # rsp == [protocol_instance, data]
+                # data is json encoded python list (encoded into bytes)
+                # data == [propagator type('s', 'h' or 'n'), convo id(3 dit from 0-999), convo (main convo)]
+                data = json.loads(rsp[1].decode())
+                prop_type = data[0]
+                convo_id = data[1]
+                convo = data[2]
+
+                if data[0] == 'n':
+                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]] = NetworkPropagatorHearer(
+                        convo_id=convo_id,
+                        NetworkPropagatorInstance=self,
+                        q_object_for_validator=self.q_object_validator,
+                        protocol=rsp[0]
+
+                    )
+                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
+
+                elif data[0] == 's':
+                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
+
+                elif data[0] == "h":
+                    self.connected_protocols_dict[rsp[0]]["speaker"][data[1]].listen(data[2])
+
                 pass
-
-
-
 
 
 class NetworkPropagatorSpeaker:
@@ -71,7 +96,7 @@ class NetworkPropagatorSpeaker:
         self.need_pubkey = b'wpk'
 
         NetworkPropagatorSpeaker.created += 1
-        self.id = NetworkPropagatorHearer.created
+        self.id = NetworkPropagatorSpeaker.created
 
     def speak(self):
 
@@ -92,19 +117,18 @@ class NetworkPropagatorSpeaker:
 
 
 class NetworkPropagatorHearer:
-    created = 0
 
-    def __init__(self, q_object_for_validator, NetworkPropagatorInstance):
+    def __init__(self, q_object_for_validator, NetworkPropagatorInstance, convo_id, protocol):
 
         self.NetworkPropagatorInstance = NetworkPropagatorInstance
         self.q_object_for_validator = q_object_for_validator
         self.reason_validator_dict = {
-            b'a': AssignmentStatementValidator.AssignmentStatementValidator,
-            b'b': TokenTransferValidator.TokenTransferValidator,
-            b'c': TokenReservationRequestValidator.TokenReservationRequestValidator,
-            b'd': TokenReservationRevokeValidator.TokenReservationRevokeValidator
+            'a': AssignmentStatementValidator.AssignmentStatementValidator,
+            'b': TokenTransferValidator.TokenTransferValidator,
+            'c': TokenReservationRequestValidator.TokenReservationRequestValidator,
+            'd': TokenReservationRevokeValidator.TokenReservationRevokeValidator
         }
-        self.firstmessage = b''  # first message is reason message/reason key for validator dict
+        self.firstmessage = ''  # first message is reason message/reason key for validator dict
         self.hash_preview = ''
 
         # if none then no check yet, false: node does not have (will receive it), True: Node Has (will not receive it
@@ -112,15 +136,16 @@ class NetworkPropagatorHearer:
         self.message_heard = set()
         self.validator_response = None
         self.end_convo = False
-        self.last_msg = b'end'
-        self.verified_msg = b'ver'
-        self.send_tx_msg = b'snd'
-        self.need_pubkey = b'wpk'
+        self.last_msg = 'end'
+        self.verified_msg = 'ver'
+        self.send_tx_msg = 'snd'
+        self.need_pubkey = 'wpk'
         self.main_message = ""
         self.valid_main_message = ''  # can be None, False, True. None means need pubkey. empty string default
 
-        NetworkPropagatorHearer.created += 1
-        self.id = NetworkPropagatorHearer.created
+        self.convo_id = convo_id
+        self.propagator_type = 'h'  # h for hearer
+        self.protocol = protocol
 
     def listen(self, msg):
         if self.last_msg in self.message_heard:
@@ -131,14 +156,16 @@ class NetworkPropagatorHearer:
                 self.message_heard.update(self.last_msg)
             else:
                 self.firstmessage = msg[0:1]
-                self.hash_preview = msg[1:].decode()
+                self.hash_preview = msg[1:]
+                self.has_tx = self.hash_preview in \
+                              self.NetworkPropagatorInstance.validated_message_dict_with_hash_preview
 
         # has_tx is false and main_message empty then next message should be main message
         elif not self.main_message and self.has_tx is False:
 
             # tries to turn into python dictionary, if not then ends convo
             try:
-                self.main_message = json.loads(msg.decode())
+                self.main_message = msg
             except ValueError:
                 self.message_heard.update(self.last_msg)
             else:
@@ -168,7 +195,7 @@ class NetworkPropagatorHearer:
 
             self.valid_main_message = self.reason_validator_dict[self.firstmessage](
                 self.main_message,
-                wallet_pubkey=bytes.fromhex(msg.decode()),
+                wallet_pubkey=bytes.fromhex(msg),
                 q_object=self.q_object_for_validator,
             ).check_validity()
 
@@ -185,24 +212,27 @@ class NetworkPropagatorHearer:
         if self.last_msg in self.message_heard:
             # setting this to true will cause NetworkPropagator to delete this instance
             self.end_convo = True
-            return self.last_msg
+            return self.speaker_helper(self.last_msg)
         elif self.verified_msg in self.message_heard:
             self.end_convo = True
-            return self.verified_msg
+            return self.speaker_helper(self.verified_msg)
         elif self.valid_main_message is None and self.need_pubkey in self.message_heard:
-            return self.need_pubkey
+            return self.speaker_helper(self.need_pubkey)
 
-        elif self.has_tx is None and self.hash_preview:
-            self.has_tx = self.hash_preview in self.NetworkPropagatorInstance.validated_message_dict_with_hash_preview
+        elif self.has_tx and self.hash_preview:
 
             if self.has_tx is True:
                 self.end_convo = True
-                return self.verified_msg  # instructs NetworkPropagator to delete this instance
+                return self.speaker_helper(self.verified_msg)
             elif self.has_tx is False:
-                return self.send_tx_msg
+                return self.speaker_helper(self.send_tx_msg)
         else:
             print(self.message_heard)
-            return self.last_msg
+            return self.speaker_helper(self.last_msg)
+
+    def speaker_helper(self, msg):
+
+        return json.dumps([self.propagator_type, self.convo_id, msg]).encode()
 
 
 

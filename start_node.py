@@ -67,7 +67,7 @@ else:
 
 q_for_compete = multiprocessing.Queue() if compete == 'y' else None
 q_for_validator = multiprocessing.Queue()
-q_for_propagate = queue.Queue()
+q_for_propagate = multiprocessing.Queue()
 
 
 # *** start network propagator a different process using multiprocessing ***
