@@ -64,9 +64,11 @@ class TokenTransferValidator:
             # pass validated message to network propagator and competing process(if active)
             # 'b' reason message for token transfer msg
             if self.q_object:
-                self.q_object.put(['b', self.tx_hash,  self.sending_wallet_pubkey, self.transfer_tx_dict])
+                self.q_object.put([f'b{self.tx_hash[:8]}', self.sending_wallet_pubkey, self.transfer_tx_dict, True])
             return True
         else:
+            if self.q_object:
+                self.q_object.put([f'b{self.tx_hash[:8]}', self.sending_wallet_pubkey, self.transfer_tx_dict, False])
             return False
 
     def check_client_id_owner_of_wallet(self):

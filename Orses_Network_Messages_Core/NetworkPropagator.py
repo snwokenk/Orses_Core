@@ -8,10 +8,9 @@ from twisted.internet.protocol import Protocol
 
 import json
 
-# todo: now that we able to keep track of protocol and keep track of multiple convos of each protocol we
-# todo: can, call listen() in a different thread, making sure that it does not block, then in that thread,
-# todo: once the listening is done, NetworkPropagatorHearer instance sends self to main reactor thread
-# todo: which uses the protocol attribute to send response
+# todo: once message is validated, find away of keeping track of connections which sent message, and not resending
+# todo: it to them. ie if person A gossipped to you, do not tell person A same gossip but tell Person B and Person C
+
 
 class NetworkPropagator:
 
@@ -28,8 +27,13 @@ class NetworkPropagator:
         self.q_object_propagate = q_for_propagate
         self.validated_message_dict = dict()
         self.connected_protocols_dict = dict()
-        # dict with hash previews as dict keys ( this can be updated using binary search Tree) will do for now
+
+        # dict with reason+hash previews as dict keys( this can be updated using binary search Tree) will do for now
+        # main tx dict as value
         self.validated_message_dict_with_hash_preview = dict()
+
+        # dict with hash previews received from other nodes
+        self.message_from_other_veri_node_dict = dict()
         self.reactor_instance = reactor_instance
 
     def add_protocol(self, protocol):
@@ -43,13 +47,35 @@ class NetworkPropagator:
         """
         used to send validated messages to other veri nodes. These validated messages could come first hand from
         regular client nodes or propagted messages from other nodes.
-        Process also speaks for existing messages (whether initiated by node or not)
+        Process is only used to INITIATE convo, any replies go to the run_propagator_convo_manager thread
         :return:
         """
 
-
         # this method will be run in in another process using reactor.callInThread
-        pass
+        reactor = self.reactor_instance
+
+        if self.q_object_compete:
+
+            while True:
+                # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
+                rsp = self.q_object_validator.get()
+
+                if rsp[3] is True:
+                    # send to
+                    self.q_object_compete.put(rsp[2])
+                else:
+                    pass
+
+        else:  # node not competing
+
+            while True:
+                # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
+                rsp = self.q_object_validator.get()
+
+                if rsp[3] is True:
+                    self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                else:
+                    pass
 
     def run_propagator_convo_manager(self):
         """
@@ -78,7 +104,13 @@ class NetworkPropagator:
                 # prop_type = data[0]
                 # convo_id = data[1]
                 # convo = data[2]
+
                 if data[0] == 'n':
+
+                    # stops from creating convo when message already broadcasted (avoids using more cpu/mem resource
+                    if data[2] in self.message_from_other_veri_node_dict:
+                        json.dumps(['h', data[1], 'ver']).encode()
+
                     self.connected_protocols_dict[rsp[0]]["hearer"][data[1]] = NetworkPropagatorHearer(
                         convo_id=data[0],
                         NetworkPropagatorInstance=self,
@@ -121,6 +153,7 @@ class NetworkPropagator:
 
                 # use protocol's transport.write to send response
                 rsp = self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].speak()
+
                 if self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].end_convo is True:
                     print(self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].end_convo_reason)
                     self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id] = None
@@ -128,10 +161,6 @@ class NetworkPropagator:
                 self.connected_protocols_dict[protocol_id].transport.write(
                     rsp
                 )
-
-
-
-
 
 
 class NetworkPropagatorSpeaker:
@@ -146,11 +175,11 @@ class NetworkPropagatorSpeaker:
         :param validated_message_list: [reason, msg hash, pubkey of wallet or admin (if new competitor msg), msg dict]
         """
 
-        self.reason = validated_message_list[0]
-        self.tx_hash_preview = validated_message_list[1][:8] # first 8 characters of hash
-        self.tx_hash_preview_with_reason = f'{self.reason}{self.tx_hash_preview}'
-        self.msg_pubkey = validated_message_list[2]
-        self.main_msg = json.dumps(validated_message_list[3])
+        # self.reason = validated_message_list[0]
+        # self.tx_hash_preview = validated_message_list[1][:8] # first 8 characters of hash
+        self.tx_hash_preview_with_reason = validated_message_list[0]  # string with reason letter-8char hash preview
+        self.msg_pubkey = validated_message_list[1]
+        self.main_msg = json.dumps(validated_message_list[2])
         self.messages_to_be_spoken = iter([self.tx_hash_preview_with_reason.encode(), self.main_msg.encode()])
         self.messages_heard = set()
         self.end_convo = False
