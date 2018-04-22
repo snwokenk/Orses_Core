@@ -13,12 +13,7 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
-# todo: figure out how connection protocols can be saved, and messages coming from the connection is identified
-# todo: so far when connection is made, the Instance sends itself using queue, then when messages are received
-# todo: the instance sends itself as the key and msg as value.
-
-# todo: goal is to be able to signal when a new conversation(not new connection) is started between nodes and ways to
-# todo: signal new conversation and end existing conversation
+# todo: start competing/block creation process, finish up the blockchain process
 
 """
 file used to start node
@@ -69,6 +64,10 @@ q_for_compete = multiprocessing.Queue() if compete == 'y' else None
 q_for_validator = multiprocessing.Queue()
 q_for_propagate = multiprocessing.Queue()
 
+
+# start compete process, if compete is yes
+if compete == 'y':
+    pass
 
 # *** start network propagator a different process using multiprocessing ***
 propagator = NetworkPropagator(q_for_validator, q_for_propagate, reactor, q_for_compete)

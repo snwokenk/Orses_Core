@@ -4,12 +4,11 @@ Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
     TokenReservationRequestValidator, TokenReservationRevokeValidator
-from twisted.internet.protocol import Protocol
+# from twisted.internet.protocol import Protocol
 
 import json
 
-# todo: once message is validated, find away of keeping track of connections which sent message, and not resending
-# todo: it to them. ie if person A gossipped to you, do not tell person A same gossip but tell Person B and Person C
+
 
 
 class NetworkPropagator:
@@ -32,12 +31,16 @@ class NetworkPropagator:
         # main tx dict as value
         self.validated_message_dict_with_hash_preview = dict()
 
+        self.invalidated_message_dict_with_hash_preview = dict()
+
         # dict with hash previews received from other nodes
         self.message_from_other_veri_node_dict = dict()
         self.reactor_instance = reactor_instance
 
     def add_protocol(self, protocol):
-        self.connected_protocols_dict.update({protocol.proto_id: [protocol, {"speaker": {}, "hearer": {}}]})
+
+        # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo, goes to 999 and resets
+        self.connected_protocols_dict.update({protocol.proto_id: [protocol, {"speaker": {}, "hearer": {}}, 0]})
 
     def remove_protocol(self, protocol):
 
@@ -57,25 +60,30 @@ class NetworkPropagator:
         if self.q_object_compete:
 
             while True:
+
                 # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
                 rsp = self.q_object_validator.get()
 
                 if rsp[3] is True:
                     # send to
                     self.q_object_compete.put(rsp[2])
+                    self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    self.check_speak_send(validated_message_list=rsp)
                 else:
-                    pass
+                    self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
 
         else:  # node not competing
 
             while True:
+
                 # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
                 rsp = self.q_object_validator.get()
 
                 if rsp[3] is True:
                     self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    self.check_speak_send(validated_message_list=rsp)
                 else:
-                    pass
+                    self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
 
     def run_propagator_convo_manager(self):
         """
@@ -111,11 +119,10 @@ class NetworkPropagator:
                     if data[2] in self.message_from_other_veri_node_dict:
                         json.dumps(['h', data[1], 'ver']).encode()
 
-                    self.connected_protocols_dict[rsp[0]]["hearer"][data[1]] = NetworkPropagatorHearer(
+                    self.connected_protocols_dict[rsp[0]][1]["hearer"][data[1]] = NetworkPropagatorHearer(
                         convo_id=data[0],
                         NetworkPropagatorInstance=self,
                         q_object_for_validator=self.q_object_validator,
-                        protocol=rsp[0]
 
                     )
 
@@ -132,7 +139,7 @@ class NetworkPropagator:
 
     def listen_speak_send(self, protocol_id, hearer_or_speaker, convo_id, data2):
         """
-
+        used to listen to ongoing conversation, speak and send what is spoken
         :param protocol_id:
         :param hearer_or_speaker:
         :param convo_id:
@@ -140,33 +147,89 @@ class NetworkPropagator:
         :return:
         """
         try:
-            speaker_or_hearer = self.connected_protocols_dict[protocol_id][hearer_or_speaker]
+            speaker_or_hearer = self.connected_protocols_dict[protocol_id][1][hearer_or_speaker]
         except KeyError:
             speaker_or_hearer = None
 
         if speaker_or_hearer and convo_id in speaker_or_hearer and speaker_or_hearer[convo_id]:
             if speaker_or_hearer[convo_id].end_convo is True:
                 print(speaker_or_hearer[convo_id].end_convo_reason)
-                self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id] = None
+                self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id] = None
+
             else:
-                self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].listen(data2)
+                self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].listen(data2)
 
                 # use protocol's transport.write to send response
-                rsp = self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].speak()
+                rsp = self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].speak()
 
-                if self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].end_convo is True:
-                    print(self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id].end_convo_reason)
-                    self.connected_protocols_dict[protocol_id][hearer_or_speaker][convo_id] = None
+                if self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].end_convo is True:
+                    reason = self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].end_convo_reason
+                    print(reason)
 
-                self.connected_protocols_dict[protocol_id].transport.write(
+                    if hearer_or_speaker == "h" and reason == "received and validated message":
+
+                        # if message is validated, add hash preview and protocol id to dict
+                        # this dict will be used to avoid resending message to node that sent it
+                        self.message_from_other_veri_node_dict.update(
+                            {
+                                self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].hash_preview_with_reason: protocol_id
+                            }
+                        )
+                    self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id] = None
+
+                self.connected_protocols_dict[protocol_id][0].transport.write(
                     rsp
                 )
+
+    def check_speak_send(self, validated_message_list):
+
+        if validated_message_list[0] in self.message_from_other_veri_node_dict:
+
+            # connected_protocols_dict = [protocol id: [protocol obj, {'speaker':{convoid: networkspeaker class},
+            # 'hearer': {}}, # of convo < 1000]
+
+            for protocol_id in self.connected_protocols_dict:
+
+                if protocol_id != self.message_from_other_veri_node_dict[validated_message_list[0]]:
+
+                    convo_id = self.connected_protocols_dict[protocol_id][2]
+                    self.connected_protocols_dict[protocol_id][2]+=1
+
+                    self.connected_protocols_dict[protocol_id][1]["speaker"][convo_id] = NetworkPropagatorSpeaker(
+                        validated_message_list=validated_message_list,
+                        convo_id=convo_id,
+
+                    )
+
+                    self.connected_protocols_dict[protocol_id][0].transport.write(
+                        self.connected_protocols_dict[protocol_id][1]["speaker"][convo_id].speak()
+                    )
+        else:
+
+            # propagating message received from regular and not received from other nodes
+            for protocol_id in self.connected_protocols_dict:
+
+                convo_id = self.connected_protocols_dict[protocol_id][2]
+                self.connected_protocols_dict[protocol_id][2]+=1
+
+                self.connected_protocols_dict[protocol_id][1]["speaker"][convo_id] = NetworkPropagatorSpeaker(
+                    validated_message_list=validated_message_list,
+                    convo_id=convo_id,
+
+                )
+
+                self.connected_protocols_dict[protocol_id][0].transport.write(
+                    self.connected_protocols_dict[protocol_id][1]["speaker"][convo_id].speak()
+                )
+
+
+
 
 
 class NetworkPropagatorSpeaker:
     created = 0
 
-    def __init__(self, validated_message_list, convo_id, protocol):
+    def __init__(self, validated_message_list, convo_id):
         """
         this list is passed from message validators ie AssignmentStatementValidator, TokenTransferValidator etc
         reason message for propagating message is:
@@ -189,7 +252,6 @@ class NetworkPropagatorSpeaker:
         self.need_pubkey = b'wpk'
         self.convo_id = convo_id
         self.propagator_type = 's'  # h for hearer
-        self.protocol = protocol
 
         NetworkPropagatorSpeaker.created += 1
         self.id = NetworkPropagatorSpeaker.created
@@ -223,7 +285,7 @@ class NetworkPropagatorSpeaker:
 
 class NetworkPropagatorHearer:
 
-    def __init__(self, q_object_for_validator, NetworkPropagatorInstance, convo_id, protocol):
+    def __init__(self, q_object_for_validator, NetworkPropagatorInstance, convo_id):
 
         self.NetworkPropagatorInstance = NetworkPropagatorInstance
         self.q_object_for_validator = q_object_for_validator
@@ -235,6 +297,7 @@ class NetworkPropagatorHearer:
         }
         self.firstmessage = ''  # first message is reason message/reason key for validator dict
         self.hash_preview = ''
+        self.hash_preview_with_reason = ''
 
         # if none then no check yet, false: node does not have (will receive it), True: Node Has (will not receive it
         self.has_tx = None
@@ -247,11 +310,10 @@ class NetworkPropagatorHearer:
         self.send_tx_msg = 'snd'
         self.need_pubkey = 'wpk'
         self.main_message = ""
-        self.valid_main_message = ''  # can be None, False, True. None means need pubkey. empty string default
+        self.is_main_message_valid = ''  # can be None, False, True. None means need pubkey. empty string default
 
         self.convo_id = convo_id
         self.propagator_type = 'h'  # h for hearer
-        self.protocol = protocol
 
     def listen(self, msg):
         if self.last_msg in self.message_heard:
@@ -260,11 +322,12 @@ class NetworkPropagatorHearer:
         elif not self.firstmessage:
             if msg[0:1] not in self.reason_validator_dict:
                 self.message_heard.update(self.last_msg)
-                self.end_convo_reason = "message reason not in a valid reason"
+                self.end_convo_reason = "message reason not  a valid reason"
             else:
                 self.firstmessage = msg[0:1]
                 self.hash_preview = msg[1:]
-                self.has_tx = self.hash_preview in \
+                self.hash_preview_with_reason = msg
+                self.has_tx = self.hash_preview_with_reason in \
                               self.NetworkPropagatorInstance.validated_message_dict_with_hash_preview
 
         # has_tx is false and main_message empty then next message should be main message
@@ -279,7 +342,7 @@ class NetworkPropagatorHearer:
 
                 # tries to run python dictionary of transaction through validator, if KeyError then wrong tx sent
                 try:
-                    self.valid_main_message = self.reason_validator_dict[self.firstmessage](
+                    self.is_main_message_valid = self.reason_validator_dict[self.firstmessage](
                         self.main_message,
                         wallet_pubkey=None,
                         q_object=self.q_object_for_validator,
@@ -290,29 +353,29 @@ class NetworkPropagatorHearer:
                 else:
 
                     # None means node does not have wallet pubkey of client
-                    if self.valid_main_message is True:
+                    if self.is_main_message_valid is True:
                         self.message_heard.update(self.verified_msg)
                         self.end_convo_reason = "received and validated message"
-                    elif self.valid_main_message is None:
+                    elif self.is_main_message_valid is None:
                         self.message_heard.update(self.need_pubkey)
-                    elif self.valid_main_message is False:
+                    elif self.is_main_message_valid is False:
                         self.message_heard.update(self.last_msg)
                         self.end_convo_reason = "message not valid"
 
         # means main msg was not able to be validated because of lack of pubkey, current msg should be pubkey
-        elif self.main_message and self.valid_main_message is None:
+        elif self.main_message and self.is_main_message_valid is None:
 
-            self.valid_main_message = self.reason_validator_dict[self.firstmessage](
+            self.is_main_message_valid = self.reason_validator_dict[self.firstmessage](
                 self.main_message,
                 wallet_pubkey=bytes.fromhex(msg),
                 q_object=self.q_object_for_validator,
             ).check_validity()
 
             # can't be None this time because wallet pubkey provided
-            if self.valid_main_message is True:
+            if self.is_main_message_valid is True:
                 self.message_heard.update(self.verified_msg)
                 self.end_convo_reason = "received and validated message"
-            elif self.valid_main_message is False:
+            elif self.is_main_message_valid is False:
                 self.end_convo_reason = "message not valid"
                 self.message_heard.update(self.last_msg)
 
@@ -321,13 +384,15 @@ class NetworkPropagatorHearer:
 
     def speak(self):
         if self.last_msg in self.message_heard:
+
             # setting this to true will cause NetworkPropagator to delete this instance
             self.end_convo = True
             return self.speaker_helper(self.last_msg)
+
         elif self.verified_msg in self.message_heard:
             self.end_convo = True
             return self.speaker_helper(self.verified_msg)
-        elif self.valid_main_message is None and self.need_pubkey in self.message_heard:
+        elif self.is_main_message_valid is None and self.need_pubkey in self.message_heard:
             return self.speaker_helper(self.need_pubkey)
 
         elif self.has_tx and self.hash_preview:
