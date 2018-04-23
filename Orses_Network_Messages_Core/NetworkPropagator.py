@@ -274,8 +274,10 @@ class NetworkPropagatorSpeaker:
         # self.tx_hash_preview = validated_message_list[1][:8] # first 8 characters of hash
         self.tx_hash_preview_with_reason = validated_message_list[0]  # string with reason letter-8char hash preview
         self.msg_pubkey = validated_message_list[1]
+        print("here 1: ", validated_message_list[2])
         self.main_msg = json.dumps(validated_message_list[2])
-        self.messages_to_be_spoken = iter([self.tx_hash_preview_with_reason.encode(), self.main_msg.encode()])
+        print("here2: ", self.main_msg)
+        self.messages_to_be_spoken = iter([self.tx_hash_preview_with_reason, self.main_msg])
         self.messages_heard = set()
         self.end_convo = False
         self.end_convo_reason = ""
@@ -284,6 +286,7 @@ class NetworkPropagatorSpeaker:
         self.need_pubkey = b'wpk'
         self.convo_id = convo_id
         self.propagator_type = 's'  # h for hearer
+        self.first_msg = True
 
         NetworkPropagatorSpeaker.created += 1
         self.id = NetworkPropagatorSpeaker.created
@@ -292,6 +295,11 @@ class NetworkPropagatorSpeaker:
 
         if self.end_convo is True:
             return self.speaker_helper(self.last_msg)
+
+        elif self.first_msg is True:
+
+            self.first_msg = False
+            return json.dumps([self.propagator_type, 'n', next(self.messages_to_be_spoken)]).encode()
 
         elif self.last_msg in self.messages_heard:
             self.end_convo = True
@@ -303,6 +311,7 @@ class NetworkPropagatorSpeaker:
             return self.speaker_helper(self.msg_pubkey.encode())
 
         else:
+
             # todo: exception handing if iterator empty
             return self.speaker_helper(next(self.messages_to_be_spoken))
 
