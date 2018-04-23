@@ -299,7 +299,7 @@ class NetworkPropagatorSpeaker:
         elif self.first_msg is True:
 
             self.first_msg = False
-            return json.dumps([self.propagator_type, 'n', next(self.messages_to_be_spoken)]).encode()
+            return json.dumps(['n', self.convo_id, next(self.messages_to_be_spoken)]).encode()
 
         elif self.last_msg in self.messages_heard:
             self.end_convo = True
