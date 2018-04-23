@@ -145,7 +145,7 @@ class NetworkPropagator:
                                 json.dumps(['h', data[1], 'ver']).encode()
 
                             self.connected_protocols_dict[rsp[0]][1]["hearer"][data[1]] = NetworkPropagatorHearer(
-                                convo_id=data[0],
+                                convo_id=data[1],
                                 NetworkPropagatorInstance=self,
                                 q_object_for_validator=self.q_object_validator,
 
@@ -275,7 +275,7 @@ class NetworkPropagatorSpeaker:
         self.tx_hash_preview_with_reason = validated_message_list[0]  # string with reason letter-8char hash preview
         self.msg_pubkey = validated_message_list[1]
         print("here 1: ", validated_message_list[2])
-        self.main_msg = json.dumps(validated_message_list[2])
+        self.main_msg = validated_message_list[2]  # this will be serialized at later stage
         print("here2: ", self.main_msg)
         self.messages_to_be_spoken = iter([self.tx_hash_preview_with_reason, self.main_msg])
         self.messages_heard = set()
