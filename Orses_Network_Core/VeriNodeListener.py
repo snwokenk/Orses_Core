@@ -47,6 +47,7 @@ class VeriNodeListener(Protocol):
         """
 
         # adds protocol to network propagator.connected_protocols_dict
+        print("connection made: ", self.addr)
         self.propagator.add_protocol(self)
 
     def connectionLost(self, reason=connectionDone):

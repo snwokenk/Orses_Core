@@ -52,7 +52,7 @@ def send_stop_to_reactor(reactor_instance, *args):
                             i.put(ans)
 
                     reactor_instance.stop()
-                    print("reactor stopped", reactor_instance.running)
+                    print("reactor still running?: ", reactor_instance.running)
                     break
     reactor_instance.callInThread(temp, )
 
@@ -119,7 +119,7 @@ def main():
     reactor.callFromThread(network_manager.run_regular_node_network, reactor)
     reactor.callWhenRunning(send_stop_to_reactor, reactor, q_for_propagate, q_for_compete, q_for_validator)
 
-    reactor.run(installSignalHandlers=0)
+    reactor.run()
     print("Node Stopped")
 
 

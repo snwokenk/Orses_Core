@@ -63,12 +63,12 @@ class TokenReservationRevokeValidator:
             # pass validated message to network propagator and competing process(if active)
             # 'd' reason message for token reservation revoke msg
             if self.q_object:
-                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey, self.tkn_rvk_dict, True])
+                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey.hex(), self.tkn_rvk_dict, True])
 
             return True
         else:
             if self.q_object:
-                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey, self.tkn_rvk_dict, False])
+                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey.hex(), self.tkn_rvk_dict, False])
             return False
 
     def check_client_id_owner_of_wallet(self):

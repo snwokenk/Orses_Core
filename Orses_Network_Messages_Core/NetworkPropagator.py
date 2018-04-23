@@ -63,17 +63,23 @@ class NetworkPropagator:
 
                     # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
                     rsp = self.q_object_validator.get()
-                    print(rsp)
-                    if rsp in {'exit', 'quit'}:
-                        break
 
-                    elif rsp[3] is True:
-                        # send to
-                        self.q_object_compete.put(rsp[2])
-                        self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                        self.check_speak_send(validated_message_list=rsp)
-                    else:
-                        self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    try:
+                        print(rsp)
+                        if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
+                            break
+
+                        elif rsp[3] is True:
+                            # send to
+                            self.q_object_compete.put(rsp[2])
+                            self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                            self.check_speak_send(validated_message_list=rsp)
+                        else:
+                            self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    except Exception as e:
+                        # todo: implement error logging, when message received causes error. for now print error and msg
+                        print("Message: ", rsp, ": exception: ", e)
+                        continue
 
             else:  # node not competing
 
@@ -81,14 +87,21 @@ class NetworkPropagator:
 
                     # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
                     rsp = self.q_object_validator.get()
-                    print("in propagator initiator: ", rsp)
-                    if rsp in {'exit', 'quit'}:
-                        break
-                    elif rsp[3] is True:
-                        self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                        self.check_speak_send(validated_message_list=rsp)
-                    else:
-                        self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    try:
+
+                        print("in propagator initiator: ", rsp)
+                        print(self.connected_protocols_dict)
+                        if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
+                            break
+                        elif rsp[3] is True:
+                            self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                            self.check_speak_send(validated_message_list=rsp)
+                        else:
+                            self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    except Exception as e:
+                        # todo: implement error logging, when message received causes error. for now print error and msg
+                        print("Message: ", rsp, ": exception: ", e)
+                        continue
         except (KeyboardInterrupt, SystemExit):
             reactor.stop()
 
@@ -111,42 +124,48 @@ class NetworkPropagator:
             while True:
                 rsp = self.q_object_propagate.get()
                 print("in propagator: ", rsp)
-                if rsp in {'exit', 'quit'}:
-                    break
+                try:
+                    if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
+                        break
 
-                elif isinstance(rsp, list) and len(rsp) == 2:
-                    # rsp == [protocol_instance_id, data]
-                    # data is json encoded python list (encoded into bytes)
-                    # data == [propagator type('s', 'h' or 'n'), convo id(3 dit from 0-999), convo (main convo)]
-                    data = json.loads(rsp[1].decode())
+                    elif isinstance(rsp, list) and len(rsp) == 2:
+                        # rsp == [protocol_instance_id, data]
+                        # data is json encoded python list (encoded into bytes)
+                        # data == [propagator type('s', 'h' or 'n'), convo id(3 dit from 0-999), convo (main convo)]
+                        data = json.loads(rsp[1].decode())
 
-                    # prop_type = data[0]
-                    # convo_id = data[1]
-                    # convo = data[2]
+                        # prop_type = data[0]
+                        # convo_id = data[1]
+                        # convo = data[2]
 
-                    if data[0] == 'n':
+                        if data[0] == 'n':
 
-                        # stops from creating convo when message already broadcasted (avoids using more cpu/mem resource
-                        if data[2] in self.message_from_other_veri_node_dict:
-                            json.dumps(['h', data[1], 'ver']).encode()
+                            # stops from creating convo when message already broadcasted (avoids using more cpu/mem resource
+                            if data[2] in self.message_from_other_veri_node_dict:
+                                json.dumps(['h', data[1], 'ver']).encode()
 
-                        self.connected_protocols_dict[rsp[0]][1]["hearer"][data[1]] = NetworkPropagatorHearer(
-                            convo_id=data[0],
-                            NetworkPropagatorInstance=self,
-                            q_object_for_validator=self.q_object_validator,
+                            self.connected_protocols_dict[rsp[0]][1]["hearer"][data[1]] = NetworkPropagatorHearer(
+                                convo_id=data[0],
+                                NetworkPropagatorInstance=self,
+                                q_object_for_validator=self.q_object_validator,
 
-                        )
+                            )
 
-                        reactor.callInThread(self.listen_speak_send, rsp[0], 'hearer', data[1], data[2])
-                        # self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
+                            reactor.callInThread(self.listen_speak_send, rsp[0], 'hearer', data[1], data[2])
+                            # self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
 
-                    elif data[0] == 's':
-                        reactor.callInThread(self.listen_speak_send, rsp[0], 'hearer', data[1], data[2])
-                        # self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
+                        elif data[0] == 's':
+                            reactor.callInThread(self.listen_speak_send, rsp[0], 'hearer', data[1], data[2])
+                            # self.connected_protocols_dict[rsp[0]]["hearer"][data[1]].listen(data[2])
 
-                    elif data[0] == "h":
-                        reactor.callInThread(self.listen_speak_send, rsp[0], 'speaker', data[1], data[2])
-                        # self.connected_protocols_dict[rsp[0]]["speaker"][data[1]].listen(data[2])
+                        elif data[0] == "h":
+                            reactor.callInThread(self.listen_speak_send, rsp[0], 'speaker', data[1], data[2])
+                            # self.connected_protocols_dict[rsp[0]]["speaker"][data[1]].listen(data[2])
+                except Exception as e:
+                    # todo: implement error logging, when message received causes error. for now print error and msg
+                    print("Message: ", rsp, ": exception: ", e)
+                    continue
+
         except (SystemExit, KeyboardInterrupt):
             reactor.stop()
 

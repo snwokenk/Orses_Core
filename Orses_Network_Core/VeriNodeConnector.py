@@ -60,6 +60,7 @@ class VeriNodeConnector(Protocol):
         # the NetworkPropagator can then use this protocol's transport.write() method to send data to connection.
         # Network propagator has access to methods and variables of this instance and even factory using self.factory
         # add_protocol() uses self.proto_id as key, and list [self, {"hearer":{}, "speaker": {}}]
+        print("connection made: ", self.addr)
         self.propagator.add_protocol(self)
 
     def connectionLost(self, reason=connectionDone):
@@ -81,6 +82,9 @@ class VeriNodeConnectorFactory(ReconnectingClientFactory):
         self.number_of_connections = 0
         self.maxRetries = 2
         self.propagator = propagator
+
+    def clientConnectionFailed(self, connector, reason):
+        print(reason)
 
     def buildProtocol(self, addr):
 

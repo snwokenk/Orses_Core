@@ -2,6 +2,8 @@ from Orses_Network_Core.VeriNodeConnector import VeriNodeConnectorFactory
 from Orses_Network_Core.VeriNodeListener import VeriNodeListenerFactory
 from Orses_Network_Core.NetworkListener import NetworkListenerFactory
 from Orses_Network_Messages_Core.NetworkMessages import NetworkMessages
+from Orses_Util_Core.FileAction import FileAction
+from Orses_Util_Core import Filenames_VariableNames
 
 
 class NetworkManager:
@@ -11,7 +13,7 @@ class NetworkManager:
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
         # self.addresses = {"127.0.0.1": 55603}
-        self.addresses = {"1192.168.0.183": 55602}
+        self.addresses = FileAction.open_file_from_json(filename=Filenames_VariableNames.default_addr_list,)
         self.listening_port = veri_listening_port
         self.veri_connecting_factory = VeriNodeConnectorFactory(q_object_from_network_propagator, propagator)
         self.veri_listening_factory = VeriNodeListenerFactory(q_object_from_network_propagator, propagator)
