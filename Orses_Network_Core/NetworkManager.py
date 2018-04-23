@@ -10,7 +10,8 @@ class NetworkManager:
 
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
-        self.addresses = {"127.0.0.1": 55603}
+        # self.addresses = {"127.0.0.1": 55603}
+        self.addresses = {"1192.168.0.183": 55602}
         self.listening_port = veri_listening_port
         self.veri_connecting_factory = VeriNodeConnectorFactory(q_object_from_network_propagator, propagator)
         self.veri_listening_factory = VeriNodeListenerFactory(q_object_from_network_propagator, propagator)

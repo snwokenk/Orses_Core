@@ -15,18 +15,16 @@ received and set
 class VeriNodeConnector(Protocol):
     created = 1
 
-    def __init__(self, addr, factory, q_object_from_network_propagator, propagator):
+    def __init__(self, addr, factory):
         self.proto_id = VeriNodeConnector.created
         VeriNodeConnector.created += 1
         super().__init__()
-        self.propagator = propagator
+        self.propagator = factory.propagator
         self.factory = factory
-        self.q_object = q_object_from_network_propagator
+        self.q_object = factory.q_object_from_network_propagator
         self.addr = addr
         self.sending_convo = 0
         self.receiving_convo = 0
-
-
 
     def dataReceived(self, data):
         """
@@ -58,15 +56,15 @@ class VeriNodeConnector(Protocol):
         """
         self.factory.number_of_connections += 1
 
+        # add self to NetworkPropagator protocol dictionary using the add_protocol() method
+        # the NetworkPropagator can then use this protocol's transport.write() method to send data to connection.
+        # Network propagator has access to methods and variables of this instance and even factory using self.factory
+        # add_protocol() uses self.proto_id as key, and list [self, {"hearer":{}, "speaker": {}}]
         self.propagator.add_protocol(self)
-        self.q_object(b'np')
 
     def connectionLost(self, reason=connectionDone):
-        # removes self from connected protocol
+        # removes self from connected protocol, this del entry in dict with protocol
         self.propagator.remove_protocol(self)
-
-        # instructs process that  a protocol has be removed and to update local dict
-        self.q_object.put(b'xp')
 
         # reduces number of created
         VeriNodeConnector.created -= 1
@@ -87,6 +85,6 @@ class VeriNodeConnectorFactory(ReconnectingClientFactory):
     def buildProtocol(self, addr):
 
         if self.number_of_connections <= self.number_of_wanted_connections:
-            return VeriNodeConnector(addr, self, self.q_object_from_network_propagator, self.propagator)
+            return VeriNodeConnector(addr, self)
         else:
             return None

@@ -39,7 +39,7 @@ class NetworkPropagator:
 
     def add_protocol(self, protocol):
 
-        # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo, goes to 999 and resets
+        # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, {"speaker": {}, "hearer": {}}, 0]})
 
     def remove_protocol(self, protocol):
