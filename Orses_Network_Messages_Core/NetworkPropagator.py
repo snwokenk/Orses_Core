@@ -274,9 +274,7 @@ class NetworkPropagatorSpeaker:
         # self.tx_hash_preview = validated_message_list[1][:8] # first 8 characters of hash
         self.tx_hash_preview_with_reason = validated_message_list[0]  # string with reason letter-8char hash preview
         self.msg_pubkey = validated_message_list[1]
-        print("here 1: ", validated_message_list[2])
         self.main_msg = validated_message_list[2]  # this will be serialized at later stage
-        print("here2: ", self.main_msg)
         self.messages_to_be_spoken = iter([self.tx_hash_preview_with_reason, self.main_msg])
         self.messages_heard = set()
         self.end_convo = False
@@ -308,7 +306,7 @@ class NetworkPropagatorSpeaker:
 
         elif self.sent_pubkey is False and self.need_pubkey in self.messages_heard:
             self.sent_pubkey = True
-            return self.speaker_helper(self.msg_pubkey.encode())
+            return self.speaker_helper(self.msg_pubkey)
 
         else:
 
@@ -438,7 +436,7 @@ class NetworkPropagatorHearer:
         elif self.is_main_message_valid is None and self.need_pubkey in self.message_heard:
             return self.speaker_helper(self.need_pubkey)
 
-        elif self.has_tx and self.hash_preview:
+        elif self.has_tx is None and self.hash_preview:
 
             if self.has_tx is True:
                 self.end_convo = True
