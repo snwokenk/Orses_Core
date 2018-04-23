@@ -197,7 +197,7 @@ class NetworkPropagator:
                 # if after listening and speaking end convo is True then snd message to speaker(if speaker will not snd)
                 if self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].end_convo is True:
                     reason = self.connected_protocols_dict[protocol_id][1][hearer_or_speaker][convo_id].end_convo_reason
-                    print(reason)
+                    print("reason in listen_speak: ", reason, hearer_or_speaker)
 
                     if hearer_or_speaker == "hearer" and reason == "received and validated message":
 
@@ -294,6 +294,7 @@ class NetworkPropagatorSpeaker:
         self.id = NetworkPropagatorSpeaker.created
 
     def speak(self):
+        print("message in speaker: ", self.messages_heard)
 
         if self.end_convo is True:
             return self.speaker_helper(self.last_msg)
@@ -436,7 +437,7 @@ class NetworkPropagatorHearer:
             self.message_heard.add(msg)
 
     def speak(self):
-        print("message heard: ",self.message_heard)
+        print("message heard in hearer: ",self.message_heard)
         if self.last_msg in self.message_heard:
 
             # setting this to true will cause NetworkPropagator to delete this instance
