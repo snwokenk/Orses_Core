@@ -362,7 +362,7 @@ class NetworkPropagatorHearer:
 
         elif not self.firstmessage:
             if msg[0:1] not in self.reason_validator_dict:
-                self.message_heard.update(self.last_msg)
+                self.message_heard.add(self.last_msg)
                 self.end_convo_reason = "message reason not  a valid reason"
                 print(self.end_convo_reason)
             else:
@@ -379,7 +379,7 @@ class NetworkPropagatorHearer:
             try:
                 self.main_message = msg
             except ValueError:
-                self.message_heard.update(self.last_msg)
+                self.message_heard.add(self.last_msg)
             else:
 
                 # tries to run python dictionary of transaction through validator, if KeyError then wrong tx sent
@@ -390,18 +390,18 @@ class NetworkPropagatorHearer:
                         q_object=self.q_object_for_validator,
                     ).check_validity()
                 except KeyError:  # transaction sent not same as tx_reason stored in self.firstmessage
-                    self.message_heard.update(self.last_msg)
+                    self.message_heard.add(self.last_msg)
 
                 else:
 
                     # None means node does not have wallet pubkey of client
                     if self.is_main_message_valid is True:
-                        self.message_heard.update(self.verified_msg)
+                        self.message_heard.add(self.verified_msg)
                         self.end_convo_reason = "received and validated message"
                     elif self.is_main_message_valid is None:
-                        self.message_heard.update(self.need_pubkey)
+                        self.message_heard.add(self.need_pubkey)
                     elif self.is_main_message_valid is False:
-                        self.message_heard.update(self.last_msg)
+                        self.message_heard.add(self.last_msg)
                         self.end_convo_reason = "message not valid"
 
         # means main msg was not able to be validated because of lack of pubkey, current msg should be pubkey
@@ -415,17 +415,17 @@ class NetworkPropagatorHearer:
 
             # can't be None this time because wallet pubkey provided
             if self.is_main_message_valid is True:
-                self.message_heard.update(self.verified_msg)
+                self.message_heard.add(self.verified_msg)
                 self.end_convo_reason = "received and validated message"
             elif self.is_main_message_valid is False:
                 self.end_convo_reason = "message not valid"
-                self.message_heard.update(self.last_msg)
+                self.message_heard.add(self.last_msg)
 
         else:
-            self.message_heard.update(msg)
+            self.message_heard.add(msg)
 
     def speak(self):
-        print(self.message_heard)
+        print("message heard: ",self.message_heard)
         if self.last_msg in self.message_heard:
 
             # setting this to true will cause NetworkPropagator to delete this instance
