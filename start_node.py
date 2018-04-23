@@ -114,7 +114,7 @@ def main():
 
     # start network manaager and run veri node factory and regular factory using reactor.callFromThread
     network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate,
-                                     q_object_to_validator=q_for_validator, propagator=propagator, reg_listening_port=55601)
+                                     q_object_to_validator=q_for_validator, propagator=propagator, reg_listening_port=55600)
     reactor.callFromThread(network_manager.run_veri_node_network, reactor)
     reactor.callFromThread(network_manager.run_regular_node_network, reactor)
     reactor.callWhenRunning(send_stop_to_reactor, reactor, q_for_propagate, q_for_compete, q_for_validator)
