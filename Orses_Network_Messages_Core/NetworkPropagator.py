@@ -325,7 +325,7 @@ class NetworkPropagatorSpeaker:
 
     def listen(self, msg):
 
-        self.messages_heard.update(msg)
+        self.messages_heard.add(msg)
 
     def speaker_helper(self, msg):
 
