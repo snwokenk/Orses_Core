@@ -56,7 +56,7 @@ class RetrieveData:
             pubkey = db.select_data_from_table(tableName=Filenames_VariableNames.wallet_id_tname,
                                                columnsToSelect=columnToSelect, boolCriteria=boolCriteria)
 
-            print("pubkey return: ", pubkey)
+            # print("(RetrieveData.py) pubkey return: ", pubkey)
 
             db.close_connection()
 

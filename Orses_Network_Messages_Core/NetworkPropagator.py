@@ -78,6 +78,7 @@ class NetworkPropagator:
 
                 # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
                 rsp = self.q_object_validator.get()
+                print("in propagator initiator: ", rsp)
 
                 if rsp[3] is True:
                     self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
@@ -102,6 +103,7 @@ class NetworkPropagator:
 
         while True:
             rsp = self.q_object_propagate.get()
+            print("in propagator: ", rsp)
 
             if isinstance(rsp, list) and len(rsp) == 2:
                 # rsp == [protocol_instance_id, data]

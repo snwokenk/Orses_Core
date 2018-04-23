@@ -1,7 +1,9 @@
 from Orses_Administrator_Core.Administrator import Admin
 from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
+from twisted.internet.error import CannotListenError
 
+# https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 
 from getpass import getpass
 from twisted.internet import reactor
@@ -37,11 +39,13 @@ if admin is None:
         admin = Admin(admin_name=admin_name, password=password, newAdmin=True)
 
 
+print(admin)
+print(vars(admin))
 # Start competing process if admin.isCompetitor == True
 
 if admin.isCompetitor is True:
-    compete = input("Start Competing? Y/n(default is Y)")
-    if compete.lower() in {"y", ""}:
+    compete = input("Start Competing? Y/n(default is Y)").lower()
+    if compete in {"y", ""}:
         print("Competing Process Started...")
 elif admin.isCompetitor is None:
     compete = input("Would You like to compete to create blocks on the Orses Network?\n"
@@ -54,6 +58,9 @@ elif admin.isCompetitor is None:
         # todo: add logic to create new competitor network message for inclusion into the blockchain
     elif compete == "n":
         admin.isCompetitor = False
+
+    else:  # sets compete to n for now and skps setting admin competitor status
+        compete = 'n'
 else:
     compete = 'n'
 
@@ -71,19 +78,29 @@ if compete == 'y':
 
 # *** start network propagator a different process using multiprocessing ***
 propagator = NetworkPropagator(q_for_validator, q_for_propagate, reactor, q_for_compete)
-network_propagator_listener_process = reactor.callInThread(target=propagator.run_propagator_convo_manager)
-network_propagator_speaker_process = reactor.callInThread(target=propagator.run_propagator_convo_initiator)
+network_propagator_listener_process = reactor.callInThread(propagator.run_propagator_convo_manager)
+network_propagator_speaker_process = reactor.callInThread(propagator.run_propagator_convo_initiator)
 # network_propagator_process.daemon = True
 # network_propagator_process.start()
 
 
 # start network manaager and run veri node factory and regular factory using reactor.callFromThread
 network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate,
-                                 q_object_to_validator=q_for_validator, propagator=propagator)
+                                 q_object_to_validator=q_for_validator, propagator=propagator, reg_listening_port=55601)
 reactor.callFromThread(network_manager.run_veri_node_network, reactor)
-reactor.callFromThread(network_manager.run_regular_node_network, reactor, q_for_validator)
+reactor.callFromThread(network_manager.run_regular_node_network, reactor)
 
-reactor.run()
+try:
+    reactor.run()
+except (SystemExit, KeyboardInterrupt):
+    print("program stopped")
+    reactor.stop()
+except CannotListenError:
+    print("can't listen")
+    reactor.stop()
+except Exception as e:
+    print(e)
+    reactor.stop()
 
 
 
