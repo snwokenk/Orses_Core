@@ -282,8 +282,8 @@ class NetworkPropagatorSpeaker:
         self.end_convo = False
         self.end_convo_reason = ""
         self.sent_pubkey = False
-        self.last_msg = b'end'
-        self.need_pubkey = b'wpk'
+        self.last_msg = 'end'
+        self.need_pubkey = 'wpk'
         self.convo_id = convo_id
         self.propagator_type = 's'  # h for hearer
         self.first_msg = True
@@ -364,6 +364,7 @@ class NetworkPropagatorHearer:
             if msg[0:1] not in self.reason_validator_dict:
                 self.message_heard.update(self.last_msg)
                 self.end_convo_reason = "message reason not  a valid reason"
+                print(self.end_convo_reason)
             else:
                 self.firstmessage = msg[0:1]
                 self.hash_preview = msg[1:]
@@ -424,6 +425,7 @@ class NetworkPropagatorHearer:
             self.message_heard.update(msg)
 
     def speak(self):
+        print(self.message_heard)
         if self.last_msg in self.message_heard:
 
             # setting this to true will cause NetworkPropagator to delete this instance
