@@ -124,6 +124,8 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
     return leading_dict
 
 
+# run this function to start competing, to run, feed it the prime character, addl_chars, block header_dict,
+# expected leading prime chars and len of competition
 def start_competing(prime_char, addl_chars, block_header, exp_leading, len_competition):
 
     v = threaded_compete(single_prime_char=prime_char,

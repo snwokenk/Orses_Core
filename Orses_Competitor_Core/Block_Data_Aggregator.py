@@ -56,7 +56,7 @@ https://en.bitcoin.it/wiki/Block
 
 
     },
-    rwd: set of reward transactions, rewarding self and rewarding previous reference block creators
+    rwd: dict of reward transactions, rewarding self and rewarding previous reference block creators
     no_txs: number of transactions (sum of number of asgn_stmts, ttx, trr, trx]
     """
 
@@ -65,6 +65,8 @@ class BlockAggregator:
 
     def __init__(self, block_id, software_version, wid):
 
+        # block_h == block header | w_h_state == wallet hash states of blockchain connected wallet| txs == transactions |
+        # rwd == reward transaction dicts | txs_no == total number of transactions in block
         self.new_block = {"block_h": {"block_id": block_id, 'version': software_version, "time": int(time.time()),
                                       "fees_earned": 0, "comp_params": dict()},
                           "w_h_state": dict(),

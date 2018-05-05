@@ -57,20 +57,25 @@ def send_stop_to_reactor(reactor_instance, *args):
     reactor_instance.callInThread(temp, )
 
 def main():
+
+    # input admin name and password
     admin_name = input("admin name: ")
     password = getpass("password: ")
 
+    # admin loaded, if no admin by username, offer to creat admin
     admin = Admin(admin_name=admin_name, password=password, newAdmin=False).load_user()
     if admin is None:
         ans = input("No admin id under that admin name, would you like to create a new admin id? y/N ")
         if ans.lower() == "y":
             admin = Admin(admin_name=admin_name, password=password, newAdmin=True)
+        else:
+            exit(0)
 
 
     print(admin)
     print(vars(admin))
-    # Start competing process if admin.isCompetitor == True
 
+    # Start competing process if admin.isCompetitor == True
     if admin.isCompetitor is True:
         compete = input("Start Competing? Y/n(default is Y)").lower()
         if compete in {"y", ""}:
