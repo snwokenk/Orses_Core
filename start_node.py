@@ -33,27 +33,32 @@ file used to start node
 # loads or, if not yet created, creates new admin details. Also Creates the necessary database for running node
 def send_stop_to_reactor(reactor_instance, *args):
     """
+    runs once the reactor is running, opens another thread that runs local function temp().
+    This function waits for an exit signal, it then sends exit signal to other threads running, using the queue objects
+    THese exit signals then trigger for other break off any loops and exit program
 
     :param args: should be list of blocking objects: in this case q objects
     :return:
     """
     print(args)
+
     def temp():
+
         if reactor_instance.running:
-            print("Node Started. To Stop Node Safely, type 'exit' or 'quit' without quote and press enter.")
+            print("\nNode Started. To Stop Node Safely, type 'exit' or 'quit' without quote and press enter.\n")
             while True:
                 ans = input("cmd: ").lower()
 
                 if ans in {"exit", "quit"}:
                     for i in args:
-                        print("this is i", i)
-                        if isinstance(i, multiprocessing.queues.Queue):
+                        if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
                             print(i)
                             i.put(ans)
 
                     reactor_instance.stop()
                     print("reactor still running?: ", reactor_instance.running)
                     break
+
     reactor_instance.callInThread(temp, )
 
 def main():
@@ -105,23 +110,27 @@ def main():
     q_for_propagate = multiprocessing.Queue()
 
 
-    # start compete process, if compete is yes
+    # start compete(mining) process, if compete is yes. process is started using Multiprocess
     if compete == 'y':
         pass
 
-    # *** start network propagator a different process using multiprocessing ***
+    # *** start network propagator in different thread ***
     propagator = NetworkPropagator(q_for_validator, q_for_propagate, reactor, q_for_compete)
     network_propagator_listener_process = reactor.callInThread(propagator.run_propagator_convo_manager)
     network_propagator_speaker_process = reactor.callInThread(propagator.run_propagator_convo_initiator)
-    # network_propagator_process.daemon = True
-    # network_propagator_process.start()
 
 
     # start network manaager and run veri node factory and regular factory using reactor.callFromThread
     network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate,
                                      q_object_to_validator=q_for_validator, propagator=propagator, reg_listening_port=55600)
+
+    # use to connect to or listen for connection from other verification nodes
     reactor.callFromThread(network_manager.run_veri_node_network, reactor)
+
+    # use to listen for connections from regular nodes
     reactor.callFromThread(network_manager.run_regular_node_network, reactor)
+
+    # creates
     reactor.callWhenRunning(send_stop_to_reactor, reactor, q_for_propagate, q_for_compete, q_for_validator)
 
     reactor.run()
@@ -133,18 +142,6 @@ if __name__ == '__main__':
         main()
     except (SystemExit, KeyboardInterrupt) as e:
         print(e)
-
-# try:
-#     reactor.run()
-# except (SystemExit, KeyboardInterrupt):
-#     print("program stopped")
-#     reactor.stop()
-# except CannotListenError:
-#     print("can't listen")
-#     reactor.stop()
-# except Exception as e:
-#     print(e)
-#     reactor.stop()
 
 
 

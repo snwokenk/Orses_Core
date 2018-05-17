@@ -65,7 +65,7 @@ class NetworkPropagator:
                     rsp = self.q_object_validator.get()
 
                     try:
-                        print(rsp)
+                        print("in compete, convo initiator: ", rsp)
                         if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
                             break
 
@@ -92,18 +92,27 @@ class NetworkPropagator:
                         print("in propagator initiator: ", rsp)
                         print(self.connected_protocols_dict)
                         if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
-                            break
+                            print("received exit signal in propagator")
+                            raise KeyboardInterrupt
+
                         elif rsp[3] is True:
                             self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
                             self.check_speak_send(validated_message_list=rsp)
                         else:
                             self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                    except KeyboardInterrupt:
+                        print("Ending convo Iniiator")
+                        break
                     except Exception as e:
                         # todo: implement error logging, when message received causes error. for now print error and msg
                         print("Message: ", rsp, ": exception: ", e)
                         continue
+
         except (KeyboardInterrupt, SystemExit):
             reactor.stop()
+
+        finally:
+            print("Convo Initiator Ended")
 
     def run_propagator_convo_manager(self):
         """
@@ -126,7 +135,7 @@ class NetworkPropagator:
                 print("in propagator: ", rsp)
                 try:
                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
-                        break
+                        raise KeyboardInterrupt
 
                     elif isinstance(rsp, list) and len(rsp) == 2:
                         # rsp == [protocol_instance_id, data]
@@ -161,6 +170,10 @@ class NetworkPropagator:
                         elif data[0] == "h":
                             reactor.callInThread(self.listen_speak_send, rsp[0], 'speaker', data[1], data[2])
                             # self.connected_protocols_dict[rsp[0]]["speaker"][data[1]].listen(data[2])
+                except KeyboardInterrupt:
+                    print("ending convo manager")
+                    break
+
                 except Exception as e:
                     # todo: implement error logging, when message received causes error. for now print error and msg
                     print("Message: ", rsp, ": exception: ", e)
@@ -168,6 +181,9 @@ class NetworkPropagator:
 
         except (SystemExit, KeyboardInterrupt):
             reactor.stop()
+
+        finally:
+            print("Convo Manager Ended")
 
     def listen_speak_send(self, protocol_id, hearer_or_speaker, convo_id, data2):
         """
