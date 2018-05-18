@@ -71,6 +71,8 @@ class VeriNodeConnector(Protocol):
         VeriNodeConnector.created -= 1
 
         self.factory.number_of_connections -= 1
+        print("Connection Lost In Connector", self.propagator.connected_protocols_dict)
+        print()
 
 
 class VeriNodeConnectorFactory(ReconnectingClientFactory):
@@ -85,6 +87,10 @@ class VeriNodeConnectorFactory(ReconnectingClientFactory):
 
     def clientConnectionFailed(self, connector, reason):
         print(reason)
+
+    def clientConnectionLost(self, connector, unused_reason):
+        print(unused_reason)
+
 
     def buildProtocol(self, addr):
 

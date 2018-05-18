@@ -59,6 +59,7 @@ def send_stop_to_reactor(reactor_instance, *args):
                     print("reactor still running?: ", reactor_instance.running)
                     break
 
+
     reactor_instance.callInThread(temp, )
 
 def main():

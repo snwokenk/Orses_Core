@@ -50,6 +50,7 @@ class VeriNodeListener(Protocol):
         print("connection made: ", self.addr)
         self.propagator.add_protocol(self)
 
+
     def connectionLost(self, reason=connectionDone):
 
         # removes self from connected protocol

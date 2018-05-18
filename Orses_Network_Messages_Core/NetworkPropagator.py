@@ -184,12 +184,21 @@ class NetworkPropagator:
 
         finally:
             #  todo: implement a way to safely end current conversations before losing Connection and ending reactor
+            print(f"protocol dicts: {self.connected_protocols_dict}")
+
             for i in self.connected_protocols_dict:
                 self.connected_protocols_dict[i][0].transport.loseConnection()
 
+            print(f"protocol after disconnect: {self.connected_protocols_dict}")
+
             print("All Connections Ended")
             print("Convo Manager Ended")
-            reactor.stop()
+            if reactor.running:
+                print("Stopping Reactor")
+                reactor.stop()
+            else:
+                print("Reactor Already Stopped")
+
 
     def listen_speak_send(self, protocol_id, hearer_or_speaker, convo_id, data2):
         """
