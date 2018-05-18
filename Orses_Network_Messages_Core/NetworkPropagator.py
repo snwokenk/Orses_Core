@@ -109,7 +109,7 @@ class NetworkPropagator:
                         continue
 
         except (KeyboardInterrupt, SystemExit):
-            reactor.stop()
+            pass
 
         finally:
             print("Convo Initiator Ended")
@@ -183,7 +183,13 @@ class NetworkPropagator:
             reactor.stop()
 
         finally:
+            #  todo: implement a way to safely end current conversations before losing Connection and ending reactor
+            for i in self.connected_protocols_dict:
+                self.connected_protocols_dict[i][0].transport.loseConnection()
+
+            print("All Connections Ended")
             print("Convo Manager Ended")
+            reactor.stop()
 
     def listen_speak_send(self, protocol_id, hearer_or_speaker, convo_id, data2):
         """

@@ -55,7 +55,7 @@ def send_stop_to_reactor(reactor_instance, *args):
                             print(i)
                             i.put(ans)
 
-                    reactor_instance.stop()
+                    # reactor_instance.stop()
                     print("reactor still running?: ", reactor_instance.running)
                     break
 
@@ -67,14 +67,16 @@ def main():
     admin_name = input("admin name: ")
     password = getpass("password: ")
 
-    # admin loaded, if no admin by username, offer to creat admin
+    # admin loaded, if no admin by username, offer to create admin
     admin = Admin(admin_name=admin_name, password=password, newAdmin=False).load_user()
+    assert admin is not False, "Wrong Password"
     if admin is None:
         ans = input("No admin id under that admin name, would you like to create a new admin id? y/N ")
         if ans.lower() == "y":
             admin = Admin(admin_name=admin_name, password=password, newAdmin=True)
         else:
             exit(0)
+
 
 
     print(admin)
@@ -135,6 +137,7 @@ def main():
 
     reactor.run()
     print("Node Stopped")
+    admin.save_admin()
 
 
 if __name__ == '__main__':
