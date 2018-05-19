@@ -66,5 +66,6 @@ class VeriNodeListenerFactory(Factory):
         self.q_object_from_network_propagator = q_object_from_network_propagator
         self.propagator = propagator
 
+
     def buildProtocol(self, addr):
         return VeriNodeListener(addr, self, self.q_object_from_network_propagator, self.propagator)

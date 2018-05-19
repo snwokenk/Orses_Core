@@ -37,6 +37,8 @@ class NetworkPropagator:
         self.message_from_other_veri_node_dict = dict()
         self.reactor_instance = reactor_instance
 
+        self.network_manager = None
+
     def add_protocol(self, protocol):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
@@ -183,21 +185,16 @@ class NetworkPropagator:
             reactor.stop()
 
         finally:
-            #  todo: implement a way to safely end current conversations before losing Connection and ending reactor
-            print(f"protocol dicts: {self.connected_protocols_dict}")
+            # todo: implement a way to safely end current conversations before losing Connection and ending reactor
+            # todo: use queue to notify send_stop_to_reactor() when done so reactor can be stopped
 
             for i in self.connected_protocols_dict:
                 self.connected_protocols_dict[i][0].transport.loseConnection()
 
-            print(f"protocol after disconnect: {self.connected_protocols_dict}")
+            self.network_manager.close_all_ports()  # stop listening on ports
 
-            print("All Connections Ended")
             print("Convo Manager Ended")
-            if reactor.running:
-                print("Stopping Reactor")
-                reactor.stop()
-            else:
-                print("Reactor Already Stopped")
+
 
 
     def listen_speak_send(self, protocol_id, hearer_or_speaker, convo_id, data2):

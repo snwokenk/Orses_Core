@@ -6,7 +6,7 @@ from twisted.internet.error import CannotListenError
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 
 from getpass import getpass
-from twisted.internet import reactor
+from twisted.internet import reactor, defer, threads
 
 import sys, multiprocessing, queue
 
@@ -52,15 +52,18 @@ def send_stop_to_reactor(reactor_instance, *args):
                 if ans in {"exit", "quit"}:
                     for i in args:
                         if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
-                            print(i)
                             i.put(ans)
 
-                    # reactor_instance.stop()
-                    print("reactor still running?: ", reactor_instance.running)
+
                     break
+            return ans
 
 
-    reactor_instance.callInThread(temp, )
+    # ******  THIS LINE IS IMPORTANT FOR CLEAN ENDING OF REACTOR ****** #
+    # ****** THIS WAITS FOR EXIT SIGNAL AND THE FIRES CALLBACK WHICH RUNS reactor.stop() in the main thread ***** #
+    response_thread = threads.deferToThread(temp)  # deffering blocking function to thread
+    response_thread.addCallback(lambda x: reactor.stop())  # lambda function is fired when blocking function returns (and return anything)
+
 
 def main():
 
@@ -136,6 +139,8 @@ def main():
     # creates
     reactor.callWhenRunning(send_stop_to_reactor, reactor, q_for_propagate, q_for_compete, q_for_validator)
 
+    propagator.network_manager = network_manager
+
     reactor.run()
     print("Node Stopped")
     admin.save_admin()
@@ -145,6 +150,8 @@ if __name__ == '__main__':
     try:
         main()
     except (SystemExit, KeyboardInterrupt) as e:
+        if reactor.running:
+            reactor.stop()
         print(e)
 
 

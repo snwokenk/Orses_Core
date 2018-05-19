@@ -86,10 +86,11 @@ class VeriNodeConnectorFactory(ReconnectingClientFactory):
         self.propagator = propagator
 
     def clientConnectionFailed(self, connector, reason):
-        print(reason)
+        connector.disconnect()
 
     def clientConnectionLost(self, connector, unused_reason):
-        print(unused_reason)
+
+        connector.disconnect()
 
 
     def buildProtocol(self, addr):

@@ -22,22 +22,41 @@ class NetworkManager:
         self.propagator = propagator
         self.regular_listening_port = reg_listening_port
 
+
+        # use this to store listening ports
+        self.Listening_Port_Reg = None
+        self.Listening_Port_Veri = None
+
+        # use this to store connected ports
+        self.Connected_Port_Veri = list()
+
     def run_veri_node_network(self, reactor_instance):
 
         for i in self.addresses:
-            reactor_instance.connectTCP(
+
+            temp_p = reactor_instance.connectTCP(
                 host=i,
                 port=self.addresses[i],
                 factory=self.veri_connecting_factory
             )
+            print("connected Port", temp_p)
+            self.Connected_Port_Veri.append(temp_p)
 
-        reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
+        self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
 
     def run_regular_node_network(self, reactor_instance):
 
         # listen for regular traffic on port 55600, if can't listen, try port 55601
-        reactor_instance.listenTCP(self.regular_listening_port, self.regular_listening_factory)
+        self.Listening_Port_Reg = reactor_instance.listenTCP(self.regular_listening_port, self.regular_listening_factory)
 
+    def close_all_ports(self):
+        # for i in self.Connected_Port_Veri:
+        #     i.disconnect()
+
+        self.Listening_Port_Reg.stopListening()
+        self.Listening_Port_Veri.stopListening()
+
+        print("stopped listening on ports")
     # def run_protocol(self, protocol, data, cmd="write"):
     #     """
     #     must run with reactor.callFromThread
