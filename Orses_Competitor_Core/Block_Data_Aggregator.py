@@ -61,17 +61,20 @@ https://en.bitcoin.it/wiki/Block
     """
 
 
+def hex_to_int(hex_string):
+    return int(hex_string, 16)
+
+
 class BlockAggregator:
 
     def __init__(self, block_id, software_version, wid):
-
         # block_h == block header | w_h_state == wallet hash states of blockchain connected wallet| txs == transactions |
         # rwd == reward transaction dicts | txs_no == total number of transactions in block
         self.new_block = {"block_h": {"block_id": block_id, 'version': software_version, "time": int(time.time()),
                                       "fees_earned": 0, "comp_params": dict()},
                           "w_h_state": dict(),
                           "txs": {"ttx": set(), "trr": set(), "trx": set(), "nvc": set()},
-                          "rwd": dict(),
+                          "rwd": dict(),  # dict of reward transactions
                           "txs_no": 0,
 
 
@@ -100,7 +103,7 @@ class BlockAggregator:
 
         hex_char = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
         random.shuffle(hex_char) # shuffles hex_char
-        hex_char = {x:y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
+        hex_char = {x: y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
 
         self.new_block["block_h"]["comp_params"]["hex_shuf"] = hex_char
         return True
@@ -176,3 +179,5 @@ class BlockAggregator:
                                    len(self.new_block["txs"]["trr"]) + len(self.new_block["txs"]["trx"]) + \
                                    len(self.new_block["txs"]["nvc"])
 
+if __name__ == '__main__':
+    pass
