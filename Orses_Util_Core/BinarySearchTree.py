@@ -36,12 +36,13 @@ def compare_hex_string(hex1, hex2, compare: BoolChoice):
 
 
 class BinarySearchTree:
-    def __init__(self, root_value: (int, float), saveToDatabase=False, forHash=True):
+    def __init__(self, root_value: (int, float), blockNumber, saveToDatabase=False, forHash=True, keepListRepr=False):
         """
 
         :param root_value: the first value, usually should be the hash of reward transactions
         :param saveToDatabase: if it is true, then a separate daemon process is created that saves data to database
         """
+        self.block_number = blockNumber
         self.forHash = forHash
         if self.forHash is True:
             assert isinstance(root_value, str), "must be a hex string"
@@ -54,6 +55,7 @@ class BinarySearchTree:
         self.curr_index = 0
         self.root = self.TreeNode(root_value, search_tree=self)
         self.list_repr = [self.root]
+        self.keep_list_repr = keepListRepr
         self.sorted_repr = {self.root: {"left": self.root.left, "right": self.root.right},
                             "max": self.root.value,
                             "min": self.root.value,
@@ -73,7 +75,7 @@ class BinarySearchTree:
                 if compare_hex_string(val, current_node.value, BoolChoice.greater):
                     if current_node.right is None:
                         current_node.insert_right(val)
-                        self.list_repr.append(val)
+                        self.list_repr.append(val) if self.keep_list_repr else None
                         return True
                     else:
                         current_node = current_node.right
@@ -81,7 +83,7 @@ class BinarySearchTree:
                 elif compare_hex_string(val, current_node.value, BoolChoice.lesser):
                     if current_node.left is None:
                         current_node.insert_left(val)
-                        self.list_repr.append(val)
+                        self.list_repr.append(val) if self.keep_list_repr else None
                         return True
                     else:
                         current_node = current_node.left
@@ -158,8 +160,6 @@ class BinarySearchTree:
                     current_node = current_node.left
                     continue
 
-
-
     def get_list_of_items(self):
         return self.list_repr
 
@@ -171,6 +171,16 @@ class BinarySearchTree:
 
     def get_curr_index(self):
         return self.curr_index
+
+    def save(self):
+        with open(f'{self.block_number}', "wb") as outFile:
+            pickle.dump(self, outFile)
+
+    @staticmethod
+    def load(filename):
+
+        with open(filename, "rb") as inFile:
+            return pickle.load(inFile)
 
     class TreeNode:
 
@@ -207,17 +217,41 @@ class BinarySearchTree:
                 return self.right.value_in_tree if self.right else False
 
 
-class BlockTree:
-    def __init__(self, reward_tx: dict):
+class BlockForest:
+    def __init__(self, reward_tx: dict, blockNo: int):
         """
         each instance variable holds a BinarySearchTree for each type of Transacion, the block tree also holds a
         list of transactions which is appended by each
         :param reward_tx:
         """
-        self.ttx = BinarySearchTree()
-        self.trr = BinarySearchTree()
-        self.trx = BinarySearchTree()
-        self.wallet_states = BinarySearchTree()
+        self.ttx = BinarySearchTree(root_value=reward_tx["tx_hash"], blockNumber=blockNo)
+        self.trr = BinarySearchTree(root_value=reward_tx["tx_hash"], blockNumber=blockNo)
+        self.trx = BinarySearchTree(root_value=reward_tx["tx_hash"], blockNumber=blockNo)
+        self.nvc = BinarySearchTree(root_value=reward_tx["tx_hash"], blockNumber=blockNo)
+        self.main_tree = BinarySearchTree(root_value=reward_tx["tx_hash"], keepListRepr=True, blockNumber=blockNo)
+        self.wallet_states = BinarySearchTree(root_value=reward_tx["tx_hash"], blockNumber=blockNo)
         self.rwd_transaction = reward_tx
+
+    def insert(self, msg):
+
+        if "ttx" in msg:  # transfer transaction
+            self.ttx.insert_hash(msg["tx_hash"])
+        elif "rvk_req" in msg:  # reservation revoke
+            self.trx.insert_hash(msg["tx_hash"])
+        elif "rsv_req" in msg:  # reservation request
+            self.trr.insert_hash(msg["tx_hash"])
+        elif "W_h_state" in msg: # wallet hash state
+            self.wallet_states.insert_hash(msg["hash_state"])
+
+    def check_if_in_forest(self, msg_hash, msg_type):
+        if "ttx" == msg_type:  # transfer transaction
+            self.ttx.check_hash(msg_hash)
+        elif "rvk_req" == msg_type:  # reservation revoke
+            self.trx.check_hash(msg_hash)
+        elif "rsv_req" == msg_type:  # reservation request
+            self.trr.check_hash(msg_hash)
+        elif "W_h_state" == msg_type: # wallet hash state
+            self.wallet_states.check_hash(msg_hash)
+
 if __name__ == '__main__':
     pass
