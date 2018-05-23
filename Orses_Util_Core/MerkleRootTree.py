@@ -3,7 +3,7 @@ Holds Merkle root tree
 
 if (len_list % 4 == 0 and len_list % 3 != 0) then each node will have a partner
 """
-
+import time
 from Crypto.Hash import SHA256
 
 
@@ -18,7 +18,7 @@ class Node:
     this class represents a leef node in the tree
     with this node
     """
-    def __init__(self,hash_value):
+    def __init__(self,hash_value, position):
         """
 
         :param partner: the other partner who hash is concatenated to produce hash of master
@@ -27,10 +27,11 @@ class Node:
         self.hash_value = hash_value
         self.partner = None
         self.master = None
-        self.children = list()  # no more than 2 children, if 1 child, then created by duplicating one hash
+        self.position = position  # either "l" for left, or "r" for right. dictates how to concatenate
 
     def set_partner_and_master(self, partner, master):
-        assert isinstance(partner, Node)
+        if partner:
+            assert isinstance(partner, Node)
         self.partner = partner
         self.master = master
 
@@ -55,16 +56,51 @@ class OrsesMerkleRootTree:
         # the single hash derived from all hashes
         self.merkle_root = None
 
+    def get_branch_for_proof(self, leaf_node_hash):
+        """
+         a list of hashes/none objects are returned;
+         To use:
+         the first index is the other leaf node partner hashed (if it is none, it means it had no partner so duplicated
+         the second index is hashed with the hashes derived from hashing the first index with the leaf node
+
+         ie:
+         merkle_root = 545f2a819435c7b05d4d063e9fd088327ee92ecd7d721c3bc5a15b4577ebbf33
+         tx_hash = 961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506
+         proof_list = [
+            21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4,
+            6cad86e09fea5bc1452330a4d406f4060d8c7e66d4243455deeed29097fc295a
+         ]
+
+         to get the first hash =
+         SHA256 f'{tx_hash}{proof_lis[0]}'.encode if the the first item in the list is NOT none. if it is then
+         SHA256 f'{tx_hash}{tx_hash'.encode
+
+         to get the second hash =
+         SHA256 f'{first hash}{proof_lis[1]}'.encode() if second item in lien is None object then
+         SHA256 f'{first_hash}{first_hash}'.encode() (since the second item is last item, IT SHOULD NOT BE NONE)
+         first_hash:
+            7be602ea49a0bd5e48b1f9fff6dde54a13f3a8c010d5098ae40cea5f400d06c3
+         second hash(since last this should hash == merkle root):
+
+
+
+
+
+        :param leaf_node_hash: the transaction hash, using this hash a list of hashes/None objects are returned
+        :return: list of hashes/None objects
+        """
+
     def create_merkle_tree(self):
         count = 1
         items = self.items_to_include_in_tree
 
         while True:
-            if len(items) == 1:
-                self.merkle_root = items[0]
-                return self.merkle_root
             self.tree[count] = items = self.hash_rows(items)
             count += 1
+            if len(items) == 1:
+                print("ok")
+                self.merkle_root = items[0]
+                return self.merkle_root
 
     def get_merkle_root(self):
         return self.merkle_root
@@ -79,57 +115,61 @@ class OrsesMerkleRootTree:
         row = list()
         len_list = len(items)
 
-        if count == 1:  # create the initial leaf node dictionary
+        if count == 1:  # create the initial leaf node dictionary/self.dict_of_leaf_nodes
             if len_list > 1:
-                if len_list % 2 == 0:
-                    # each item will have a partner
-                    for i in range(1, len_list, 2):
-                        hash_value = hashing(items[i-1], items[i])
-                        self.dict_of_other_nodes[hash_value] = Node(hash_value)
-                        self.dict_of_leaf_nodes[items[i-1]] = Node(items[i-1])
-                        self.dict_of_leaf_nodes[items[i]] = Node(items[i])
-                        self.dict_of_leaf_nodes[items[i-1]].set_partner(self.dict_of_leaf_nodes[items[i]],
-                                                                        self.dict_of_other_nodes[hash_value])
-                        self.dict_of_leaf_nodes[items[i]].set_partner(self.dict_of_leaf_nodes[items[i-1]],
-                                                                      self.dict_of_other_nodes[hash_value])
 
-
-                else:
-                    # the last item, wont have a partner, so hash it to itself
-
-                    for i in range(1, len_list, 2):
-                        hash_value = hashing(items[i-1], items[i])
-                        self.dict_of_other_nodes[hash_value] = Node(hash_value)
-                        self.dict_of_leaf_nodes[items[i-1]] = Node(items[i-1])
-                        self.dict_of_leaf_nodes[items[i]] = Node(items[i])
-                        self.dict_of_leaf_nodes[items[i-1]].set_partner(self.dict_of_leaf_nodes[items[i]],
-                                                                        self.dict_of_other_nodes[hash_value])
-                        self.dict_of_leaf_nodes[items[i]].set_partner(self.dict_of_leaf_nodes[items[i-1]],
-                                                                      self.dict_of_other_nodes[hash_value])
+                # each item will have a partner
+                for i in range(1, len_list, 2):
+                    hash_value = hashing(items[i-1], items[i])
+                    row.append(hash_value)
+                    self.dict_of_other_nodes[hash_value] = Node(hash_value, None)
+                    self.dict_of_leaf_nodes[items[i-1]] = Node(items[i-1], "l")
+                    self.dict_of_leaf_nodes[items[i]] = Node(items[i], "r")
+                    self.dict_of_leaf_nodes[items[i-1]].set_partner_and_master(self.dict_of_leaf_nodes[items[i]],
+                                                                               self.dict_of_other_nodes[hash_value])
+                    self.dict_of_leaf_nodes[items[i]].set_partner_and_master(self.dict_of_leaf_nodes[items[i-1]],
+                                                                             self.dict_of_other_nodes[hash_value])
+                if len_list % 2 != 0:  # if true, the last item in index -1 was missed, so duplicate and hash
                     hash_value = hashing(items[-1], items[-1])
-                    self.dict_of_other_nodes[hash_value] = Node(hash_value)
-                    self.dict_of_leaf_nodes[items[-1]] = Node(items[-1])
+                    row.append(hash_value)
+                    self.dict_of_other_nodes[hash_value] = Node(hash_value, None)
+                    self.dict_of_leaf_nodes[items[-1]] = Node(items[-1], None)
                     self.dict_of_leaf_nodes[items[-1]].set_partner_and_master(None,
                                                                               self.dict_of_other_nodes[hash_value])
-
-
             elif len_list == 1:
                 row.append(hashing(items[0], items[0]))  # if only one item in list, hash itself
 
-        else:  # create only non leaf nodes
+            else:
+                return []
+
+        else:  # create only non leaf nodes/self.dict_of_other_nodes
             if len_list > 1:
-                if len_list % 2 == 0:
-                    # each item will have a partner
-                    for i in range(1, len_list, 2):
-                        row.append(hashing(items[i-1], items[i]))
-                else:
-                    # the last item, wont have a partner, so hash it to itself
 
-                    for i in range(1, len_list, 2):
-                        row.append(hashing(items[i-1], items[i]))
-                    row.append(hashing(items[-1], items[-1]))
+                for i in range(1, len_list, 2):
+                    hash_value = hashing(items[i-1], items[i])
+                    self.dict_of_other_nodes[hash_value] = Node(hash_value, None)
+                    self.dict_of_other_nodes[items[i-1]].set_partner_and_master(self.dict_of_other_nodes[items[i]],
+                                                                               self.dict_of_other_nodes[hash_value])
+                    self.dict_of_other_nodes[items[i-1]].position = "l"
+                    self.dict_of_other_nodes[items[i]].set_partner_and_master(self.dict_of_other_nodes[items[i-1]],
+                                                                             self.dict_of_other_nodes[hash_value])
+                    self.dict_of_other_nodes[items[i]].position = "r"
+
+                if len_list % 2 != 0:  # if true, the last item in index -1 was missed, so
+                    hash_value = hashing(items[-1], items[-1])
+                    row.append(hash_value)
+                    self.dict_of_other_nodes[hash_value] = Node(hash_value, None)
+
+                    # this is assuming that node already created in previous hash round
+                    self.dict_of_other_nodes[items[-1]].set_partner_and_master(None,
+                                                                               self.dict_of_other_nodes[hash_value])
+                    # position is already none, so leave it at none
+
             elif len_list == 1:
                 row.append(hashing(items[0], items[0]))  # if only one item in list, hash itself
+
+            else:
+                return []
 
         return row
 
@@ -140,10 +180,26 @@ class OrsesMerkleRootTree:
 
 
 if __name__ == '__main__':
-    list1 = ["s", "b", "c", "d", "ff", "pf"]
 
-    merkle_tree = OrsesMerkleRootTree(list1)
-    merkle_tree.create_merkle_tree()
+    h1 = "961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506"
+    h2 = "21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4"
+    h3 = "7be602ea49a0bd5e48b1f9fff6dde54a13f3a8c010d5098ae40cea5f400d06c3"
+    h33 = "6cad86e09fea5bc1452330a4d406f4060d8c7e66d4243455deeed29097fc295a"
+    #
+    h5 = SHA256.new(f'{h1}{h2}'.encode()).hexdigest()
+    h6 = SHA256.new(f'{h33}{h3}'.encode()).hexdigest()
+    # print(SHA256.new(f'{h5}{h6}'.encode()).hexdigest())
+    print(h6)
 
-    print(merkle_tree.merkle_root)
-    print(merkle_tree.tree)
+    # list1 = ["961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506",
+    #          "21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4",
+    #          "b831b33e0c05b45e15bbdd9b3bfa43825fee0aa0b6e5a54e31e2bd8b073b76b7",
+    #          "81f361900b4a076266591f3916ca1bd00d295c3b469fa19677a29a7464885503",
+    #          "360ef99155438d9c5413e82e1dcb0574e52d3db30dc71fbc183bdb5a44f3775e"
+    #          ]
+    #
+    # merkle_tree = OrsesMerkleRootTree(list1)
+    # merkle_tree.create_merkle_tree()
+    #
+    # print(merkle_tree.merkle_root)
+    # print(merkle_tree.tree)
