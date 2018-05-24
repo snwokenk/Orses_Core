@@ -7,10 +7,8 @@ import time
 from Crypto.Hash import SHA256
 
 
-def hashing(first: str, second: str):
-    return SHA256.new(f'{first}{second}'.encode()).hexdigest()
-
-
+def hashing(left: str, right: str):
+    return SHA256.new(f'{left}{right}'.encode()).hexdigest()
 
 
 class Node:
@@ -37,8 +35,6 @@ class Node:
 
 
 class OrsesMerkleRootTree:
-    # todo: create a merkle tree dict of each leaf node as keys and list of hashes needed as value
-    # todo:
 
     def __init__(self, items):
 
@@ -48,13 +44,10 @@ class OrsesMerkleRootTree:
         self.tree = {
         }
 
-        # will store each transaction hash with it's LeafNode instance, this node can be used to get a list of hashes
-        # to prove that transaction is part of merkle tree
-        self.dict_of_leaf_nodes = dict()
-        self.dict_of_other_nodes = dict()
+        self.dict_of_leaf_nodes = dict()   # dict storing the leaf nodes (nodes with tx hash value)
+        self.dict_of_other_nodes = dict()  # dict storing non leaf nodes (nodes with hash from other hash)
 
-        # the single hash derived from all hashes
-        self.merkle_root = None
+        self.merkle_root = None  # the single hash derived from all hashes. gotten when merkle tree is created
 
     def get_branch_for_proof(self, leaf_node_hash):
         """
@@ -90,17 +83,47 @@ class OrsesMerkleRootTree:
         :return: list of hashes/None objects
         """
 
+        curr_node = self.dict_of_leaf_nodes[leaf_node_hash]
+        proof_list = list()
+        while curr_node is not None:
+            proof_list.append([curr_node.partner.position, curr_node.partner.hash_value]) if curr_node.partner \
+            is not None else (proof_list.append(None) if curr_node.master is not None else None)
+            curr_node = curr_node.master
+
+        return proof_list
+
+    @staticmethod
+    def validate_branch_for_proof(leaf_node_hash, proof_list, merkle_root):
+        """
+        used to validate that the tx hash is part of the merkle root by recreating
+        :param leaf_node_hash:
+        :param proof_list:
+        :return:
+        """
+        current_hash = leaf_node_hash
+        for i in proof_list:
+            if i is None:
+                current_hash = hashing(current_hash, current_hash) # none means to duplicate current hash and hash
+            else:
+                if i[0] == "r":
+                    current_hash = hashing(current_hash, i[1])
+                elif i[0] == "l":
+                    current_hash = hashing(i[1], current_hash)
+
+        # current_hash should be equal to merkle_root at the end of the loop
+        return current_hash == merkle_root
+
     def create_merkle_tree(self):
         count = 1
         items = self.items_to_include_in_tree
 
         while True:
-            self.tree[count] = items = self.hash_rows(items)
-            count += 1
+            self.tree[count] = items = self.hash_rows(items, count)
             if len(items) == 1:
-                print("ok")
                 self.merkle_root = items[0]
                 return self.merkle_root
+
+            count += 1
 
     def get_merkle_root(self):
         return self.merkle_root
@@ -127,8 +150,14 @@ class OrsesMerkleRootTree:
                     self.dict_of_leaf_nodes[items[i]] = Node(items[i], "r")
                     self.dict_of_leaf_nodes[items[i-1]].set_partner_and_master(self.dict_of_leaf_nodes[items[i]],
                                                                                self.dict_of_other_nodes[hash_value])
+
+                    # print("master: ", self.dict_of_other_nodes[hash_value], vars(self.dict_of_leaf_nodes[items[i-1]]))
+
+
                     self.dict_of_leaf_nodes[items[i]].set_partner_and_master(self.dict_of_leaf_nodes[items[i-1]],
                                                                              self.dict_of_other_nodes[hash_value])
+                # print("here: ",  vars(self.dict_of_leaf_nodes["961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506"]))
+
                 if len_list % 2 != 0:  # if true, the last item in index -1 was missed, so duplicate and hash
                     hash_value = hashing(items[-1], items[-1])
                     row.append(hash_value)
@@ -147,6 +176,7 @@ class OrsesMerkleRootTree:
 
                 for i in range(1, len_list, 2):
                     hash_value = hashing(items[i-1], items[i])
+                    row.append(hash_value)
                     self.dict_of_other_nodes[hash_value] = Node(hash_value, None)
                     self.dict_of_other_nodes[items[i-1]].set_partner_and_master(self.dict_of_other_nodes[items[i]],
                                                                                self.dict_of_other_nodes[hash_value])
@@ -177,29 +207,30 @@ class OrsesMerkleRootTree:
 
 
 
-
-
 if __name__ == '__main__':
 
-    h1 = "961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506"
-    h2 = "21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4"
-    h3 = "7be602ea49a0bd5e48b1f9fff6dde54a13f3a8c010d5098ae40cea5f400d06c3"
-    h33 = "6cad86e09fea5bc1452330a4d406f4060d8c7e66d4243455deeed29097fc295a"
-    #
-    h5 = SHA256.new(f'{h1}{h2}'.encode()).hexdigest()
-    h6 = SHA256.new(f'{h33}{h3}'.encode()).hexdigest()
-    # print(SHA256.new(f'{h5}{h6}'.encode()).hexdigest())
-    print(h6)
 
-    # list1 = ["961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506",
-    #          "21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4",
-    #          "b831b33e0c05b45e15bbdd9b3bfa43825fee0aa0b6e5a54e31e2bd8b073b76b7",
-    #          "81f361900b4a076266591f3916ca1bd00d295c3b469fa19677a29a7464885503",
-    #          "360ef99155438d9c5413e82e1dcb0574e52d3db30dc71fbc183bdb5a44f3775e"
-    #          ]
-    #
-    # merkle_tree = OrsesMerkleRootTree(list1)
-    # merkle_tree.create_merkle_tree()
-    #
-    # print(merkle_tree.merkle_root)
-    # print(merkle_tree.tree)
+    list1 = ["961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506",
+             "21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4",
+             "b831b33e0c05b45e15bbdd9b3bfa43825fee0aa0b6e5a54e31e2bd8b073b76b7",
+             "81f361900b4a076266591f3916ca1bd00d295c3b469fa19677a29a7464885503",
+             "360ef99155438d9c5413e82e1dcb0574e52d3db30dc71fbc183bdb5a44f3775e"
+             ]
+
+    merkle_tree = OrsesMerkleRootTree(list1)
+    merkle_tree.create_merkle_tree()
+
+    print(merkle_tree.merkle_root)
+    # print(merkle_tree.tree, "\n")
+
+    tx_to_validate = "b831b33e0c05b45e15bbdd9b3bfa43825fee0aa0b6e5a54e31e2bd8b073b76b7"
+
+    proof_list1 = merkle_tree.get_branch_for_proof(tx_to_validate)
+    print("----------")
+    isValidated = merkle_tree.validate_branch_for_proof(
+        leaf_node_hash=tx_to_validate,
+        merkle_root="545f2a819435c7b05d4d063e9fd088327ee92ecd7d721c3bc5a15b4577ebbf33",
+        proof_list=proof_list1
+    )
+
+    print(isValidated)
