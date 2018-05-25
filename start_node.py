@@ -81,8 +81,6 @@ def main():
         else:
             exit(0)
 
-
-
     print(admin)
     print(vars(admin))
 
