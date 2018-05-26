@@ -210,26 +210,26 @@ class OrsesMerkleRootTree:
 if __name__ == '__main__':
 
 
-    list1 = ["961b6dd3ede3cb8ecbaacbd68de040cd78eb2ed5889130cceb4c49268ea4d506",
-             "21e721c35a5823fdb452fa2f9f0a612c74fb952e06927489c6b27a43b817bed4",
-             "b831b33e0c05b45e15bbdd9b3bfa43825fee0aa0b6e5a54e31e2bd8b073b76b7",
-             "81f361900b4a076266591f3916ca1bd00d295c3b469fa19677a29a7464885503",
-             "360ef99155438d9c5413e82e1dcb0574e52d3db30dc71fbc183bdb5a44f3775e"
-             ]
+    list1 =  {
+        "Wd8661c5e3c7b93f5344f4c2536470f383071dd43": 850_000_000,
+        "W0df521b542a840cb5d5ed6c819e913af83b4baa4": 150_000_000,
+        "W82d9d7288822e181851add314956744f308d7841": 35_000_000,
+        "Waaa4adb908bd17966b757b8fe93d4f95330ff2c6": 50_000_000
+    }
 
-    merkle_tree = OrsesMerkleRootTree(list1)
+    merkle_tree = OrsesMerkleRootTree(list(list1))
     merkle_tree.create_merkle_tree()
 
     print(merkle_tree.merkle_root)
     # print(merkle_tree.tree, "\n")
 
-    tx_to_validate = "b831b33e0c05b45e15bbdd9b3bfa43825fee0aa0b6e5a54e31e2bd8b073b76b7"
-
+    tx_to_validate = "Wd8661c5e3c7b93f5344f4c2536470f383071dd43"
+    #
     proof_list1 = merkle_tree.get_branch_for_proof(tx_to_validate)
     print("----------")
     isValidated = merkle_tree.validate_branch_for_proof(
         leaf_node_hash=tx_to_validate,
-        merkle_root="545f2a819435c7b05d4d063e9fd088327ee92ecd7d721c3bc5a15b4577ebbf33",
+        merkle_root="d88397fb3c91614409bf6358848baa305aea28bbc2cc1ba87503ca2f20cfb578",
         proof_list=proof_list1
     )
 

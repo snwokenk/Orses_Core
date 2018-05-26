@@ -4,11 +4,7 @@ from hashlib import sha256
 from subprocess import Popen, run
 import time, json, multiprocessing, os, queue
 
-from Orses_Cryptography_Core.Hasher import Hasher
-
-
-def encode_datastructure(datastructure):
-    return json.dumps(datastructure).encode()
+from Orses_Competitor_Core.Compete_Process import genesis_block
 
 
 def competitive_hasher(enc_d):
@@ -26,7 +22,6 @@ def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, dict_of_valid_ha
     :type len_prime_char: int
     :return:
     """
-
     if prime_char == hash_hex[:len_prime_char]:
         dict_of_valid_hash[hash_hex] = nonce
         # print(hash_hex, prime_char, hash_hex[:len_prime_char], nonce)
@@ -41,7 +36,7 @@ def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_ha
     while time.time() < end_time:
         get_qualified_hashes(
             prime_char=prime_char,
-            hash_hex=competitive_hasher(encode_datastructure(block_header)),
+            hash_hex=competitive_hasher(f'{block_header["merkle_root"]}{block_header["nonce"]}'.encode()),
             dict_of_valid_hash=dict_of_valid_nonce_hash,
             len_prime_char=exp_leading,
             nonce=block_header["nonce"]
@@ -96,7 +91,7 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
     initial_prime_char = exp_leading
     score = 0
     leading_dict = None
-    print("type", type(dict_of_valid_hashes))
+    print("type", type(dict_of_valid_hashes), dict_of_valid_hashes)
     for i in dict_of_valid_hashes:
         print(i)
         temp_score = 0
@@ -139,17 +134,17 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
 
 if __name__ == '__main__':
 
-    data = {"tx": "Sam", "time": int(time.time())}
-    data = {"tx": "Sam", "time": 14950000}
 
-    v = threaded_compete(single_prime_char='a', exp_leading=5, block_header=data, len_competition=30, addl_chars='a7c')
-    print(v)
+    data = genesis_block["block_header"]
+
+    v = threaded_compete(single_prime_char='0', exp_leading=5, block_header=data, len_competition=90, addl_chars='a7c')
+    print("v", v)
     print("-")
     # print(data)
-    data["nonce"] = v["nonce"][0]
+    data["nonce"] = v["nonce"]
 
-    p = sha256(sha256(json.dumps(data).encode()).digest()).hexdigest()
-    print(p)
+
+    print(data)
 
 
 

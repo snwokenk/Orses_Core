@@ -71,6 +71,9 @@ class NetworkPropagator:
                         if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
                             break
 
+                        elif rsp[3] is None:  # msg is network or blockchain related (ie, asking for updates etc)
+                            pass
+
                         elif rsp[3] is True:
                             # send to
                             self.q_object_compete.put(rsp[2])
@@ -194,8 +197,6 @@ class NetworkPropagator:
             self.network_manager.close_all_ports()  # stop listening on ports
 
             print("Convo Manager Ended")
-
-
 
     def listen_speak_send(self, protocol_id, hearer_or_speaker, convo_id, data2):
         """
