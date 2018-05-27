@@ -9,8 +9,6 @@ from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferVali
 import json
 
 
-
-
 class NetworkPropagator:
 
     def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
@@ -24,7 +22,7 @@ class NetworkPropagator:
         self.q_object_validator = q_object_connected_to_validator
         self.q_object_compete = q_object_to_competing_process
         self.q_object_propagate = q_for_propagate
-        self.validated_message_dict = dict()
+        self.validated_message_dict = dict()  # being used to store validate messages
         self.connected_protocols_dict = dict()
 
         # dict with reason+hash previews as dict keys( this can be updated using binary search Tree) will do for now
@@ -56,8 +54,6 @@ class NetworkPropagator:
         :return:
         """
 
-        # this method will be run in in another process using reactor.callInThread
-        reactor = self.reactor_instance
         try:
             if self.q_object_compete:
 
