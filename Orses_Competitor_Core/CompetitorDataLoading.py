@@ -7,25 +7,24 @@ getting the last block received and requesting for blocks
 It includes class with data
 """
 import os, json
+from Orses_Validator_Core.NewBlockValidator import NewBlockValidator
+
 
 class BlockChainData:
     def __init__(self):
-        block_number = None
+        self.block_number = None
 
     def load_data(self):
         pass
 
-
-    def get_current_known_block(self):
+    @staticmethod
+    def get_current_known_block():
         """
         retrieves the last block known to this node.
         This info is the used by network propagator to find out if
         :return: returns the last known block, this is then used to query the network for newer blocks
         """
         file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", "last_block_number")
-
-
-
 
         try:
             with open(file1, "w") as jfile:
@@ -39,10 +38,42 @@ class BlockChainData:
             except FileNotFoundError:
                 return None
             else:
-                return block_info
+                return [block_number, block_info]
 
-    def save_current_block(self):
+    @staticmethod
+    def get_block(block_no):
+        file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", f"{block_no}")
+
+        try:
+            with open(file1, "w") as jfile:
+                block = json.load(jfile)
+        except FileNotFoundError:
+            block = None
+
+        return block
+
+
+    @staticmethod
+    def save_current_block(block_no, block):
+
+        # validate_block then save preferable use reactor.
         pass
+
+    @staticmethod
+    def save_a_propagated_block(block_no, block):
+
+        # verify that we don't already have block:
+        if BlockChainData.get_block(block_no) is None:
+            isValidated = NewBlockValidator(block_no,block, False)
+
+            if isValidated is True:
+                file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", f"{block_no}")
+                with open(file1, "w") as jfile:
+                    json.dump(block, jfile)
+                return True
+        else:
+            return None
+
 
 
 if __name__ == '__main__':

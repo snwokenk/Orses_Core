@@ -1,5 +1,6 @@
 from .Block_Data_Aggregator import BlockAggregator
 from Orses_Util_Core.BinarySearchTree import BlockForest
+from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 import multiprocessing, json
 from Crypto.Hash import SHA256
 
@@ -41,20 +42,24 @@ def create_reward_transaction(reward_wallet, set_of_secondary_signatories_wallet
     return {"rwd": reward_tx, "tx_hash": SHA256.new(json.dumps(reward_tx).encode()).hexdigest()}
 
 
-def compete_process(q_for_compete: multiprocessing.Queue, q_for_validator: multiprocessing.Queue, reward_wallet):
+def compete_process(q_from_bk_propagator: multiprocessing.Queue,
+                    q_for_compete: multiprocessing.Queue,
+                    q_for_validator: multiprocessing.Queue, reward_wallet):
     """
     :param q_for_compete: queue from main process, data from propagator initiator is sent to before
     :param reward_wallet: wallet to direct reward wallet.
     :return:
     """
-    # todo: implement a way to get the
-    forest = BlockForest(reward_wallet)
+    # todo: Blockchain propagator should check
+
+    # BlockchainPropagator gets recent blocks from network and then sends the most recent block
+    recent_block = q_from_bk_propagator.get()  # [block_no, block]
+    forest = BlockForest(reward_wallet, blockNo=recent_block[0])
 
     while True:
 
         # receives main message dict
         msg = q_for_compete.get()
-
 
 
 if __name__ == '__main__':
