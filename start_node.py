@@ -1,6 +1,7 @@
 from Orses_Administrator_Core.Administrator import Admin
 from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
+from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagator
 from twisted.internet.error import CannotListenError
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
@@ -112,14 +113,32 @@ def main():
     q_for_compete = multiprocessing.Queue() if compete == 'y' else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
+    q_for_block_validator = multiprocessing.Queue()
+    q_for_initial_setup = multiprocessing.Queue()
+
 
 
     # start compete(mining) process, if compete is yes. process is started using Multiprocess
     if compete == 'y':
         pass
 
+    # *** start blockchain propagator in different thread ***
+
+    blockchain_propagator = BlockChainPropagator(
+        q_object_connected_to_block_validator=q_for_block_validator,
+        q_object_to_competing_process=q_for_compete,
+        q_object_for_propagator=q_for_propagate,
+        q_object_between_initial_setup_propagators=q_for_initial_setup,
+        reactor_instance=reactor
+
+    )
+
+    propagator_initial_setup_process = reactor.callLater(3.0, blockchain_propagator.initial_setup)
+    blockchain_propagator_listener_process = reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
+    blockchain_propagator_speaker_process = reactor.callInThread(blockchain_propagator.run_propagator_convo_initiator)
+
     # *** start network propagator in different thread ***
-    propagator = NetworkPropagator(q_for_validator, q_for_propagate, reactor, q_for_compete)
+    propagator = NetworkPropagator(q_for_validator, q_for_propagate, reactor, q_for_initial_setup, q_for_compete)
     network_propagator_listener_process = reactor.callInThread(propagator.run_propagator_convo_manager)
     network_propagator_speaker_process = reactor.callInThread(propagator.run_propagator_convo_initiator)
 

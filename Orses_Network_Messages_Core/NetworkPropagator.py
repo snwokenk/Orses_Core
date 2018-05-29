@@ -54,9 +54,10 @@ class NetworkPropagator:
         Process is only used to INITIATE convo, any replies go to the run_propagator_convo_manager thread
         :return:
         """
-        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
 
         if initial_setup_done is False:
+            print("ending initiator, Setup Not Able")
             return
 
         try:
@@ -133,9 +134,10 @@ class NetworkPropagator:
 
         # thread to
 
-        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
 
         if initial_setup_done is False:
+            print("ending convo, Setup Not Able")
             return
         reactor = self.reactor_instance
         try:

@@ -24,16 +24,19 @@ class BlockChainData:
         This info is the used by network propagator to find out if
         :return: returns the last known block, this is then used to query the network for newer blocks
         """
-        file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", "last_block_number")
+        file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data", "last_block_number")
+        print(file1)
+        print("file not found")
 
         try:
-            with open(file1, "w") as jfile:
+            with open(file1, "r") as jfile:
                 block_number = json.load(jfile)
         except FileNotFoundError:
             return None
         else:
             try:
-                with open(os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", f'{block_number}'), "r") as inBlock:
+                with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
+                                       f"{block_number}"), "r") as inBlock:
                     block_info = json.load(inBlock)
             except FileNotFoundError:
                 return None
@@ -42,10 +45,11 @@ class BlockChainData:
 
     @staticmethod
     def get_block(block_no):
-        file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", f"{block_no}")
+        file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
+                             f"{block_no}")
 
         try:
-            with open(file1, "w") as jfile:
+            with open(file1, "r") as jfile:
                 block = json.load(jfile)
         except FileNotFoundError:
             block = None
@@ -67,7 +71,8 @@ class BlockChainData:
             isValidated = NewBlockValidator(block_no,block, False)
 
             if isValidated is True:
-                file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", f"{block_no}")
+                file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
+                                     f"{block_no}")
                 with open(file1, "w") as jfile:
                     json.dump(block, jfile)
                 return True
@@ -94,8 +99,12 @@ if __name__ == '__main__':
         },
 
     }
-    file1 = os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", "0")
-    with open(file1, "w") as jfile:
-        json.dump(genesis_block, jfile)
+    f = 0
+    file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data", "last_block_number")
+    print(file1)
+    print(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    print(os.path.abspath(__file__))
+    # with open(file1, "w") as jfile:
+    #     json.dump(f, jfile)
     # print(os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data", "last_block_number"))
     # print(os.listdir(os.path.join(os.path.dirname(os.getcwd()), "Blockchain_Data")))

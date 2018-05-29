@@ -58,7 +58,7 @@ class BlockChainPropagator:
         """
         will run first to update block info and any other data,
         then sends signals for other threads/processes to go into event loop
-        :return:
+        :return: [bool: was_able_to_update, bool: sent_signal_to_other_threads]
         """
         if recursive_count >= 10:
             return [False, False]  # was_able_to_update, sent_signal_to_other_threads
@@ -78,15 +78,18 @@ class BlockChainPropagator:
             else:
                 count += 1 if rsp[0] in protocol_list else 0
 
-        if self.locally_known_block <  self.protocol_with_most_recent_block[1]:
+        if (self.protocol_with_most_recent_block is not None and
+                self.locally_known_block < self.protocol_with_most_recent_block[1]):
             self.initiate_msg_to_protocol(RequestNewBlock, [self.protocol_with_most_recent_block[0]],
                                           lists_of_blocks_to_get)  # ask for blocks from node
         else:
             self.has_current_block = True
 
         timeout_count = 0
-        was_able_to_update = False
-        while self.has_current_block is False or timeout_count < 3:
+        was_able_to_update = [False, False]
+        while self.has_current_block is False:
+            if timeout_count < 3:
+                break
             try:
                 rsp = self.q_object_for_propagator.get(timeout=15)
             except Empty:
@@ -134,9 +137,10 @@ class BlockChainPropagator:
         :return:
         """
 
-        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
 
         if initial_setup_done is False:
+            print("ending block initiator, Setup Not Able")
             return
 
         while True:
@@ -156,9 +160,10 @@ class BlockChainPropagator:
 
     def run_propagator_convo_manager(self):
 
-        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
 
         if initial_setup_done is False:
+            print("ending block manager, Setup Not Able")
             return
 
     def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids,*args):
