@@ -12,7 +12,7 @@ import json
 class NetworkPropagator:
 
     def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
-                 q_object_to_competing_process=None):
+                 q_object_between_initial_setup_propagators, q_object_to_competing_process=None):
         """
 
         :param q_object_connected_to_validator: q object used to get validated messages from Message validators
@@ -22,6 +22,7 @@ class NetworkPropagator:
         self.q_object_validator = q_object_connected_to_validator
         self.q_object_compete = q_object_to_competing_process
         self.q_object_propagate = q_for_propagate
+        self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
         self.validated_message_dict = dict()  # being used to store validate messages
         self.connected_protocols_dict = dict()
 
@@ -53,6 +54,10 @@ class NetworkPropagator:
         Process is only used to INITIATE convo, any replies go to the run_propagator_convo_manager thread
         :return:
         """
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+
+        if initial_setup_done is False:
+            return
 
         try:
             if self.q_object_compete:
@@ -128,6 +133,10 @@ class NetworkPropagator:
 
         # thread to
 
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+
+        if initial_setup_done is False:
+            return
         reactor = self.reactor_instance
         try:
 

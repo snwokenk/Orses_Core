@@ -32,11 +32,11 @@ from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
 class BlockChainPropagator:
     def __init__(self, q_object_connected_to_block_validator, q_object_to_competing_process,
-                 q_object_for_propagator, reactor_instance):
+                 q_object_for_propagator, q_object_between_initial_setup_propagators,reactor_instance):
         self.q_object_validator = q_object_connected_to_block_validator
         self.q_object_compete = q_object_to_competing_process
         self.q_object_for_propagator = q_object_for_propagator
-        self.q_object_between_initiator_manager = multiprocessing.Queue()
+        self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
         self.reactor_instance = reactor_instance
         self.conversations_dict = dict()
         self.convo_id = 0
@@ -56,7 +56,8 @@ class BlockChainPropagator:
 
     def initial_setup(self, recursive_count=0):
         """
-        will run first to update block info
+        will run first to update block info and any other data,
+        then sends signals for other threads/processes to go into event loop
         :return:
         """
         if recursive_count >= 10:
@@ -115,19 +116,16 @@ class BlockChainPropagator:
                         break
 
         if was_able_to_update[0] and was_able_to_update[1] is False:
-            for i in range(4): # four other threads to start, sends signal
-                self.q_object_between_initiator_manager.put(True)
+            for i in range(5): # four other threads to start and 1 process to end, sends signal
+                self.q_object_between_initial_setup_propagators.put(True)
             return [True, True]
         elif was_able_to_update[1] is True:
             return [True, True]
 
         else:
-            for i in range(4): # four other threads to start, sends signal to stop
-                self.q_object_between_initiator_manager.put(False)
+            for i in range(5): # four other threads to start plus 1 process (compete process), sends signal to stop
+                self.q_object_between_initial_setup_propagators.put(False)
             return [False, False]
-
-
-
 
     def run_propagator_convo_initiator(self):
         """
@@ -136,10 +134,12 @@ class BlockChainPropagator:
         :return:
         """
 
-        known_block_updated = self.q_object_between_initiator_manager.get()
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+
+        if initial_setup_done is False:
+            return
 
         while True:
-
             break
 
         try:
@@ -156,8 +156,10 @@ class BlockChainPropagator:
 
     def run_propagator_convo_manager(self):
 
-        known_block_updated = self.q_object_between_initiator_manager.get()
-        pass
+        initial_setup_done = self.q_object_between_initial_setup_propagators.get()
+
+        if initial_setup_done is False:
+            return
 
     def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids,*args):
 
@@ -165,11 +167,15 @@ class BlockChainPropagator:
             for i in list_of_protocol_ids:
                 convo_id = self.convo_id
                 self.conversations_dict[convo_id] = RequestNewBlock(
-                    args[0], self.connected_protocols_dict[i], convo_id
+                    blocks_to_receive=args[0],
+                    protocol=self.connected_protocols_dict[i],
+                    convo_id=convo_id,
+                    blockchainPropagatorInstance=self
                 )
                 self.conversations_dict[convo_id].speak()
                 if self.convo_id == convo_id:
                     self.convo_id+=1
+
         elif type_of_msg_to_initiate == RequestMostRecentBlockKnown:
             for i in self.connected_protocols_dict:
                 convo_id = self.convo_id
@@ -182,10 +188,6 @@ class BlockChainPropagator:
                 self.conversations_dict[convo_id].speak()
                 if self.convo_id == convo_id:
                     self.convo_id+=1
-
-
-
-
 
 
 # *** base message sender class ***
@@ -279,10 +281,6 @@ class SendMostRecentBlockKnown(BlockChainMessageReceiver):
         self.protocol.transport.write(msg)
 
 
-
-
-
-
 # request for new block
 class RequestNewBlock(BlockChainMessageSender):
     def __init__(self, blocks_to_receive: list, protocol, convo_id, blockchainPropagatorInstance):
@@ -316,10 +314,16 @@ class RequestNewBlock(BlockChainMessageSender):
             if isinstance(msg, list):
                 if msg[-1] is True:  # no need to speak, convo already ended on other side
                     self.end_convo = True  # end convo
-                    self.save_block(msg[1], msg[2]) if len(msg) == 4 else False  # save last block
+                    rsp = self.save_block(msg[1], msg[2]) if len(msg) == 4 else False  # save last block
+                    if rsp is True:
+                        self.blockchainPropagator.locally_known_block = msg[1]
                 else:
                     rsp = self.save_block(msg[1], msg[2]) if len(msg) == 4 else False
+                    # written twice because self.speak() actually sends data to peer. want to update before that
+                    if rsp is True:
+                        self.blockchainPropagator.locally_known_block = msg[1]
                     self.speak(rsp=rsp)
+
             else:
                 self.speak(rsp=False)
             # message to receive should be [convo_id, blockNo, blockDict, isEndOfConvo (True or False)]
