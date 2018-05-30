@@ -35,7 +35,7 @@ class CreateDatabase:
         self._create_fulfilled_asgn_stmt_db()
         self._create_tkn_rsv_req_db()
         self._create_transfer_tx_db()
-        self._create_blockchain_db()
+        # self._create_blockchain_db()
         self._create_tkn_rvk_req_db()
 
     @staticmethod

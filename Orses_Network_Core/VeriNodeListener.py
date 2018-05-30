@@ -5,16 +5,18 @@ Used to listen for long live connections from other veri nodes. ideal connection
 """
 
 
-class VeriNodeListener(Protocol):
-    created = 1
 
-    def __init__(self, addr, factory, q_object_from_network_propagator, propagator):
+class VeriNodeListener(Protocol):
+    created = 100  # starts at 100 to avoid conflicting protocol id
+
+    def __init__(self, addr, factory):
         self.proto_id = VeriNodeListener.created
         VeriNodeListener.created += 1
         super().__init__()
-        self.propagator = propagator
+        self.propagator = factory.propagator
         self.factory = factory
-        self.q_object = q_object_from_network_propagator
+        self.q_object = factory.q_object_from_network_propagator
+        self.q_object_block = factory.q_object_from_block_propagator
         self.addr = addr
 
     def dataReceived(self, data):
@@ -50,7 +52,6 @@ class VeriNodeListener(Protocol):
         print("connection made: ", self.addr)
         self.propagator.add_protocol(self)
 
-
     def connectionLost(self, reason=connectionDone):
 
         # removes self from connected protocol
@@ -61,11 +62,12 @@ class VeriNodeListener(Protocol):
 
 
 class VeriNodeListenerFactory(Factory):
-    def __init__(self, q_object_from_network_propagator, propagator):
+    def __init__(self, q_object_from_network_propagator, q_object_from_block_propagator,propagator):
         super().__init__()
         self.q_object_from_network_propagator = q_object_from_network_propagator
+        self.q_object_from_block_propagator = q_object_from_block_propagator
         self.propagator = propagator
 
 
     def buildProtocol(self, addr):
-        return VeriNodeListener(addr, self, self.q_object_from_network_propagator, self.propagator)
+        return VeriNodeListener(addr, self)

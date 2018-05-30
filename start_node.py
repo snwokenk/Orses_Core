@@ -17,8 +17,13 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
                                                         "goto www.python.org to install/upgrade"
 
 # todo: start competing/block creation process, finish up the blockchain process
-# todo: user can exit program by typing "exit" or "quit" and pressing enter.
 # todo: Build a way to finish up any conversations with peers before ending program
+
+# todo: create a process which receives messages from protocol, when dataReceived is called. This process then
+# todo cont: determines which propagator process the message goes (transaction message propagator or block propagator)
+
+# todo: protocol_id can conflict between VeriNodeConnector and VeriNodeListener. Make protocol id to increment when
+# todo: either  is created.
 
 """
 file used to start node
@@ -113,6 +118,7 @@ def main():
     q_for_compete = multiprocessing.Queue() if compete == 'y' else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
+    q_for_bk_propagate = multiprocessing.Queue()
     q_for_block_validator = multiprocessing.Queue()
     q_for_initial_setup = multiprocessing.Queue()
 
@@ -127,7 +133,7 @@ def main():
     blockchain_propagator = BlockChainPropagator(
         q_object_connected_to_block_validator=q_for_block_validator,
         q_object_to_competing_process=q_for_compete,
-        q_object_for_propagator=q_for_propagate,
+        q_object_for_propagator=q_for_bk_propagate,
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         reactor_instance=reactor
 
@@ -145,7 +151,9 @@ def main():
 
     # start network manaager and run veri node factory and regular factory using reactor.callFromThread
     network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate,
-                                     q_object_to_validator=q_for_validator, propagator=propagator, reg_listening_port=55600)
+                                     q_object_from_block_propagator=q_for_bk_propagate,
+                                     q_object_to_validator=q_for_validator, propagator=propagator,
+                                     reg_listening_port=55600)
 
     # use to connect to or listen for connection from other verification nodes
     reactor.callFromThread(network_manager.run_veri_node_network, reactor)

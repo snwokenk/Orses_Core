@@ -7,7 +7,7 @@ from Orses_Util_Core import Filenames_VariableNames
 
 
 class NetworkManager:
-    def __init__(self, admin, q_object_from_network_propagator, q_object_to_validator, propagator, reg_listening_port=55600,
+    def __init__(self, admin, q_object_from_network_propagator, q_object_from_block_propagator, q_object_to_validator, propagator, reg_listening_port=55600,
                  veri_listening_port=55602):
 
         self.admin = admin
@@ -15,8 +15,16 @@ class NetworkManager:
         # self.addresses = {"127.0.0.1": 55603}
         self.addresses = FileAction.open_file_from_json(filename=Filenames_VariableNames.default_addr_list,)
         self.listening_port = veri_listening_port
-        self.veri_connecting_factory = VeriNodeConnectorFactory(q_object_from_network_propagator, propagator)
-        self.veri_listening_factory = VeriNodeListenerFactory(q_object_from_network_propagator, propagator)
+        self.veri_connecting_factory = VeriNodeConnectorFactory(
+            q_object_from_network_propagator=q_object_from_network_propagator,
+            q_object_from_block_propagator=q_object_from_block_propagator,
+            propagator=propagator
+        )
+        self.veri_listening_factory = VeriNodeListenerFactory(
+            q_object_from_network_propagator=q_object_from_network_propagator,
+            q_object_from_block_propagator=q_object_from_block_propagator,
+            propagator=propagator
+        )
         self.regular_listening_factory = NetworkListenerFactory(spkn_msg_obj_creator=NetworkMessages, admin=admin,
                                                                 q_obj=q_object_to_validator)
         self.propagator = propagator
