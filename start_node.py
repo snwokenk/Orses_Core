@@ -16,6 +16,9 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: refactor network propagator code to have each messsage as a pair of classes (sender, receiver class)
+# todo: in these pairs, each message should be able to speak and send data within itself
+
 # todo: start competing/block creation process, finish up the blockchain process
 # todo: Build a way to finish up any conversations with peers before ending program
 
@@ -24,6 +27,8 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
 
 # todo: protocol_id can conflict between VeriNodeConnector and VeriNodeListener. Make protocol id to increment when
 # todo: either  is created.
+
+# todo: work on validator for winning block
 
 """
 file used to start node
@@ -112,62 +117,95 @@ def main():
     else:
         compete = 'n'
 
-
     # *** instantiate queue variables ***
-
     q_for_compete = multiprocessing.Queue() if compete == 'y' else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
     q_for_bk_propagate = multiprocessing.Queue()
     q_for_block_validator = multiprocessing.Queue()
     q_for_initial_setup = multiprocessing.Queue()
+    q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
 
-
-
-    # start compete(mining) process, if compete is yes. process is started using Multiprocess
+    # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if compete == 'y':
         pass
 
     # *** start blockchain propagator in different thread ***
-
     blockchain_propagator = BlockChainPropagator(
         q_object_connected_to_block_validator=q_for_block_validator,
         q_object_to_competing_process=q_for_compete,
-        q_object_for_propagator=q_for_bk_propagate,
+        q_for_bk_propagate=q_for_bk_propagate,
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         reactor_instance=reactor
 
     )
 
-    propagator_initial_setup_process = reactor.callLater(3.0, blockchain_propagator.initial_setup)
-    blockchain_propagator_listener_process = reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
-    blockchain_propagator_speaker_process = reactor.callInThread(blockchain_propagator.run_propagator_convo_initiator)
+    # *** set intial setup to start in 3 seconds. This will get new blocks and data before other processes start ***
+    reactor.callLater(3.0, blockchain_propagator.initial_setup)
 
-    # *** start network propagator in different thread ***
-    propagator = NetworkPropagator(q_for_validator, q_for_propagate, reactor, q_for_initial_setup, q_for_compete)
-    network_propagator_listener_process = reactor.callInThread(propagator.run_propagator_convo_manager)
-    network_propagator_speaker_process = reactor.callInThread(propagator.run_propagator_convo_initiator)
+    # *** start blockchain propagator manager in separate thread ***
+    reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
 
+    # *** start blockchain propagator initiator in separate thread ***
+    reactor.callInThread(blockchain_propagator.run_propagator_convo_initiator)
 
-    # start network manaager and run veri node factory and regular factory using reactor.callFromThread
-    network_manager = NetworkManager(admin=admin, q_object_from_network_propagator=q_for_propagate,
-                                     q_object_from_block_propagator=q_for_bk_propagate,
-                                     q_object_to_validator=q_for_validator, propagator=propagator,
-                                     reg_listening_port=55600)
+    # *** Instantiate Network Propagator ***
+    propagator = NetworkPropagator(
+        q_for_validator,
+        q_for_propagate,
+        reactor,
+        q_for_initial_setup,
+        q_for_compete
+    )
 
-    # use to connect to or listen for connection from other verification nodes
-    reactor.callFromThread(network_manager.run_veri_node_network, reactor)
+    # *** start propagator manager in another thread ***
+    reactor.callInThread(propagator.run_propagator_convo_manager)
 
-    # use to listen for connections from regular nodes
-    reactor.callFromThread(network_manager.run_regular_node_network, reactor)
+    # *** start propagator initiator in another thread ***
+    reactor.callInThread(propagator.run_propagator_convo_initiator)
 
-    # creates
-    reactor.callWhenRunning(send_stop_to_reactor, reactor, q_for_propagate, q_for_compete, q_for_validator)
+    # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
+    network_manager = NetworkManager(
+        admin=admin,
+        q_object_from_protocol=q_object_from_protocol,
+        q_object_to_validator=q_for_validator,
+        propagator=propagator,
+        reg_listening_port=55600
+    )
 
+    # *** use to connect to or listen for connection from other verification nodes ***
+    reactor.callFromThread(
+        network_manager.run_veri_node_network,
+        reactor
+    )
+
+    # *** use to listen for connections from regular nodes ***
+    reactor.callFromThread(
+        network_manager.run_regular_node_network,
+        reactor
+    )
+
+    # *** creates a deferral, which allows user to exit program by typing "exit" or "quit" ***
+    reactor.callWhenRunning(
+        send_stop_to_reactor,
+        reactor,
+        q_for_propagate,
+        q_for_bk_propagate,
+        q_for_compete,
+        q_object_from_protocol,
+        q_for_validator
+    )
+
+    # *** set propagator's network manager variable to network manager instance ***
     propagator.network_manager = network_manager
 
+    # *** start reactor ***
     reactor.run()
+
+    # *** This will only print when reactor is stopped
     print("Node Stopped")
+
+    # *** when reactor is stopped save admin details ***
     admin.save_admin()
 
 

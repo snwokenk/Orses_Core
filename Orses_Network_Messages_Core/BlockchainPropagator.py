@@ -25,6 +25,15 @@ also, message propagator and initiator will also wait for initial setup
 
 """
 
+"""
+current messages defined:
+1: message to find out the highest block number known/message to send highest block number known when requested
+
+2: message to request for new blocks, if not up to date, message to send new blocks requested
+
+3. to define: message_to_propagate validated blocks, message to receive blocks being propagated and validating it
+"""
+
 import json, multiprocessing
 from queue import Empty
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
@@ -32,10 +41,10 @@ from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
 class BlockChainPropagator:
     def __init__(self, q_object_connected_to_block_validator, q_object_to_competing_process,
-                 q_object_for_propagator, q_object_between_initial_setup_propagators,reactor_instance):
-        self.q_object_validator = q_object_connected_to_block_validator
+                 q_for_bk_propagate, q_object_between_initial_setup_propagators,reactor_instance):
+        self.q_object_connected_to_block_validator = q_object_connected_to_block_validator
         self.q_object_compete = q_object_to_competing_process
-        self.q_object_for_propagator = q_object_for_propagator
+        self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
         self.reactor_instance = reactor_instance
         self.conversations_dict = dict()
@@ -72,7 +81,7 @@ class BlockChainPropagator:
         count = 0
         while count < len(self.connected_protocols_dict):
             try:
-                rsp = self.q_object_for_propagator.get(timeout=15)  # will timeout in 15 seconds
+                rsp = self.q_for_bk_propagate.get(timeout=15)  # will timeout in 15 seconds
             except Empty:
                 count += 1
             else:
@@ -91,7 +100,7 @@ class BlockChainPropagator:
             if timeout_count < 3:
                 break
             try:
-                rsp = self.q_object_for_propagator.get(timeout=15)
+                rsp = self.q_for_bk_propagate.get(timeout=15)
             except Empty:
                 timeout_count += 1
                 if self.conversations_dict[self.convo_id].end_convo is True:
@@ -113,10 +122,10 @@ class BlockChainPropagator:
                         if self.locally_known_block >= self.protocol_with_most_recent_block[1]:
                             was_able_to_update = [True, False]
                             break
-                    else:
-                        recursive_count += 1
-                        was_able_to_update = self.initial_setup(recursive_count)
-                        break
+                        else:
+                            recursive_count += 1
+                            was_able_to_update = self.initial_setup(recursive_count)
+                            break
 
         if was_able_to_update[0] and was_able_to_update[1] is False:
             for i in range(5): # four other threads to start and 1 process to end, sends signal
@@ -144,6 +153,7 @@ class BlockChainPropagator:
             return
 
         while True:
+            msg = self.q_object_connected_to_block_validator.get()
             break
 
         try:
@@ -151,7 +161,7 @@ class BlockChainPropagator:
 
                 while True:
 
-                    rsp = self.q_object_validator()
+                    rsp = self.q_object_connected_to_block_validator()
             else:
                 pass
 
@@ -166,7 +176,18 @@ class BlockChainPropagator:
             print("ending block manager, Setup Not Able")
             return
 
+        while True:
+            msg = self.q_for_bk_propagate # [protocol_id, data_list],  data_list=['b', convo_id, etc]
+            break
+
     def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids,*args):
+        """
+        used to send a message o either all the connected protocols or specific protocol(s)
+        :param type_of_msg_to_initiate:
+        :param list_of_protocol_ids:
+        :param args:
+        :return:
+        """
 
         if type_of_msg_to_initiate == RequestNewBlock:
             for i in list_of_protocol_ids:
@@ -203,8 +224,9 @@ class BlockChainMessageSender:
         :param protocol: the protocol class representing a connection, use as self.protocol.transport.write()
         :param convo_id: the convo id used by propagator to keep track of message
         """
-        self.last_msg = b'end'
-        self.verified_msg = b'ver'
+        self.last_msg = 'end'
+        self.verified_msg = 'ver'
+        self.msg_type = 'b'
         self.messages_heard = set()
         self.end_convo = False
         self.protocol = protocol
@@ -228,6 +250,7 @@ class BlockChainMessageReceiver:
         """
         self.last_msg = 'end'
         self.verified_msg = 'ver'
+        self.msg_type = 'b'
         self.need_pubkey = 'wpk'
         self.messages_heard = set()
         self.protocol = protocol
@@ -254,7 +277,7 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
 
     def speak(self):
 
-        msg = json.dumps([self.convo_id, "knw_blk"]).encode()
+        msg = json.dumps([self.msg_type, self.convo_id, "knw_blk"]).encode()
         self.protocol.transport.write(msg)
 
     def listen(self, msg):
@@ -280,9 +303,9 @@ class SendMostRecentBlockKnown(BlockChainMessageReceiver):
         curr_block = BlockChainData.get_current_known_block()
         if isinstance(curr_block, list):
             curr_block_no = curr_block[0]
-            msg = json.dumps([self.convo_id, curr_block_no]).encode()
+            msg = json.dumps([self.msg_type, self.convo_id, curr_block_no]).encode()
         else:
-            msg = json.dumps([self.convo_id, 0]).encode()
+            msg = json.dumps([self.msg_type, self.convo_id, 0]).encode()
         self.protocol.transport.write(msg)
 
 
@@ -303,13 +326,13 @@ class RequestNewBlock(BlockChainMessageSender):
 
             if self.sent_first_msg is False and rsp is None:
                 self.sent_first_msg = True
-                msg = json.dumps([self.convo_id, "req_block", self.blocks_to_receive]).encode()
+                msg = json.dumps([self.msg_type, self.convo_id, "req_block", self.blocks_to_receive]).encode()
                 self.protocol.transport.write(msg)
             elif rsp is True:
-                msg = json.dumps([self.convo_id, self.verified_msg]).encode()
+                msg = json.dumps([self.msg_type, self.convo_id, self.verified_msg]).encode()
                 self.protocol.transport.write(msg)
             elif rsp is False or (self.sent_first_msg is True and rsp is None):
-                msg = json.dumps([self.convo_id, self.end_convo]).encode()
+                msg = json.dumps([self.msg_type, self.convo_id, self.end_convo]).encode()
                 self.end_convo = True
                 self.protocol.transport.write(msg)
 
@@ -374,10 +397,10 @@ class SendNewBlocksRequested(BlockChainMessageReceiver):
         block = self.get_block()
 
         if block:
-            msg = [self.convo_id, self.cur_block_no, block, False]
+            msg = [self.msg_type, self.convo_id, self.cur_block_no, block, False]
         else:
             self.end_convo = True
-            msg = [self.convo_id, self.end_convo, True]  # tells other node that end of convo is True
+            msg = [self.msg_type, self.convo_id, self.end_convo, True]  # tells other node that end of convo is True
 
         self.protocol.transport.write(json.dumps(msg).encode())
 
@@ -413,4 +436,20 @@ class SendNewBlocksRequested(BlockChainMessageReceiver):
             return BlockChainData.get_block(self.cur_block_no)
         except StopIteration:
             return None
+
+
+class PropagateValidatedBlock(BlockChainMessageSender):
+    """
+    used to send blocks to others IF they do not already have it
+    """
+    def __init__(self, protocol, convo_id):
+        super().__init__(protocol, convo_id)
+
+
+class ReceivePropagatatedBlock(BlockChainMessageReceiver):
+
+    def __init__(self, protocol, convo_id):
+        super().__init__(protocol, convo_id)
+
+
 

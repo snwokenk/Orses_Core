@@ -21,8 +21,7 @@ class VeriNodeConnector(Protocol):
         super().__init__()
         self.propagator = factory.propagator
         self.factory = factory
-        self.q_object = factory.q_object_from_network_propagator
-        self.q_object_block = factory.q_object_from_block_propagator
+        self.q_object = factory.q_object_from_protocol
         self.addr = addr
         self.sending_convo = 0
         self.receiving_convo = 0
@@ -78,11 +77,10 @@ class VeriNodeConnector(Protocol):
 
 class VeriNodeConnectorFactory(ReconnectingClientFactory):
 
-    def __init__(self, q_object_from_network_propagator, q_object_from_block_propagator, propagator,
+    def __init__(self, q_object_from_protocol, propagator,
                  number_of_connections_wanted=2):
         super().__init__()
-        self.q_object_from_network_propagator = q_object_from_network_propagator
-        self.q_object_from_block_propagator = q_object_from_block_propagator
+        self.q_object_from_protocol = q_object_from_protocol
         self.number_of_wanted_connections = number_of_connections_wanted
         self.number_of_connections = 0
         self.maxRetries = 2

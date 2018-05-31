@@ -5,7 +5,6 @@ Used to listen for long live connections from other veri nodes. ideal connection
 """
 
 
-
 class VeriNodeListener(Protocol):
     created = 100  # starts at 100 to avoid conflicting protocol id
 
@@ -15,8 +14,7 @@ class VeriNodeListener(Protocol):
         super().__init__()
         self.propagator = factory.propagator
         self.factory = factory
-        self.q_object = factory.q_object_from_network_propagator
-        self.q_object_block = factory.q_object_from_block_propagator
+        self.q_object = factory.q_object_from_protocol
         self.addr = addr
 
     def dataReceived(self, data):
@@ -62,10 +60,9 @@ class VeriNodeListener(Protocol):
 
 
 class VeriNodeListenerFactory(Factory):
-    def __init__(self, q_object_from_network_propagator, q_object_from_block_propagator,propagator):
+    def __init__(self, q_object_from_protocol, propagator):
         super().__init__()
-        self.q_object_from_network_propagator = q_object_from_network_propagator
-        self.q_object_from_block_propagator = q_object_from_block_propagator
+        self.q_object_from_protocol = q_object_from_protocol
         self.propagator = propagator
 
 
