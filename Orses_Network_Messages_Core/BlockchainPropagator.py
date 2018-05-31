@@ -231,7 +231,7 @@ class BlockChainMessageSender:
         self.end_convo = False
         self.protocol = protocol
         self.convo_id = convo_id
-        self.sent_first_msg = True
+        self.sent_first_msg = False
 
     def speak(self):
         """ override """
@@ -250,7 +250,7 @@ class BlockChainMessageReceiver:
         """
         self.last_msg = 'end'
         self.verified_msg = 'ver'
-        self.msg_type = 'b'
+        self.prop_type = 'b'
         self.need_pubkey = 'wpk'
         self.messages_heard = set()
         self.protocol = protocol
@@ -303,9 +303,9 @@ class SendMostRecentBlockKnown(BlockChainMessageReceiver):
         curr_block = BlockChainData.get_current_known_block()
         if isinstance(curr_block, list):
             curr_block_no = curr_block[0]
-            msg = json.dumps([self.msg_type, self.convo_id, curr_block_no]).encode()
+            msg = json.dumps([self.prop_type, self.convo_id, curr_block_no]).encode()
         else:
-            msg = json.dumps([self.msg_type, self.convo_id, 0]).encode()
+            msg = json.dumps([self.prop_type, self.convo_id, 0]).encode()
         self.protocol.transport.write(msg)
 
 
@@ -397,10 +397,10 @@ class SendNewBlocksRequested(BlockChainMessageReceiver):
         block = self.get_block()
 
         if block:
-            msg = [self.msg_type, self.convo_id, self.cur_block_no, block, False]
+            msg = [self.prop_type, self.convo_id, self.cur_block_no, block, False]
         else:
             self.end_convo = True
-            msg = [self.msg_type, self.convo_id, self.end_convo, True]  # tells other node that end of convo is True
+            msg = [self.prop_type, self.convo_id, self.end_convo, True]  # tells other node that end of convo is True
 
         self.protocol.transport.write(json.dumps(msg).encode())
 
