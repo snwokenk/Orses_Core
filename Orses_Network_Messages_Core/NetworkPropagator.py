@@ -9,6 +9,8 @@ from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferVali
 import json
 
 
+
+
 class NetworkPropagator:
 
     def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
@@ -32,6 +34,7 @@ class NetworkPropagator:
 
         self.invalidated_message_dict_with_hash_preview = dict()
 
+        #message_from_other_veri_node_dict[protocol_id] = {hashpreviews}
         # dict with hash previews received from other nodes
         self.message_from_other_veri_node_dict = dict()
         self.reactor_instance = reactor_instance
@@ -40,8 +43,8 @@ class NetworkPropagator:
 
     def add_protocol(self, protocol):
 
-        # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
-        self.connected_protocols_dict.update({protocol.proto_id: [protocol, {"speaker": {}, "hearer": {}}, 0]})
+        # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 9999 and resets)]
+        self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
 
     def remove_protocol(self, protocol):
 
@@ -55,7 +58,6 @@ class NetworkPropagator:
         :return:
         """
         initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
-
         if initial_setup_done is False:
             print("ending initiator, Setup Not Able")
             return
@@ -63,7 +65,10 @@ class NetworkPropagator:
         try:
 
             while True:
+                # rsp['reason(a, b,c,d)+8charhashprev', snd_wallet_pubkey, main_message_dict, if valid(True or False)]
+                # reason a=assignment statement, b=TokenTransfer, c=TokenReservationRequest, D=TokenReservationRevoke
                 rsp = self.q_object_validator.get()
+                print("in compete, convo initiator: ", rsp)
 
                 try:
                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
@@ -71,6 +76,12 @@ class NetworkPropagator:
                     elif rsp[3] is None:
                         pass
                     elif rsp[3] is True:
+                        self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                        self.reactor_instance.callInThreadmsg_creator(rsp=rsp,propagator_inst=self)
+
+                    else:
+                        self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+
 
 
                 except Exception as e:
@@ -83,7 +94,7 @@ class NetworkPropagator:
             if self.q_object_compete:
 
                 while True:
-                    # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
+
                     rsp = self.q_object_validator.get()
 
                     try:
@@ -388,6 +399,19 @@ class NetworkPropagator:
                 self.connected_protocols_dict[protocol_id][0].transport.write(
                     self.connected_protocols_dict[protocol_id][1]["speaker"][convo_id].speak()
                 )
+
+
+def msg_creator(rsp, propagator_inst: NetworkPropagator):
+    reason = rsp[0][0]
+    if reason not in {'a', 'b', 'c', 'd'}:
+        return None
+
+    for i in propagator_inst.connected_protocols_dict:  # make sure not propagating to same node that sent it
+        StatementSender(
+            protocol=propagator_inst.connected_protocols_dict[i][0],
+            convo_id=propagator_inst.connected_protocols_dict[i][1]
+
+        )
 
 
 # *** base message sender class ***
