@@ -25,8 +25,11 @@ class NetworkPropagator:
         self.q_object_compete = q_object_to_competing_process
         self.q_object_propagate = q_for_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
-        self.validated_message_dict = dict()  # being used to store validate messages
+
+        # convo_dict[protocol_id] = {convo_id: statementsender/statementreceiver}
+        self.convo_dict = dict()
         self.connected_protocols_dict = dict()
+
 
         # dict with reason+hash previews as dict keys( this can be updated using binary search Tree) will do for now
         # main tx dict as value
@@ -77,153 +80,23 @@ class NetworkPropagator:
                         pass
                     elif rsp[3] is True:
                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                        self.reactor_instance.callInThreadmsg_creator(rsp=rsp,propagator_inst=self)
-
+                        self.reactor_instance.callInThread(msg_creator(rsp=rsp,propagator_inst=self))
                     else:
                         self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
 
-
-
                 except Exception as e:
-                    print(e)
+                    print("Message: ", rsp, ": exception: ", e)
+                    continue
 
-
-                break
-
-
-            if self.q_object_compete:
-
-                while True:
-
-                    rsp = self.q_object_validator.get()
-
-                    try:
-                        print("in compete, convo initiator: ", rsp)
-                        if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
-                            break
-
-                        elif rsp[3] is None:  # msg is network or blockchain related (ie, asking for updates etc)
-                            pass
-
-                        elif rsp[3] is True:
-                            # send to
-                            self.q_object_compete.put(rsp[2])
-                            self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                            self.check_speak_send(validated_message_list=rsp)
-                        else:
-                            self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                    except Exception as e:
-                        # todo: implement error logging, when message received causes error. for now print error and msg
-                        print("Message: ", rsp, ": exception: ", e)
-                        continue
-
-            else:  # node not competing
-
-                while True:
-
-                    # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
-                    rsp = self.q_object_validator.get()
-                    try:
-
-                        print("in propagator initiator: ", rsp)
-                        print(self.connected_protocols_dict)
-                        if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
-                            print("received exit signal in propagator")
-                            raise KeyboardInterrupt
-
-                        elif rsp[3] is True:
-
-                            if
-                            self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                            self.check_speak_send(validated_message_list=rsp)
-                        else:
-                            self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                    except KeyboardInterrupt:
-                        print("Ending convo Iniiator")
-                        break
-                    except Exception as e:
-                        # todo: implement error logging, when message received causes error. for now print error and msg
-                        print("Message: ", rsp, ": exception: ", e)
-                        continue
+                else:
+                    if self.q_object_compete:
+                        self.q_object_compete.put(rsp[2])
 
         except (KeyboardInterrupt, SystemExit):
             pass
 
         finally:
             print("Convo Initiator Ended")
-
-    # def run_propagator_convo_initiator(self):
-    #     """
-    #     used to send validated messages to other veri nodes. These validated messages could come first hand from
-    #     regular client nodes or propagted messages from other nodes.
-    #     Process is only used to INITIATE convo, any replies go to the run_propagator_convo_manager thread
-    #     :return:
-    #     """
-    #     initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
-    #
-    #     if initial_setup_done is False:
-    #         print("ending initiator, Setup Not Able")
-    #         return
-    #
-    #     try:
-    #         if self.q_object_compete:
-    #
-    #             while True:
-    #                 # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
-    #                 rsp = self.q_object_validator.get()
-    #
-    #                 try:
-    #                     print("in compete, convo initiator: ", rsp)
-    #                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
-    #                         break
-    #
-    #                     elif rsp[3] is None:  # msg is network or blockchain related (ie, asking for updates etc)
-    #                         pass
-    #
-    #                     elif rsp[3] is True:
-    #                         # send to
-    #                         self.q_object_compete.put(rsp[2])
-    #                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-    #                         self.check_speak_send(validated_message_list=rsp)
-    #                     else:
-    #                         self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-    #                 except Exception as e:
-    #                     # todo: implement error logging, when message received causes error. for now print error and msg
-    #                     print("Message: ", rsp, ": exception: ", e)
-    #                     continue
-    #
-    #         else:  # node not competing
-    #
-    #             while True:
-    #
-    #                 # rsp['reason(a, b,c,d)+8charhashprev', sending_wallet_pubkey, main_message_dict, if valid(True or False)]
-    #                 rsp = self.q_object_validator.get()
-    #                 try:
-    #
-    #                     print("in propagator initiator: ", rsp)
-    #                     print(self.connected_protocols_dict)
-    #                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
-    #                         print("received exit signal in propagator")
-    #                         raise KeyboardInterrupt
-    #
-    #                     elif rsp[3] is True:
-    #                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-    #                         self.check_speak_send(validated_message_list=rsp)
-    #                     else:
-    #                         self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-    #                 except KeyboardInterrupt:
-    #                     print("Ending convo Iniiator")
-    #                     break
-    #                 except Exception as e:
-    #                     # todo: implement error logging, when message received causes error. for now print error and msg
-    #                     print("Message: ", rsp, ": exception: ", e)
-    #                     continue
-    #
-    #     except (KeyboardInterrupt, SystemExit):
-    #         pass
-    #
-    #     finally:
-    #         print("Convo Initiator Ended")
 
     def run_propagator_convo_manager(self):
         """
@@ -407,12 +280,29 @@ def msg_creator(rsp, propagator_inst: NetworkPropagator):
         return None
 
     for i in propagator_inst.connected_protocols_dict:  # make sure not propagating to same node that sent it
-        StatementSender(
-            protocol=propagator_inst.connected_protocols_dict[i][0],
-            convo_id=propagator_inst.connected_protocols_dict[i][1]
+        if rsp[0] not in propagator_inst.message_from_other_veri_node_dict[i]:
 
-        )
+            while True:  # gets a convo id that is not in use
+                convo_id=propagator_inst.connected_protocols_dict[i][1]
+                if convo_id in propagator_inst.convo_dict[i] and propagator_inst.convo_dict[i][convo_id].end_message is False:
+                    propagator_inst.connected_protocols_dict[i][1] += 1
+                    continue
+                elif convo_id == 20000:
+                    propagator_inst.connected_protocols_dict[i][1] = 0
+                    continue
+                propagator_inst.connected_protocols_dict[i][1] += 1
+                break
 
+            prop_sender = StatementSender(
+                protocol=propagator_inst.connected_protocols_dict[i][0],
+                convo_id=convo_id,
+                validated_message_list=rsp
+
+            )
+
+            # update protocol's convo dictionary with new convo
+            propagator_inst.convo_dict[i].update({convo_id: prop_sender})
+            prop_sender.speak()
 
 # *** base message sender class ***
 class PropagatorMessageSender:
@@ -443,7 +333,6 @@ class PropagatorMessageSender:
 
     def speaker(self, msg):
         self.protocol.transport.write(json.dumps([self.prop_type, self.convo_id, msg]).encode())
-
 
 # *** base  message receiver class ***
 class PropagatorMessageReceiver:
