@@ -9,6 +9,11 @@ from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferVali
 import json
 
 
+validator_dict = dict()
+validator_dict['a'] = AssignmentStatementValidator.AssignmentStatementValidator
+validator_dict['b'] = TokenTransferValidator.TokenTransferValidator
+validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestValidator
+validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
 
 
 class NetworkPropagator:
@@ -82,7 +87,7 @@ class NetworkPropagator:
                         pass
                     elif rsp[3] is True:
                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                        self.reactor_instance.callInThread(msg_creator, rsp=rsp, propagator_inst=self)
+                        self.reactor_instance.callInThread(msg_sender_creator, rsp=rsp, propagator_inst=self)
                     else:
                         self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
 
@@ -148,6 +153,7 @@ class NetworkPropagator:
                         if local_convo_id is not None and local_convo_id in self.convo_dict[protocol_id]:
                             # check if convo has ended
                             if self.convo_dict[protocol_id][local_convo_id].end_convo:
+                                # notify other node about ended convo
                                 self.reactor_instance.callInThread(
                                     callable=notify_of_ended_message,
                                     protocol=self.connected_protocols_dict[protocol_id][0],
@@ -163,12 +169,23 @@ class NetworkPropagator:
                                 )
 
                         elif local_convo_id is None: # new convo
-                            # if no local convo provided then a new convo
-                            pass
+                            self.reactor_instance.callInThread(
+                                callable=msg_receiver_creator,
+                                protocol_id=protocol_id,
+                                msg=msg,
+                                propagator_inst=self
+
+                            )
 
                         else:
-                            pass
-                            # start a receiver message
+                            # end convo in other node, since it can't be found locally
+                            self.reactor_instance.callInThread(
+                                callable=notify_of_ended_message,
+                                protocol=self.connected_protocols_dict[protocol_id][0],
+                                convo_id=msg[1],
+                                propagator_instance=self
+                            )
+                            print("did not find message in protocol's convo dictionary", msg)
 
                 except KeyboardInterrupt:
                     print("ending convo manager")
@@ -209,7 +226,52 @@ def notify_of_ended_message(protocol, convo_id: list, propagator_instance: Netwo
     propagator_instance.reactor_instance.callFromThread(protocol.transport.write, msg)
 
 
-def msg_creator(rsp, propagator_inst: NetworkPropagator):
+def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
+    convo_id = msg[1]
+
+    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd'}:
+        statement_validator = validator_dict[msg[-1][0]]
+
+    else:  # send end message
+        propagator_inst.reactor_instance.callInThread(
+            callable=notify_of_ended_message,
+            protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+            convo_id=convo_id,
+            propagator_instance=propagator_inst
+        )
+        return
+
+    while True:
+        convo_id[0] = propagator_inst.connected_protocols_dict[protocol_id][1]
+        if convo_id[0] in propagator_inst.convo_dict[protocol_id] and \
+                propagator_inst.convo_dict[protocol_id][convo_id].end_convo is False:
+            propagator_inst.connected_protocols_dict[protocol_id][1] += 1
+            continue
+        elif convo_id[0] >= 20000:
+            propagator_inst.connected_protocols_dict[protocol_id][1] = 0
+            continue
+        propagator_inst.connected_protocols_dict[protocol_id][1] += 1
+        break
+
+
+
+    prop_receiver = StatementReceiver(
+        protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+        convo_id=convo_id,
+        propagatorInst=propagator_inst,
+        statement_validator=statement_validator
+    )
+    propagator_inst.convo_dict[protocol_id].update({convo_id: prop_receiver})
+    prop_receiver.listen(msg=msg)
+
+
+def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
+    """
+
+    :param rsp: ['reason(a, b,c,d)+8charhashprev', snd_wallet_pubkey, main_message_dict, if valid(True or False)]
+    :param propagator_inst:
+    :return:
+    """
     reason = rsp[0][0]
     if reason not in {'a', 'b', 'c', 'd'}:
         return None
@@ -222,7 +284,7 @@ def msg_creator(rsp, propagator_inst: NetworkPropagator):
                 if convo_id in propagator_inst.convo_dict[i] and propagator_inst.convo_dict[i][convo_id].end_convo is False:
                     propagator_inst.connected_protocols_dict[i][1] += 1
                     continue
-                elif convo_id == 20000:
+                elif convo_id >= 20000:
                     propagator_inst.connected_protocols_dict[i][1] = 0
                     continue
                 propagator_inst.connected_protocols_dict[i][1] += 1
@@ -275,7 +337,7 @@ class PropagatorMessageSender:
 
 # *** base  message receiver class ***
 class PropagatorMessageReceiver:
-    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator, q_object):
+    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator):
         """
 
         :param protocol: the protocol class representing a connection, use as self.protocol.transport.write()
@@ -287,7 +349,7 @@ class PropagatorMessageReceiver:
         self.send_tx_msg = 'snd'
         self.prop_type = 'n'
         self.need_pubkey = 'wpk'
-        self.q_object = q_object
+        self.q_object = propagator_inst.q_object_validator
         self.messages_heard = set()
         self.protocol = protocol
         self.local_convo_id = convo_id[0]
@@ -342,8 +404,8 @@ class StatementSender(PropagatorMessageSender):
 
 
 class StatementReceiver(PropagatorMessageReceiver):
-    def __init__(self, protocol, convo_id, propagatorInst, q_object_to_validator, statement_validator):
-        super().__init__(protocol, convo_id, propagatorInst, q_object_to_validator)
+    def __init__(self, protocol, convo_id, propagatorInst, statement_validator):
+        super().__init__(protocol, convo_id, propagatorInst)
         self.statement_validator = statement_validator
 
     def listen(self, msg):
