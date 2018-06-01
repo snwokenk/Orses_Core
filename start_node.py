@@ -2,6 +2,7 @@ from Orses_Administrator_Core.Administrator import Admin
 from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
 from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagator
+from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from twisted.internet.error import CannotListenError
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
@@ -18,6 +19,8 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
 
 # todo: refactor network propagator code to have each messsage as a pair of classes (sender, receiver class)
 # todo: in these pairs, each message should be able to speak and send data within itself
+
+# todo: refactor newly written messagesender and message_receiver to call transport.write() in same reactor thread
 
 # todo: start competing/block creation process, finish up the blockchain process
 # todo: Build a way to finish up any conversations with peers before ending program
@@ -173,6 +176,13 @@ def main():
         reg_listening_port=55600
     )
 
+    # *** instantiate network message sorter ***
+    network_message_sorter = NetworkMessageSorter(q_object_from_protocol, q_for_bk_propagate, q_for_propagate)
+
+    # *** run sorter in another thread ***
+    reactor.callInThread(network_message_sorter.run_sorter)
+
+
     # *** use to connect to or listen for connection from other verification nodes ***
     reactor.callFromThread(
         network_manager.run_veri_node_network,
@@ -184,6 +194,9 @@ def main():
         network_manager.run_regular_node_network,
         reactor
     )
+
+
+
 
     # *** creates a deferral, which allows user to exit program by typing "exit" or "quit" ***
     reactor.callWhenRunning(

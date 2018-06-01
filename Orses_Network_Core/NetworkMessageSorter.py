@@ -22,7 +22,7 @@ class NetworkMessageSorter:
         :return:
         """
         while True:
-            msg = self.q_object_from_protocol.get()  # msg = [protocol id, data], data = [convo id, etc]
+            msg = self.q_object_from_protocol.get()  # msg = [protocol id, data], data = [type(b or n), convo id, etc]
 
             try:
                 msg[1] = json.loads(msg[1].decode())
