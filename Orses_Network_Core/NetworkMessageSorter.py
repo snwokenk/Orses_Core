@@ -25,12 +25,12 @@ class NetworkMessageSorter:
             msg = self.q_object_from_protocol.get()  # msg = [protocol id, data], data = [type(b or n), convo id, etc]
 
             try:
-                msg[1] = json.loads(msg[1].decode())
+                msg[1] = json.loads(msg[1].decode())  # decode data bytes to string, then json decode
             except ValueError:
                 print("in NetworkMessageSorter, json message error")
                 continue
 
-            try:
+            try: # check what type of message, if 'n' then networkpropagator, if 'b' then blockchainpropagator
                 if msg[1][0] == 'n':
                     self.q_for_propagate.put(msg)
                 elif msg[1][0] == 'b':

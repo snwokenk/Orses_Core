@@ -402,10 +402,11 @@ class StatementSender(PropagatorMessageSender):
                 self.end_convo = True
                 self.end_convo_reason = msg[-1]
                 return
+
             if self.other_convo_id is None:
                 self.other_convo_id = msg[1][1]  # msg = ['n', [your convo id, other convo id], main_msg]
 
-            elif msg[-1] == self.send_tx_msg:
+            if msg[-1] == self.send_tx_msg:
                 self.speak(self.main_msg)
             elif msg[-1] == self.need_pubkey:
                 self.speak(self.msg_pubkey)

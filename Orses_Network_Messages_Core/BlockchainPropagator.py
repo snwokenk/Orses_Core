@@ -52,7 +52,7 @@ class BlockChainPropagator:
         self.connected_protocols_dict = dict()
         self.locally_known_block = BlockChainData.get_current_known_block()[0]
         self.has_current_block = False
-        self.protocol_with_most_recent_block = None  # [protocol id, block_no known]
+        self.protocol_with_most_recent_block = None  # [protocol id, convo_id, block_no known]
 
     def add_protocol(self, protocol):
 
@@ -71,7 +71,7 @@ class BlockChainPropagator:
         then sends signals for other threads/processes to go into event loop
         :return: [bool: was_able_to_update, bool: sent_signal_to_other_threads]
         """
-        if recursive_count >= 10:
+        if recursive_count >= 3:
             return [False, False]  # was_able_to_update, sent_signal_to_other_threads
 
         # first get most recent block
@@ -79,33 +79,50 @@ class BlockChainPropagator:
 
         # keep track of the protocols you sent requests to, (in case a new node connects and sends message
         protocol_list = set(self.connected_protocols_dict)
-        self.initiate_msg_to_protocol(RequestMostRecentBlockKnown, protocol_list) # find out which node has most recent block
+
+        # find out which node has most recent block
+        self.initiate_msg_to_protocol(RequestMostRecentBlockKnown, protocol_list)
         count = 0
         while count < len(self.connected_protocols_dict):
             try:
-                rsp = self.q_for_bk_propagate.get(timeout=15)  # will timeout in 15 seconds
+                rsp = self.q_for_bk_propagate.get(timeout=7)  # will timeout in 7 seconds
             except Empty:
                 count += 1
+                continue
             else:
+                protocol_id = rsp[0]
+                msg = rsp
+                local_convo_id = msg[1][0]  # convo_id for incoming msg [local convo id, other convo id]
                 count += 1 if rsp[0] in protocol_list else 0
 
+                self.reactor_instance.callFromThread(self.convo_dict[protocol_id][local_convo_id].listen, msg)
+
         if (self.protocol_with_most_recent_block is not None and
-                self.locally_known_block < self.protocol_with_most_recent_block[1]):
+                self.locally_known_block < self.protocol_with_most_recent_block[-1]):
             self.initiate_msg_to_protocol(RequestNewBlock, [self.protocol_with_most_recent_block[0]],
                                           lists_of_blocks_to_get)  # ask for blocks from node
+
+            # set protocol id and local_convo_id
+            protocol_id = self.protocol_with_most_recent_block[0]
+            local_convo_id = self.protocol_with_most_recent_block[1]
+            was_able_to_update = [False, False]  # [was able to get highest block, have sent it to other threads]
         else:
             self.has_current_block = True
+            was_able_to_update = [True, False]  # [was able to get highest block, have sent it to other threads]
 
         timeout_count = 0
-        was_able_to_update = [False, False]
-        while self.has_current_block is False:
-            if timeout_count < 3:
+
+        # todo: in self.protocol_with_most_recent_block, have a way of storing the convo_id
+
+        while self.has_current_block is False:  # get blocks from node with most recent block
+            if timeout_count > 3:
                 break
             try:
-                rsp = self.q_for_bk_propagate.get(timeout=15)
+                rsp = self.q_for_bk_propagate.get(timeout=4)
             except Empty:
                 timeout_count += 1
-                if self.convo_dict[self.convo_id].end_convo is True:
+
+                if self.convo_dict[protocol_id][local_convo_id].end_convo is True:
                     if self.locally_known_block >= self.protocol_with_most_recent_block[1]:
                         was_able_to_update = [True, False]
                         break
@@ -119,9 +136,11 @@ class BlockChainPropagator:
                 except ValueError:
                     pass
                 else:
-                    self.convo_dict[data[0]].listen(data)  # data[0] is convo id, listen does the rest
-                    if self.convo_dict[data[0]].end_convo is True:
-                        if self.locally_known_block >= self.protocol_with_most_recent_block[1]:
+
+                    # *** listen on convo with protocol with most recent block ***
+                    self.convo_dict[protocol_id][local_convo_id].listen(data)
+                    if self.convo_dict[protocol_id][local_convo_id].end_convo is True:
+                        if self.locally_known_block >= self.protocol_with_most_recent_block[-1]:
                             was_able_to_update = [True, False]
                             break
                         else:
@@ -133,7 +152,7 @@ class BlockChainPropagator:
             for i in range(5): # four other threads to start and 1 process to end, sends signal
                 self.q_object_between_initial_setup_propagators.put(True)
             return [True, True]
-        elif was_able_to_update[1] is True:
+        elif was_able_to_update[0] and was_able_to_update[1] is True:
             return [True, True]
 
         else:
@@ -194,7 +213,7 @@ class BlockChainPropagator:
         if type_of_msg_to_initiate == RequestNewBlock:
             for i in list_of_protocol_ids:
 
-                while True:
+                while True:  # check if convo_id is taken, if it is check if convo has ended. If not try another
                     convo_id = self.connected_protocols_dict[i][1]
                     if convo_id in self.convo_dict[i] and \
                             self.convo_dict[i][convo_id].end_convo is False:
@@ -202,7 +221,6 @@ class BlockChainPropagator:
                         continue
                     self.connected_protocols_dict[i][1] += 1
                     break
-
 
                 self.convo_dict[i][convo_id] = RequestNewBlock(
                     blocks_to_receive=args[0],
@@ -231,7 +249,6 @@ class BlockChainPropagator:
                 self.convo_dict[i][convo_id].speak()
 
 
-
 # *** base message sender class ***
 class BlockChainMessageSender:
     def __init__(self, protocol, convo_id):
@@ -246,7 +263,9 @@ class BlockChainMessageSender:
         self.messages_heard = set()
         self.end_convo = False
         self.protocol = protocol
-        self.convo_id = convo_id
+        self.local_convo_id = convo_id
+        self.other_convo_id = None  # in listen() get other convo_id
+        self.convo_id = [self.other_convo_id, self.local_convo_id]
         self.sent_first_msg = False
 
     def speak(self):
@@ -258,7 +277,7 @@ class BlockChainMessageSender:
 
 # *** base  message receiver class ***
 class BlockChainMessageReceiver:
-    def __init__(self, protocol, convo_id):
+    def __init__(self, protocol, convo_id: list):
         """
 
         :param protocol: the protocol class representing a connection, use as self.protocol.transport.write()
@@ -270,7 +289,9 @@ class BlockChainMessageReceiver:
         self.need_pubkey = 'wpk'
         self.messages_heard = set()
         self.protocol = protocol
-        self.convo_id = convo_id
+        self.local_convo_id = convo_id[0]
+        self.other_convo_id = convo_id[1]  # when receiving from other, the other's local id is added here
+        self.convo_id = [self.other_convo_id, self.local_convo_id]
         self.end_convo = False
         self.received_first_msg = False
 
@@ -293,7 +314,7 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
 
     def speak(self):
 
-        msg = json.dumps([self.msg_type, self.convo_id, "knw_blk"]).encode()
+        msg = json.dumps([self.msg_type, self.convo_id, ["knw_blk"]]).encode()
         self.protocol.transport.write(msg)
 
     def listen(self, msg):
@@ -304,7 +325,11 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
         self.end_convo = True
         if self.blockchainPropagator.protocol_with_most_recent_block is not None and \
                         self.blockchainPropagator.protocol_with_most_recent_block < msg[-1]:
-                self.blockchainPropagator.protocol_with_most_recent_block = [self.protocolId, msg[-1]]
+                self.blockchainPropagator.protocol_with_most_recent_block = [self.protocolId,
+                                                                             self.local_convo_id, msg[-1]]
+        elif self.blockchainPropagator.protocol_with_most_recent_block is None:
+            self.blockchainPropagator.protocol_with_most_recent_block = [self.protocolId,
+                                                                         self.local_convo_id, msg[-1]]
 
 
 class SendMostRecentBlockKnown(BlockChainMessageReceiver):
@@ -333,7 +358,7 @@ class RequestNewBlock(BlockChainMessageSender):
         # recent block, if index 0 is 0 and index 1 are -1 then send the whole blockchain (speaker has option of send
         # only a part of request
         super().__init__(protocol, convo_id)
-        self.blocks_to_receive = blocks_to_receive
+        self.blocks_to_receive = ["req_block", blocks_to_receive]
         self.blockchainPropagator = blockchainPropagatorInstance
 
     def speak(self, rsp=None):
@@ -342,7 +367,7 @@ class RequestNewBlock(BlockChainMessageSender):
 
             if self.sent_first_msg is False and rsp is None:
                 self.sent_first_msg = True
-                msg = json.dumps([self.msg_type, self.convo_id, "req_block", self.blocks_to_receive]).encode()
+                msg = json.dumps([self.msg_type, self.convo_id, self.blocks_to_receive]).encode()
                 self.protocol.transport.write(msg)
             elif rsp is True:
                 msg = json.dumps([self.msg_type, self.convo_id, self.verified_msg]).encode()
@@ -356,6 +381,9 @@ class RequestNewBlock(BlockChainMessageSender):
 
         if self.end_convo is False:
             if isinstance(msg, list):
+                if self.other_convo_id is None:
+                    self.other_convo_id = msg[1][1]  # msg = ['b', [your convo id, other convo id], main_msg]
+
                 if msg[-1] is True:  # no need to speak, convo already ended on other side
                     self.end_convo = True  # end convo
                     rsp = self.save_block(msg[1], msg[2]) if len(msg) == 4 else False  # save last block
@@ -393,7 +421,8 @@ class SendNewBlocksRequested(BlockChainMessageReceiver):
 
     def listen(self, msg):
         """
-        :param msg: list with [convo_id, main msg] if first message then [convo_id, "req_block", list of blocks to send]
+        :param msg: list with ['b', convo_id, main msg]
+            if first message then ['b', convo_id, ["req_block", list of blocks to send]]
         :return: None, invokes the self.speak() method which writes directly to other node
         """
 
@@ -402,8 +431,7 @@ class SendNewBlocksRequested(BlockChainMessageReceiver):
                 self.end_convo = True
             elif self.received_first_msg is False:
                 self.received_first_msg = True
-                self.convo_id = msg[0]
-                self.create_iterator_of_blocks_to_send(msg[-1])
+                self.create_iterator_of_blocks_to_send(msg[-1][-1])
                 self.speak()
             else:
                 self.speak()
@@ -412,7 +440,7 @@ class SendNewBlocksRequested(BlockChainMessageReceiver):
 
         block = self.get_block()
 
-        if block:
+        if block:  # few times that len(msg) is != 3
             msg = [self.prop_type, self.convo_id, self.cur_block_no, block, False]
         else:
             self.end_convo = True
