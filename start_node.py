@@ -17,16 +17,11 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
-# todo: refactor network propagator code to have each messsage as a pair of classes (sender, receiver class)
-# todo: in these pairs, each message should be able to speak and send data within itself
 
-# todo: refactor newly written messagesender and message_receiver to call transport.write() in same reactor thread
+# todo: refactor convo_dict in blockchainpropagator and self.convo_id
 
 # todo: start competing/block creation process, finish up the blockchain process
 # todo: Build a way to finish up any conversations with peers before ending program
-
-# todo: create a process which receives messages from protocol, when dataReceived is called. This process then
-# todo cont: determines which propagator process the message goes (transaction message propagator or block propagator)
 
 # todo: protocol_id can conflict between VeriNodeConnector and VeriNodeListener. Make protocol id to increment when
 # todo: either  is created.

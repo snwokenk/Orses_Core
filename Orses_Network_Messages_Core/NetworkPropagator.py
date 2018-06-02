@@ -293,7 +293,8 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
             prop_sender = StatementSender(
                 protocol=propagator_inst.connected_protocols_dict[i][0],
                 convo_id=convo_id,
-                validated_message_list=rsp
+                validated_message_list=rsp,
+                propagator_inst=propagator_inst
 
             )
 
@@ -304,12 +305,13 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
 
 # *** base message sender class ***
 class PropagatorMessageSender:
-    def __init__(self, protocol, convo_id):
+    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator):
         """
 
         :param protocol: the protocol class representing a connection, use as self.protocol.transport.write()
         :param convo_id: the convo id used by propagator to keep track of message
         """
+        self.propagator_inst = propagator_inst
         self.last_msg = 'end'
         self.verified_msg = 'ver'
         self.rejected_msg = 'rej'
@@ -332,7 +334,10 @@ class PropagatorMessageSender:
         """override"""
 
     def speaker(self, msg):
-        self.protocol.transport.write(json.dumps([self.prop_type, self.convo_id, msg]).encode())
+        self.propagator_inst.reactor_instance.callFromThread(
+            self.protocol.transport.write,
+            json.dumps([self.prop_type, self.convo_id, msg]).encode()
+        )
 
 
 # *** base  message receiver class ***
@@ -355,7 +360,7 @@ class PropagatorMessageReceiver:
         self.local_convo_id = convo_id[0]
         self.other_convo_id = convo_id[1]  # when receiving from other, the other's local id is added here
         self.convo_id = [self.other_convo_id, self.local_convo_id]
-        self.propagatorInst = propagator_inst
+        self.propagator_inst = propagator_inst
         self.end_convo = False
         self.received_first_msg = False
         self.received_tx_msg = False
@@ -369,12 +374,15 @@ class PropagatorMessageReceiver:
         """override"""
 
     def speaker(self, msg):
-        self.protocol.transport.write(json.dumps([self.prop_type, self.convo_id, msg]).encode())
+        self.propagator_inst.reactor_instance.callFromThread(
+            self.protocol.transport.write,
+            json.dumps([self.prop_type, self.convo_id, msg]).encode()
+        )
 
 
 class StatementSender(PropagatorMessageSender):
-    def __init__(self, protocol, convo_id, validated_message_list):
-        super().__init__(protocol, convo_id)
+    def __init__(self, protocol, convo_id, validated_message_list, propagator_inst):
+        super().__init__(protocol, convo_id, propagator_inst)
         self.tx_hash_preview_with_reason = validated_message_list[0]  # string with reason letter-8char hash preview
         self.msg_pubkey = validated_message_list[1]
         self.main_msg = validated_message_list[2]  # this will be serialized at later stage
@@ -415,10 +423,10 @@ class StatementReceiver(PropagatorMessageReceiver):
                 self.end_convo = True
             elif self.received_first_msg is False:  # will be turned to true in self.speak()
                 # have seen and accepted transaction
-                if msg[-1] in self.propagatorInst.validated_message_dict_with_hash_preview:
+                if msg[-1] in self.propagator_inst.validated_message_dict_with_hash_preview:
                     self.speak(rsp=True)
                 # have seen and rejected transaction
-                elif msg[-1] in self.propagatorInst.invalidated_message_dict_with_hash_preview:
+                elif msg[-1] in self.propagator_inst.invalidated_message_dict_with_hash_preview:
                     self.speak(rsp=False)
                 # has not seen transaction
                 else:

@@ -47,7 +47,7 @@ class BlockChainPropagator:
         self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
         self.reactor_instance = reactor_instance
-        self.conversations_dict = dict()
+        self.convo_dict = dict()
         self.convo_id = 0
         self.connected_protocols_dict = dict()
         self.locally_known_block = BlockChainData.get_current_known_block()[0]
@@ -57,11 +57,13 @@ class BlockChainPropagator:
     def add_protocol(self, protocol):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
-        self.connected_protocols_dict.update({protocol.proto_id: protocol})
+        self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
+        self.convo_dict[protocol.proto_id] = dict()
 
     def remove_protocol(self, protocol):
 
         del self.connected_protocols_dict[protocol.proto_id]
+        del self.convo_dict[protocol.proto_id]
 
     def initial_setup(self, recursive_count=0):
         """
@@ -103,7 +105,7 @@ class BlockChainPropagator:
                 rsp = self.q_for_bk_propagate.get(timeout=15)
             except Empty:
                 timeout_count += 1
-                if self.conversations_dict[self.convo_id].end_convo is True:
+                if self.convo_dict[self.convo_id].end_convo is True:
                     if self.locally_known_block >= self.protocol_with_most_recent_block[1]:
                         was_able_to_update = [True, False]
                         break
@@ -117,8 +119,8 @@ class BlockChainPropagator:
                 except ValueError:
                     pass
                 else:
-                    self.conversations_dict[data[0]].listen(data)  # data[0] is convo id, listen does the rest
-                    if self.conversations_dict[data[0]].end_convo is True:
+                    self.convo_dict[data[0]].listen(data)  # data[0] is convo id, listen does the rest
+                    if self.convo_dict[data[0]].end_convo is True:
                         if self.locally_known_block >= self.protocol_with_most_recent_block[1]:
                             was_able_to_update = [True, False]
                             break
@@ -191,29 +193,43 @@ class BlockChainPropagator:
 
         if type_of_msg_to_initiate == RequestNewBlock:
             for i in list_of_protocol_ids:
-                convo_id = self.convo_id
-                self.conversations_dict[convo_id] = RequestNewBlock(
+
+                while True:
+                    convo_id = self.connected_protocols_dict[i][1]
+                    if convo_id in self.convo_dict[i] and \
+                            self.convo_dict[i][convo_id].end_convo is False:
+                        self.connected_protocols_dict[i][1] += 1
+                        continue
+                    self.connected_protocols_dict[i][1] += 1
+                    break
+
+
+                self.convo_dict[i][convo_id] = RequestNewBlock(
                     blocks_to_receive=args[0],
-                    protocol=self.connected_protocols_dict[i],
+                    protocol=self.connected_protocols_dict[i][0],
                     convo_id=convo_id,
                     blockchainPropagatorInstance=self
                 )
-                self.conversations_dict[convo_id].speak()
-                if self.convo_id == convo_id:
-                    self.convo_id+=1
+                self.convo_dict[i][convo_id].speak()
 
         elif type_of_msg_to_initiate == RequestMostRecentBlockKnown:
             for i in self.connected_protocols_dict:
-                convo_id = self.convo_id
-                self.conversations_dict[convo_id] = RequestMostRecentBlockKnown(
-                    protocol= self.connected_protocols_dict[i],
+                while True:
+                    convo_id = self.connected_protocols_dict[i][1]
+                    if convo_id in self.convo_dict[i] and \
+                                    self.convo_dict[i][convo_id].end_convo is False:
+                        self.connected_protocols_dict[i][1] += 1
+                        continue
+                    self.connected_protocols_dict[i][1] += 1
+                    break
+                self.convo_dict[i][convo_id] = RequestMostRecentBlockKnown(
+                    protocol= self.connected_protocols_dict[i][0],
                     convo_id=convo_id,
                     protocol_id=i,
                     blockchainPropagatorInstance=self
                 )
-                self.conversations_dict[convo_id].speak()
-                if self.convo_id == convo_id:
-                    self.convo_id+=1
+                self.convo_dict[i][convo_id].speak()
+
 
 
 # *** base message sender class ***
