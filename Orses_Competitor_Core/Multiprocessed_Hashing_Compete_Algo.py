@@ -2,7 +2,7 @@ from Orses_Cryptography_Core.Hasher import Hasher
 from hashlib import sha256
 
 from subprocess import Popen, run
-import time, json, multiprocessing, os, queue
+import time, json, multiprocessing, os, queue, copy
 
 from Orses_Competitor_Core.Compete_Process import genesis_block
 
@@ -33,10 +33,11 @@ def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_ha
     block_header["nonce"] = starting_nonce
     # dict_of_valid_nonce_hash = dict()
     end_time = time.time() + len_competition
+    combined_merkle = f'{block_header["merkle_root"]}+{block_header["primary_signatory"]}'
     while time.time() < end_time:
         get_qualified_hashes(
             prime_char=prime_char,
-            hash_hex=competitive_hasher(f'{block_header["merkle_root"]}{block_header["nonce"]}'.encode()),
+            hash_hex=competitive_hasher(f'{combined_merkle}{block_header["nonce"]}'.encode()),
             dict_of_valid_hash=dict_of_valid_nonce_hash,
             len_prime_char=exp_leading,
             nonce=block_header["nonce"]
@@ -61,17 +62,17 @@ def threaded_compete(single_prime_char, addl_chars, exp_leading, block_header, l
     dict_of_valid_nonce_hash = manager.dict()
     starting_nonce = 0
     for i in range(num_cpu):
-        process_list.append(Process(target=compete, args=(single_prime_char,exp_leading,block_header,
+        process_list.append(Process(target=compete, args=(single_prime_char,exp_leading, copy.deepcopy(block_header),
                                                           dict_of_valid_nonce_hash, starting_nonce, q,
                                                           len_competition),))
         starting_nonce += 10_000_000
     for process in process_list:
         process.daemon= True
         process.start()
-    total_hashes += q.get()
+    total_hashes += q.get()  # first hash process to be finished
     for i in range(num_cpu-1):
         print(i)
-        total_hashes += q.get()
+        total_hashes += q.get()  # remaining hashes
 
     print("hash Per Second", total_hashes/len_competition)
     # print(dict_of_valid_nonce_hash)
@@ -137,11 +138,12 @@ if __name__ == '__main__':
 
     data = genesis_block["block_header"]
 
-    v = threaded_compete(single_prime_char='0', exp_leading=5, block_header=data, len_competition=90, addl_chars='a7c')
+    v = threaded_compete(single_prime_char='f', exp_leading=5, block_header=data, len_competition=90, addl_chars='edc')
     print("v", v)
     print("-")
     # print(data)
-    data["nonce"] = v["nonce"]
+    data["nonce"] = format(v["nonce"][0], "x")
+    data["block_hash"] = v["nonce"][1]
 
 
     print(data)

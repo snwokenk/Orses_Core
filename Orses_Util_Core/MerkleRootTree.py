@@ -209,12 +209,22 @@ class OrsesMerkleRootTree:
 
 if __name__ == '__main__':
 
+    list1 = {
+        "feaa53609b4265078f8cef123ba43e01cc2ca6871f05bea9efafa6133a9914c5": {
+            "Wd8661c5e3c7b93f5344f4c2536470f383071dd43": 850_000_000.00
+        },
 
-    list1 =  {
-        "Wd8661c5e3c7b93f5344f4c2536470f383071dd43": 850_000_000,
-        "W0df521b542a840cb5d5ed6c819e913af83b4baa4": 150_000_000,
-        "W82d9d7288822e181851add314956744f308d7841": 35_000_000,
-        "Waaa4adb908bd17966b757b8fe93d4f95330ff2c6": 50_000_000
+        "c8472e1e64cfe50d6572691b8969a5f7e3ac8115aff39f36fe40b753a4af579a": {
+            "W0df521b542a840cb5d5ed6c819e913af83b4baa4": 150_000_000.00
+        },
+
+        "ecbc97cd733a59c53e47779fe2952700693433b2ffe21292465e350f4173d68d": {
+            "W82d9d7288822e181851add314956744f308d7841": 35_000_000.00
+        },
+
+        "f565b624af274d345b268fbe15c108064d0b10c2d4d17d6ad0bb8064e939bb8d": {
+            "Waaa4adb908bd17966b757b8fe93d4f95330ff2c6": 50_000_000.00
+        }
     }
 
     merkle_tree = OrsesMerkleRootTree(list(list1))
@@ -223,13 +233,15 @@ if __name__ == '__main__':
     print(merkle_tree.merkle_root)
     # print(merkle_tree.tree, "\n")
 
-    tx_to_validate = "Wd8661c5e3c7b93f5344f4c2536470f383071dd43"
+    tx_to_validate = "feaa53609b4265078f8cef123ba43e01cc2ca6871f05bea9efafa6133a9914c5"
     #
     proof_list1 = merkle_tree.get_branch_for_proof(tx_to_validate)
     print("----------")
+    print(proof_list1)
+    print("**********")
     isValidated = merkle_tree.validate_branch_for_proof(
         leaf_node_hash=tx_to_validate,
-        merkle_root="d88397fb3c91614409bf6358848baa305aea28bbc2cc1ba87503ca2f20cfb578",
+        merkle_root="456f4f16b6abbcd4ee4f06e0f96c511c8731ee8b77e68fe7ab25fc6e8171bfa2",
         proof_list=proof_list1
     )
 
