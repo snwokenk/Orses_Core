@@ -29,8 +29,15 @@ class NetworkMessageSorter:
             except ValueError:
                 print("in NetworkMessageSorter, json message error")
                 continue
+            except AttributeError:  # not able to decode() probably a string
+                if isinstance(msg, str) and msg in {"quit", "exit"}:
+                    break
+                else:
+                    continue
+
 
             try: # check what type of message, if 'n' then networkpropagator, if 'b' then blockchainpropagator
+                print("in message sorter", msg)
                 if msg[1][0] == 'n':
                     self.q_for_propagate.put(msg)
                 elif msg[1][0] == 'b':
@@ -39,5 +46,7 @@ class NetworkMessageSorter:
                     print("msg could not be sent to any process", msg)
             except IndexError:
                 continue
+
+        print("in NetworkMessageSorter.py Sorter Ended")
 
 

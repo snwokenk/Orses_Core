@@ -173,21 +173,21 @@ class BlockChainPropagator:
             print("ending block initiator, Setup Not Able")
             return
 
-        while True:
-            msg = self.q_object_connected_to_block_validator.get()
-            break
-
         try:
             if self.q_object_compete:  # competing process, used to propagate self or other's blocks
 
                 while True:
-
-                    rsp = self.q_object_connected_to_block_validator()
+                    rsp = self.q_object_connected_to_block_validator.get()
+                    break
             else:
-                pass
+                while True:
+                    msg = self.q_object_connected_to_block_validator.get()
+                    break
 
         except (KeyboardInterrupt, SystemExit):
             pass
+
+        print("in BlockchainPropagator convo initiator ended")
 
     def run_propagator_convo_manager(self):
 
@@ -198,8 +198,12 @@ class BlockChainPropagator:
             return
 
         while True:
-            msg = self.q_for_bk_propagate # [protocol_id, data_list],  data_list=['b', convo_id, etc]
+            msg = self.q_for_bk_propagate.get() # [protocol_id, data_list],  data_list=['b', convo_id, etc]
+            print("in convo manager: message", msg)
             break
+
+        print("In BlockchainPropagator.py convo manager ended")
+
 
     def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids,*args):
         """

@@ -25,15 +25,16 @@ class BlockChainData:
         :return: returns the last known block, this is then used to query the network for newer blocks
         """
         file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data", "last_block_number")
-        print(file1)
-        print("file not found")
+
 
         try:
             with open(file1, "r") as jfile:
                 block_number = json.load(jfile)
         except FileNotFoundError:
+            print("File Not Found in CompetitorDataLoading.py")
             return None
         else:
+            print("File Found in CompetitorDataLoading.py")
             try:
                 with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
                                        f"{block_number}"), "r") as inBlock:

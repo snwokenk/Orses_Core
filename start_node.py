@@ -18,6 +18,7 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
                                                         "goto www.python.org to install/upgrade"
 
 
+# todo: reimplement PKI to use ECDSA vs RSA, to reduce key and signature size
 # todo: refactor convo_dict in blockchainpropagator and self.convo_id
 
 # todo: start competing/block creation process, finish up the blockchain process
@@ -104,7 +105,8 @@ def main():
 
         if compete == "y":
             print("\n a new competitor message will be sent to the network and included in the blockchain. \n"
-                  "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other competitors")
+                  "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other "
+                  "competitors and proxy nodes")
             admin.isCompetitor = True
             # todo: add logic to create new competitor network message for inclusion into the blockchain
         elif compete == "n":
@@ -120,8 +122,8 @@ def main():
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
     q_for_bk_propagate = multiprocessing.Queue()
-    q_for_block_validator = multiprocessing.Queue()
-    q_for_initial_setup = multiprocessing.Queue()
+    q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
+    q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
     q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
@@ -201,7 +203,8 @@ def main():
         q_for_bk_propagate,
         q_for_compete,
         q_object_from_protocol,
-        q_for_validator
+        q_for_validator,
+        q_for_block_validator
     )
 
     # *** set propagator's network manager variable to network manager instance ***

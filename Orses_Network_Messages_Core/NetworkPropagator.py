@@ -123,6 +123,7 @@ class NetworkPropagator:
         if initial_setup_done is False:
             print("ending convo, Setup Not Able")
             return
+        print("Network Propagator, Initial Setup Done")
         reactor = self.reactor_instance
         try:
 
