@@ -134,7 +134,7 @@ class Admin:
         user_info_dict["admin_name"] = self.admin_name
         user_info_dict["admin_id"] = self.admin_id
         user_info_dict["creation_time"] = self.creation_time
-        user_info_dict["pubkey_hex"] = self.pubkey.hex()
+        user_info_dict["pubkey_hex"] = pki.load_pub_key(x_y_only=True)
         user_info_dict["encrypted_private_key"] = pki.load_priv_key(importedKey=False, encrypted=True)
 
         with open(exp_path, "w") as outfile:

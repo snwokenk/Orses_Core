@@ -4,16 +4,17 @@ RSA-3072 used
 
 """
 
-from Crypto.PublicKey import RSA
+from Crypto.PublicKey import ECC
 from Orses_Cryptography_Core.Encryption import Encrypt
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Util_Core import Filenames_VariableNames
 from Orses_Cryptography_Core.Decryption import Decrypt
+import base64
 
 
 class PKI:
     def __init__(self, username, password):
-        self.combinedkey = RSA.generate(3072)
+        self.combinedkey = ECC.generate(curve="P-256")
         self.username = username
         self.password = password
         self.pubkey = None
@@ -25,12 +26,18 @@ class PKI:
         if overwrite is False and self.load_pub_key():
             return "Keys under that username and client id already exist"
 
+        x_coord = int(self.combinedkey.pointQ.x).to_bytes(length=32, byteorder="big")
+        y_coord = int(self.combinedkey.pointQ.y).to_bytes(length=32, byteorder="big")
 
-        # set pubkey
-        self.pubkey = self.combinedkey.publickey().exportKey()
+        # set pubkey of ECC and save x and y numbers
+        self.pubkey = {
+            "x": base64.b85encode(x_coord).decode(),
+            "y": base64.b85encode(y_coord).decode()
+        }
 
         # encrypting private key
-        encrypted_key_list = Encrypt(self.combinedkey.exportKey(format="PEM", pkcs=8), password=self.password).encrypt()
+        d_coord = int(self.combinedkey.d).to_bytes(length=32, byteorder="big")
+        encrypted_key_list = Encrypt(plaintext=base64.b85encode(d_coord).decode(), password=self.password).encrypt()
 
         # save keys are saved using user name
         self.__save_key(encrypted_key_list, save_in_folder=save_in_folder)
@@ -41,7 +48,7 @@ class PKI:
     def __save_key(self, encrypted_key_list, save_in_folder):
 
         # save public key in file named username_pubkey
-        FileAction.save_json_into_file(self.pubkey_file, python_json_serializable_object=self.pubkey.hex(),
+        FileAction.save_json_into_file(self.pubkey_file, python_json_serializable_object=self.pubkey,
                                        in_folder=save_in_folder)
 
         # save private key in file named username_encrypted_key
@@ -77,27 +84,48 @@ class PKI:
 
         # decrypt encrypted key
         decrypted_key = Decrypt(list_of_encrypted_privkey_tag_nonce_salt, password=self.password).decrypt()
+
         if importedKey is True and decrypted_key:
-            return RSA.importKey(decrypted_key)
+            pubkey = self.load_pub_key(x_y_only=True)
+            x_int = base64.b85decode(pubkey["x"])
+            x_int = int.from_bytes(x_int, "big")
+
+            y_int = base64.b85decode(pubkey["y"])
+            y_int = int.from_bytes(y_int, "big")
+
+            d_int = base64.b85decode(decrypted_key)
+            y_int = int.from_bytes(d_int, "big")
+
+            return ECC.construct(d=d_int, point_x=x_int, point_y=y_int)
         else:
             return decrypted_key
 
-    def load_pub_key(self, importedKey=True, user_or_wallet="user"):
+    def load_pub_key(self, importedKey=True, x_y_only=False, user_or_wallet="user"):
 
         if user_or_wallet == "user":
-            pubkey_hex = FileAction.open_file_from_json(
+            pubkey = FileAction.open_file_from_json(
                 self.pubkey_file, in_folder=Filenames_VariableNames.admins_folder)
         else:
-           pubkey_hex =  FileAction.open_file_from_json(
+           pubkey =  FileAction.open_file_from_json(
                self.pubkey_file, in_folder=Filenames_VariableNames.wallets_folder)
 
-        if not pubkey_hex:
+        if not pubkey:  # no public key saved with user name
             return False
-        pubkey_bytes = bytes.fromhex(pubkey_hex)
+        pubkey_bytes = base64.b85decode(pubkey['x'].encode())+base64.b85decode(pubkey['y'].encode())
 
-        if importedKey is True:
-            return RSA.importKey(pubkey_bytes)
+        if importedKey is True and x_y_only is False:
+            # construct public key and return a key object or importedKey
+            return ECC.construct(point_x=pubkey["x"], point_y=pubkey["y"])
+        elif x_y_only is True:
+            # returns a dictionary with {"x": base85 string, "y": base85 string}
+            # this string can be turned back into number using:
+            # x_int = base64.b85decode(string.encode())
+            # x_int = int.from_bytes(x_int, "big")
+            return pubkey
         else:
+
+            # looking for bytes probably to generate user id
+            # bytes is done by concatenating the bytes of x and y. see explanation above on how to get the bytes
             return pubkey_bytes
 
 
