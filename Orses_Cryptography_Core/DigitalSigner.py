@@ -1,4 +1,4 @@
-from Crypto.Signature import pkcs1_15
+from Crypto.Signature import DSS
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 
@@ -55,13 +55,16 @@ class DigitalSigner:
 
         # if not already a byte string turn it to making sure
         if not isinstance(message, (bytes, str)):
-            message = str(message).encode()
+            return None
         elif isinstance(message, str):
             message = message.encode()
 
         hash_of_message = SHA256.new(message)
 
-        digital_signature = pkcs1_15.new(self.privkey).sign(hash_of_message)
+        signer = DSS.new(self.privkey, mode="fips-186-3")
+
+        digital_signature = signer.sign(hash_of_message)
+        digital_signature = base64.b85encode(digital_signature).decode()
 
         return digital_signature
 
@@ -73,10 +76,16 @@ class DigitalSigner:
         :param message: byte string,message to be signed, usually bytes of signature of client private key
         :return: bytes, digital signature
         """
+        if not isinstance(message, (bytes, str)):
+            return None
+        elif isinstance(message, str):
+            message = message.encode()
 
         hash_of_message = SHA256.new(message)
 
-        digital_signature = pkcs1_15.new(wallet_privkey).sign(hash_of_message)
+        signer = DSS.new(wallet_privkey, mode="fips-186-3")
+
+        digital_signature = signer.sign(hash_of_message)
         digital_signature = base64.b85encode(digital_signature).decode()
 
         return digital_signature

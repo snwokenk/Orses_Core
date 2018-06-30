@@ -17,6 +17,8 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: make sure Administrator class and validator classes are reimplemented with ECDSA.
+# todo: save_user() method should save the two separate numbers x and y
 # todo: CONTINUE IMPLEMENTING ECC, MAKE SURE LOAD PUBKEY AND PRIVKEY ARE IMPLEMENTING ECC AND NOT RSA
 
 # todo: reimplement PKI to use ECDSA vs RSA, to reduce key and signature size

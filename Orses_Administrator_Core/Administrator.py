@@ -134,7 +134,7 @@ class Admin:
         user_info_dict["admin_name"] = self.admin_name
         user_info_dict["admin_id"] = self.admin_id
         user_info_dict["creation_time"] = self.creation_time
-        user_info_dict["pubkey_hex"] = pki.load_pub_key(x_y_only=True)
+        user_info_dict["pubkey_dict"] = pki.load_pub_key(x_y_only=True)
         user_info_dict["encrypted_private_key"] = pki.load_priv_key(importedKey=False, encrypted=True)
 
         with open(exp_path, "w") as outfile:
@@ -199,12 +199,12 @@ class Admin:
 
         # save pubkey hex to file and set pubkey, pubkey saved in hex format, self.pubkey is set to bytes format
         pub_filename = Filenames_VariableNames.pub_key_filename.format(self.admin_name)
-        FileAction.save_json_into_file(pub_filename, python_json_serializable_object=admin_data["pubkey_hex"],
+        FileAction.save_json_into_file(pub_filename, python_json_serializable_object=admin_data["pubkey_dict"],
                                        in_folder=Filenames_VariableNames.admin_data)
         self.pubkey = pki.load_pub_key(importedKey=False)
 
 
-        # set client id
+        # set admin id
         self.admin_id = admin_data["admin_id"]
 
         # set creation time
