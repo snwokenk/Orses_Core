@@ -2,6 +2,7 @@ from Crypto.Hash import SHA256, RIPEMD160
 
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 from Orses_Database_Core import RetrieveData, StoreData
+from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 import time, json
 
 
@@ -26,7 +27,8 @@ class AssignmentStatementValidator:
         asgn_stmt key: 'snd_wid|rcv_wid|bk_conn_wid|amt|fee|timestamp|timelimit'
 
         :param wallet_pubkey: json.encoded dict:
-                {"x": base85 string, "y": base85 string}
+                "{"x": base85 string, "y": base85 string}"
+                json decode to get back python object
                 To turn back into string for use
                 x_int = base64.b85decode(wallet_pubkey["x"].encode())
                 x_int = int.from_bytes(x_int, "big")
@@ -57,6 +59,11 @@ class AssignmentStatementValidator:
             snd_wid = self.asgn_stmt_list[0]
 
             self.sending_wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+
+            print("sending wallet pubkey in AssignmentStatementValidator.py : ", self.sending_wallet_pubkey,
+                  type(self.sending_wallet_pubkey))
+            self.non_json_wallet_pubkey = None if not self.sending_wallet_pubkey else \
+                json.loads(self.sending_wallet_pubkey)
             # print(len(snd_wid))
             # print("sending pubkey: ", self.sending_wallet_pubkey)
         else:
@@ -73,6 +80,7 @@ class AssignmentStatementValidator:
         'snd_wid|rcv_wid|bk_conn_wid|amt|fee|timestamp|timelimit'
         :return:
         """
+        # print("Assignmentstatementvalidator.py, s.qobject: ", self.q_object)
 
         if self.sending_wallet_pubkey == "":
             return None
@@ -103,17 +111,31 @@ class AssignmentStatementValidator:
 
             # pass validated message to network propagator and competing process(if active)
             # 'a' reason message for assignment statement
+
             if self.q_object:
-                self.q_object.put([f'a{self.stmt_hash[:8]}',  self.sending_wallet_pubkey.hex(), self.asgn_stmt_dict, True])
+                try:
+                    # print("In assignmentstatementvallidator.py, Sending to Q_object True")
+                    self.q_object.put([f'a{self.stmt_hash[:8]}', self.sending_wallet_pubkey, self.asgn_stmt_dict, True])
+                except Exception as e:
+                    print("in AssignmentStatementValidator.py, exception in check_validity() ", e)
+
             return True
         else:
             if self.q_object:
-                self.q_object.put([f'a{self.stmt_hash[:8]}',  self.sending_wallet_pubkey.hex(), self.asgn_stmt_dict, False])
+                # print("In assignmentstatementvallidator.py, Sending to Q_object False")
+                self.q_object.put([f'a{self.stmt_hash[:8]}',  self.sending_wallet_pubkey, self.asgn_stmt_dict, False])
 
             return False
 
     def check_client_id_owner_of_wallet(self):
-        step1 = SHA256.new(self.sending_wallet_pubkey + self.sending_client_id.encode()).digest()
+        step1 = SHA256.new(
+            WalletPKI.generate_key_from_parts(
+                x=self.non_json_wallet_pubkey["x"],
+                y=self.non_json_wallet_pubkey["y"],
+                in_bytes=True
+            ) + self.sending_client_id.encode()
+        ).digest()
+
         derived_wid = "W" + RIPEMD160.new(step1).hexdigest()
 
         print("owner check: ", derived_wid == self.sending_wid)

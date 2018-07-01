@@ -1,6 +1,7 @@
 from Crypto.Hash import SHA256, RIPEMD160
 
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
+from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 from Orses_Database_Core import RetrieveData, StoreData
 import time, json
 
@@ -9,6 +10,7 @@ class TokenReservationRevokeValidator:
     def __init__(self, tkn_rvk_dict, wallet_pubkey=None, q_object=None):
         self.tkn_rvk_dict = tkn_rvk_dict
         self.wallet_pubkey = wallet_pubkey
+        self.non_json_wallet_pubkey = None
         self.rvk_req_json = json.dumps(tkn_rvk_dict["rvk_req"])
         self.fee = tkn_rvk_dict["rvk_req"]["fee"]
         self.timestamp = tkn_rvk_dict["rvk_req"]["time"]
@@ -32,8 +34,13 @@ class TokenReservationRevokeValidator:
             snd_wid = self.wallet_id
 
             self.wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+            self.non_json_wallet_pubkey = None if not self.wallet_pubkey else \
+                json.loads(self.wallet_pubkey)
             # print(len(snd_wid))
             # print("sending pubkey: ", self.sending_wallet_pubkey)
+
+        else:
+            self.non_json_wallet_pubkey = json.loads(self.wallet_pubkey)
 
     def check_validity(self):
         if self.wallet_pubkey == "":
@@ -63,16 +70,23 @@ class TokenReservationRevokeValidator:
             # pass validated message to network propagator and competing process(if active)
             # 'd' reason message for token reservation revoke msg
             if self.q_object:
-                self.q_object.put([f'd{self.tx_hash[:8]}', self.wallet_pubkey.hex(), self.tkn_rvk_dict, True])
+                self.q_object.put([f'd{self.tx_hash[:8]}', self.wallet_pubkey, self.tkn_rvk_dict, True])
 
             return True
         else:
             if self.q_object:
-                self.q_object.put([f'd{self.tx_hash[:8]}', self.wallet_pubkey.hex(), self.tkn_rvk_dict, False])
+                self.q_object.put([f'd{self.tx_hash[:8]}', self.wallet_pubkey, self.tkn_rvk_dict, False])
             return False
 
     def check_client_id_owner_of_wallet(self):
-        step1 = SHA256.new(self.wallet_pubkey + self.client_id.encode()).digest()
+        step1 = SHA256.new(
+            WalletPKI.generate_key_from_parts(
+                x=self.non_json_wallet_pubkey["x"],
+                y=self.non_json_wallet_pubkey["y"],
+                in_bytes=True
+            ) + self.client_id.encode()
+        ).digest()
+
         derived_wid = "W" + RIPEMD160.new(step1).hexdigest()
 
         print("owner check: ", derived_wid == self.wallet_id)
@@ -81,7 +95,7 @@ class TokenReservationRevokeValidator:
 
     def check_signature_valid(self):
         response = DigitalSignerValidator.validate_wallet_signature(msg=self.rvk_req_json,
-                                                                    wallet_pubkey=self.wallet_pubkey,
+                                                                    wallet_pubkey=self.non_json_wallet_pubkey,
                                                                     signature=self.signature)
         print("sig check: ", response)
         if response is True:

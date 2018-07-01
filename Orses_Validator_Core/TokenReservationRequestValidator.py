@@ -1,6 +1,7 @@
 from Crypto.Hash import SHA256, RIPEMD160
 
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
+from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 from Orses_Database_Core import RetrieveData, StoreData
 import time, json
 
@@ -16,6 +17,7 @@ class TokenReservationRequestValidator:
         self.timestamp = tkn_rsv_dict["rsv_req"]["time"]
         self.resevation_expiration = tkn_rsv_dict["rsv_req"]["exp"]
         self.wallet_pubkey = wallet_pubkey
+        self.non_json_wallet_pubkey = None
         self.client_id = tkn_rsv_dict["client_id"]
         self.wallet_id = tkn_rsv_dict["rsv_req"]["req_wid"]
         self.signature = tkn_rsv_dict["sig"]
@@ -58,11 +60,14 @@ class TokenReservationRequestValidator:
             # pass validated message to network propagator and competing process(if active)
             # 'c' reason message for token reservation request msg
             if self.q_object:
-                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey.hex(), self.tkn_rsv_dict, True])
+                try:
+                    self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey, self.tkn_rsv_dict, True])
+                except Exception as e:
+                    print("in TokenReservationRequestValidator")
             return True
         else:
             if self.q_object:
-                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey.hex(), self.tkn_rsv_dict, False])
+                self.q_object.put([f'c{self.tx_hash[:8]}', self.wallet_pubkey, self.tkn_rsv_dict, False])
             return False
 
     def set_sending_wallet_pubkey(self):
@@ -74,11 +79,21 @@ class TokenReservationRequestValidator:
             snd_wid = self.wallet_id
 
             self.wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+            self.non_json_wallet_pubkey = None if not self.wallet_pubkey else \
+                json.loads(self.wallet_pubkey)
             # print(len(snd_wid))
             # print("sending pubkey: ", self.sending_wallet_pubkey)
+        else:
+            self.non_json_wallet_pubkey = json.loads(self.wallet_pubkey)
 
     def check_client_id_owner_of_wallet(self):
-        step1 = SHA256.new(self.wallet_pubkey + self.client_id.encode()).digest()
+        step1 = SHA256.new(
+            WalletPKI.generate_key_from_parts(
+                x=self.non_json_wallet_pubkey["x"],
+                y=self.non_json_wallet_pubkey["y"],
+                in_bytes=True
+            ) + self.client_id.encode()
+        ).digest()
         derived_wid = "W" + RIPEMD160.new(step1).hexdigest()
 
         print("owner check: ", derived_wid == self.wallet_id)
@@ -87,7 +102,7 @@ class TokenReservationRequestValidator:
 
     def check_signature_valid(self):
         response = DigitalSignerValidator.validate_wallet_signature(msg=self.rsv_req_json,
-                                                                    wallet_pubkey=self.wallet_pubkey,
+                                                                    wallet_pubkey=self.non_json_wallet_pubkey,
                                                                     signature=self.signature)
         print("sig check: ", response)
         if response is True:

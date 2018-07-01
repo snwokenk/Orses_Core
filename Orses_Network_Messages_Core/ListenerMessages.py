@@ -80,6 +80,7 @@ class ListenerForSendingTokens(ListenerMessages):
         """
 
         try:
+            print("in listener")
 
             if self.messages_heard and self.messages_heard[-1] == self.last_msg:
                 self.netmsginst.end_convo = True
@@ -113,7 +114,9 @@ class ListenerForSendingTokens(ListenerMessages):
                     # this will also store wallet info for reuse
                     rsp = validator_dict_callable[self.msg_type](
                         json.loads(self.messages_heard[2].decode()),
-                        wallet_pubkey=bytes.fromhex(self.messages_heard[-1].decode())
+                        # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}
+                        wallet_pubkey=self.messages_heard[-1].decode(),
+                        q_object=self.q_object
                     ).check_validity()
 
                     if rsp is True:
