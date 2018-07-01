@@ -94,9 +94,9 @@ class PKI:
             y_int = int.from_bytes(y_int, "big")
 
             d_int = base64.b85decode(decrypted_key)
-            y_int = int.from_bytes(d_int, "big")
+            d_int = int.from_bytes(d_int, "big")
 
-            return ECC.construct(d=d_int, point_x=x_int, point_y=y_int)
+            return ECC.construct(d=d_int, point_x=x_int, point_y=y_int, curve="P-256")
         else:
             return decrypted_key
 

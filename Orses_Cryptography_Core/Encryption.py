@@ -32,7 +32,7 @@ class Encrypt:
         :return: list, [ciphertext, tag, nonce, salt]
         """
         nonce = self.cipher.nonce
-        ciphertext, tag = self.cipher.encrypt_and_digest(plaintext=self.plaintext)
+        ciphertext, tag = self.cipher.encrypt_and_digest(plaintext=self.plaintext.encode())
 
         return [ciphertext.hex(), tag.hex(), nonce.hex(), self.salt.hex()]
 
