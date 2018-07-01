@@ -2,7 +2,7 @@ from Crypto.Hash import SHA256, RIPEMD160
 
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 from Orses_Database_Core import RetrieveData, StoreData
-import time
+import time, json
 
 
 class AssignmentStatementValidator:
@@ -25,13 +25,18 @@ class AssignmentStatementValidator:
 
         asgn_stmt key: 'snd_wid|rcv_wid|bk_conn_wid|amt|fee|timestamp|timelimit'
 
-        :param wallet_pubkey:
+        :param wallet_pubkey: json.encoded dict:
+                {"x": base85 string, "y": base85 string}
+                To turn back into string for use
+                x_int = base64.b85decode(wallet_pubkey["x"].encode())
+                x_int = int.from_bytes(x_int, "big")
         :param q_object: a queue.Queue instance (or similar)
         """
         self.asgn_stmt_dict = asgn_stmt_dict
         self.asgn_stmt= asgn_stmt_dict["asgn_stmt"]
         self.asgn_stmt_list = asgn_stmt_dict["asgn_stmt"].split(sep='|')
         self.sending_wallet_pubkey = wallet_pubkey
+        self.non_json_wallet_pubkey = None
         self.sending_wid = self.asgn_stmt_list[0]
         self.sending_client_id = asgn_stmt_dict["client_id"]
         self.signature = asgn_stmt_dict["sig"]
@@ -54,6 +59,8 @@ class AssignmentStatementValidator:
             self.sending_wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
             # print(len(snd_wid))
             # print("sending pubkey: ", self.sending_wallet_pubkey)
+        else:
+            self.non_json_wallet_pubkey = json.loads(self.sending_wallet_pubkey)
 
     def check_validity(self):
         """
@@ -115,7 +122,7 @@ class AssignmentStatementValidator:
 
     def check_signature_valid(self):
         response = DigitalSignerValidator.validate_wallet_signature(msg=self.asgn_stmt,
-                                                                    wallet_pubkey=self.sending_wallet_pubkey,
+                                                                    wallet_pubkey=self.non_json_wallet_pubkey,
                                                                     signature=self.signature)
         print("sig check: ", response)
         if response is True:

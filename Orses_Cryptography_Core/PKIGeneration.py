@@ -113,6 +113,7 @@ class PKI:
             return False
 
         # turn back to original bytes from base85encoded string/bytes
+        print(pubkey)
         pubkey_bytes = base64.b85decode(pubkey['x'].encode())+base64.b85decode(pubkey['y'].encode())
 
         if importedKey is True and x_y_only is False:
@@ -135,6 +136,24 @@ class PKI:
             # looking for bytes probably to generate user id
             # bytes is done by concatenating the bytes of x and y. see explanation above on how to get the bytes
             return pubkey_bytes
+
+    @staticmethod
+    def generate_key_from_parts(x: str, y: str, d=None, in_bytes=False):
+        """
+        used to generate key from x and y sent over the internet
+        :param x: x + y used for pubkey generation
+        :param y:
+        :param d: x+y+d used for private key genereation
+        :return: pubkey object
+        """
+        if in_bytes:
+            # if in bytes then only for pubkey
+            return base64.b85decode(x.encode())+base64.b85decode(y.encode())
+
+        # if d is none returns pubkey
+        return ECC.construct(curve="P-256", point_x=x, point_y=y, d=d)
+
+
 
 
 class WalletPKI(PKI):
