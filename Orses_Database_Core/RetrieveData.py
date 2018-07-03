@@ -1,5 +1,6 @@
 from Orses_Database_Core.Database import Sqlite3Database
 from Orses_Util_Core import Filenames_VariableNames
+from Orses_Util_Core.FileAction import FileAction
 from sqlite3 import OperationalError
 import json
 
@@ -16,7 +17,7 @@ def wid_check(wid):
 class RetrieveData:
 
     @staticmethod
-    def get_admin_info(username):
+    def get_admin_info(username, user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
                              in_folder=Filenames_VariableNames.admin_data)
         columnToSelect = "admin_id, timestamp_of_creation, isCompetitor"

@@ -68,10 +68,10 @@ class PKI:
         # load encryped private key list with tag, nonce and salt
         if user_or_wallet == "user":
             list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
-                filename=self.privkey_file, in_folder=self.user_instance.get_keys_folder_path())
+                filename=self.privkey_file, in_folder=self.user_instance.fl.get_keys_folder_path())
         else:
             list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
-                filename=self.privkey_file, in_folder=self.user_instance.get_wallets_folder_path)
+                filename=self.privkey_file, in_folder=self.user_instance.fl.get_wallets_folder_path)
 
         # if it is an empty list then no key created and saved on username so generate new key
         if not list_of_encrypted_privkey_tag_nonce_salt:
@@ -105,10 +105,10 @@ class PKI:
 
         if user_or_wallet == "user":
             pubkey = FileAction.open_file_from_json(
-                self.pubkey_file, in_folder=self.user_instance.get_keys_folder_path())
+                self.pubkey_file, in_folder=self.user_instance.fl.get_keys_folder_path())
         else:
            pubkey =  FileAction.open_file_from_json(
-               self.pubkey_file, in_folder=self.user_instance.get_wallets_folder_path())
+               self.pubkey_file, in_folder=self.user_instance.fl.get_wallets_folder_path())
 
         if not pubkey:  # no public key saved with user name
             return False

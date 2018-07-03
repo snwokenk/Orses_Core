@@ -86,8 +86,11 @@ class Admin:
 
             # if the a new admin then creation time is now and new databases are created with initial info stored
 
+
             self.creation_time = int(time.time())
-            CreateDatabase().create_admin_db(self.admin_name)
+
+            # create all the databases needed in either sandbox/username or live_data/username folders
+            CreateDatabase(user_instance=self)
             self.save_admin()
 
         elif self.isNewAdmin is False:
@@ -99,7 +102,7 @@ class Admin:
         return "VID-" + RIPEMD160.new(step1).hexdigest()
 
     def save_admin(self):
-
+        # todo: STOPPED HERE direct from segregated folder
         # pubkey should be saved as a json encoded python dictonary
         StoreData.store_admin_info_in_db(
             admin_id=self.admin_id,
@@ -110,7 +113,7 @@ class Admin:
         )
 
     def load_user(self):
-        admin_data = RetrieveData.get_admin_info(self.admin_name)
+        admin_data = RetrieveData.get_admin_info(self.admin_name, self)
 
         pki = PKI(username=self.admin_name, password=self.password)
         if admin_data:

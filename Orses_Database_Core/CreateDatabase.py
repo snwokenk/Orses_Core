@@ -28,53 +28,52 @@ for blockchain support:
 
 class CreateDatabase:
 
-    def __init__(self, user_instance=None, is_sandbox=False):
+    def __init__(self, user_instance):
+        # self._create_client_id_info_db(user_instance)
 
-        self.user_instance = user_instance
-        self._is_sandbox = is_sandbox
-        self._create_client_id_info_db()
-        self._create_wallet_id_info_db()
-        self._create_cond_asgn_stmt_db()
-        self._create_fulfilled_asgn_stmt_db()
-        self._create_tkn_rsv_req_db()
-        self._create_transfer_tx_db()
+        self._create_wallet_id_info_db(user_instance)
+        self._create_cond_asgn_stmt_db(user_instance)
+        self._create_fulfilled_asgn_stmt_db(user_instance)
+        self._create_tkn_rsv_req_db(user_instance)
+        self._create_transfer_tx_db(user_instance)
         # self._create_blockchain_db()
-        self._create_tkn_rvk_req_db()
+        self._create_tkn_rvk_req_db(user_instance)
+        self.create_admin_db(username=user_instance.admin_name, user_instance=user_instance)
 
     @staticmethod
-    def create_admin_db(username):
+    def create_admin_db(username, user_instance):
         """
         creates a database named username_admin_data
         password is hashed, can be used to provide password check (even though EAX already does)
         :param username: string,
-        :param password: string,
+        :param user_instance: instance of admin class,
         :return: None
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
-                             in_folder=Filenames_VariableNames.admin_data)
+                             in_folder=user_instance.fl.get_admin_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.admin_info_tname.format(username),
                                      A_admin_id="TEXT", B_pubkey="TEXT", C_username="TEXT",
                                      D_timestamp_of_creation="INT", E_isCompetitor="BLOB")
         db.close_connection()
+    #
+    # @staticmethod
+    # def _create_client_id_info_db(user_instance):
+    #     db = Sqlite3Database(dbName=Filenames_VariableNames.client_id_dbname,
+    #                          in_folder=Filenames_VariableNames.clients_wallets_data)
+    #     db.create_table_if_not_exist(tableName=Filenames_VariableNames.client_id_tname, primary_key="client_id",
+    #                                  A_client_id="TEXT", B_client_pubkey="TEXT")
+    #
+    #     db.close_connection()
+
 
     @staticmethod
-    def _create_client_id_info_db():
-        db = Sqlite3Database(dbName=Filenames_VariableNames.client_id_dbname,
-                             in_folder=Filenames_VariableNames.clients_wallets_data)
-        db.create_table_if_not_exist(tableName=Filenames_VariableNames.client_id_tname, primary_key="client_id",
-                                     A_client_id="TEXT", B_client_pubkey="TEXT")
-
-        db.close_connection()
-
-
-    @staticmethod
-    def _create_wallet_id_info_db():
+    def _create_wallet_id_info_db(user_instance):
 
         db = Sqlite3Database(
             dbName=Filenames_VariableNames.wallet_id_dbname,
-            in_folder=Filenames_VariableNames.clients_wallets_data
+            in_folder=user_instance.get_clients_wallet_folder_path
         )
 
         db.create_table_if_not_exist(
@@ -85,14 +84,14 @@ class CreateDatabase:
         db.close_connection()
 
     @staticmethod
-    def _create_cond_asgn_stmt_db():
+    def _create_cond_asgn_stmt_db(user_instance):
         """
         tx_hash, bk_connected_wid, snd_wid, rcv_wid, amt, fee, time, limit(in seconds), asgn_stmt, signature
         :return: None
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.asgn_stmt_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.asgn_stmt_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_bk_conn_wid="TEXT", C_snd_wid="TEXT",
@@ -103,14 +102,14 @@ class CreateDatabase:
 
 
     @staticmethod
-    def _create_fulfilled_asgn_stmt_db():
+    def _create_fulfilled_asgn_stmt_db(user_instance):
         """
         tx_hash, snd, rcv, bk_con_wid, time_fulfilled, sig, fulfilled_asgn_stmt_dict(json)
         :return:
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.fulfilled_asgn_stmt_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.fulfilled_asgn_stmt_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_snd_wid="TEXT", C_rcv_wid="TEXT", D_bk_con_wid="TEXT",
@@ -118,9 +117,9 @@ class CreateDatabase:
         db.close_connection()
 
     @staticmethod
-    def _create_transfer_tx_db():
+    def _create_transfer_tx_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.ttx_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.ttx_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_snd_wid="TEXT", C_rcv_wid="TEXT", D_amt="REAL", E_fee="REAL",
@@ -129,9 +128,9 @@ class CreateDatabase:
         db.close_connection()
 
     @staticmethod
-    def _create_tkn_rsv_req_db():
+    def _create_tkn_rsv_req_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.trr_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.trr_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_wid="TEXT", C_amt="REAL", E_fee="REAL", F_timestamp="INT",
@@ -140,9 +139,9 @@ class CreateDatabase:
         db.close_connection()
 
     @staticmethod
-    def _create_tkn_rvk_req_db():
+    def _create_tkn_rvk_req_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.trx_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.trx_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_trr_hash="TEXT", C_wid="TEXT", D_fee="REAL", E_timestamp="INT",
@@ -151,9 +150,9 @@ class CreateDatabase:
         db.close_connection()
 
     @staticmethod
-    def _create_blockchain_db():
+    def _create_blockchain_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.blockchain_dbname,
-                             in_folder=Filenames_VariableNames.block_folder)
+                             in_folder=user_instance.get_mempool_data_folder_path())
         db.close_connection()
 
     @staticmethod

@@ -67,7 +67,23 @@ class FileAction:
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.key_folder)
 
     def get_wallets_folder_path(self):
+        """
+        folder where admin's wallets are stored
+        :return:
+        """
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.wallets_folder)
+
+    def get_clients_wallet_folder_path(self):
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.clients_wallets_data)
+
+    def get_admin_data_folder_path(self):
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.admin_data)
+
+    def get_mempool_data_folder_path(self):
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.mempool_data)
+
+    def get_block_data_folder_path(self):
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.block_folder)
 
     """
     section for static functions for saving/loading text, bytes and json files
