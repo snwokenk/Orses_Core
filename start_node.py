@@ -17,6 +17,7 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: segregate each admin's data, allows for muliple admins on one system and running of dummy network
 # todo: finish export/import admin copy from Orses_Client since that has been done
 
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used

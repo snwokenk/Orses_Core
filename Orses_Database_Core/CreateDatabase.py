@@ -28,7 +28,10 @@ for blockchain support:
 
 class CreateDatabase:
 
-    def __init__(self):
+    def __init__(self, user_instance=None, is_sandbox=False):
+
+        self.user_instance = user_instance
+        self._is_sandbox = is_sandbox
         self._create_client_id_info_db()
         self._create_wallet_id_info_db()
         self._create_cond_asgn_stmt_db()

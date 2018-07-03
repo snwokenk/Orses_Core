@@ -1,7 +1,78 @@
+from Orses_Util_Core import Filenames_VariableNames
+
 import os, json, pathlib
 
-class FileAction:
 
+class FileAction:
+    def __init__(self, username=None):
+        self.username = username
+        self.__folders_created = False
+        self.__project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.__sandbox_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.sandbox_folder)
+        self.__live_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.data_folder)
+        self.__username_folder_path = os.path.join(self.__sandbox_folder_path, self.username)
+
+    """
+    use section for creation of folders and returning of paths
+    """
+
+    def check_if_admin_folder_exist(self, is_sandbox=False):
+        if is_sandbox:
+            return os.path.isdir(self.__sandbox_folder_path)
+        else:
+            return os.path.isdir(self.__live_folder_path)
+
+    def create_admin_folder(self, is_sandbox=False):
+        if self.__folders_created is True:
+            return True
+        elif not isinstance(self.username, str):
+            return None
+
+        def create_f(f_path):
+            try:
+                os.makedirs(f_path)
+            except FileExistsError:
+                return True
+            except Exception as e:
+                print(e)
+                return False
+            else:
+                return True
+
+
+        # make sure data folder or sandbox folder is created
+        if is_sandbox is True:
+            is_created = create_f(self.__sandbox_folder_path)
+        else:
+            is_created = create_f(self.__live_folder_path)
+
+        is_created1 = create_f(self.__username_folder_path)
+        self.__folders_created = True if (is_created and is_created1) else False
+
+        return self.__folders_created
+
+    def get_username_folder_path(self):
+        if isinstance(self.__username_folder_path, str) and self.__folders_created:
+            return self.__username_folder_path
+
+    def get_live_data_folder_path(self):
+        if isinstance(self.__live_folder_path, str) and self.__folders_created:
+            return self.__live_folder_path
+
+    def get_sandbox_data_folder_path(self):
+        if isinstance(self.__sandbox_folder_path, str) and self.__folders_created:
+            return self.__sandbox_folder_path
+
+    def get_keys_folder_path(self):
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.key_folder)
+
+    def get_wallets_folder_path(self):
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.wallets_folder)
+
+    """
+    section for static functions for saving/loading text, bytes and json files
+    also for creating folders for export/import
+    """
     @staticmethod
     def create_folder(folder_name):
         path1 = os.path.join(pathlib.Path.home(), "Desktop", "CryptoHub_External_Files", folder_name)
@@ -9,6 +80,7 @@ class FileAction:
             os.makedirs(path1)
         except FileExistsError:
             pass
+
 
     @staticmethod
     def delete_file(filename, in_folder=None):
@@ -149,3 +221,7 @@ class FileAction:
         listOfParts.append(arrayOfByte[startNumber:sizeOfFile])  # this will gather data from 108 - 121
 
         return listOfParts
+
+if __name__ == '__main__':
+    print(os.getcwd())
+    print(os.path.abspath(__file__))

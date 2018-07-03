@@ -1,6 +1,6 @@
 from Orses_Cryptography_Core.PKIGeneration import PKI
 from Orses_Database_Core.CreateDatabase import CreateDatabase
-from Orses_Util_Core.Filenames_VariableNames import admins_folder
+from Orses_Util_Core.FileAction import FileAction
 from Orses_Database_Core.StoreData import StoreData
 from Orses_Database_Core.RetrieveData import RetrieveData
 from Orses_Util_Core.FileAction import FileAction
@@ -15,7 +15,7 @@ import time, os, pathlib, json
 
 class Admin:
 
-    def __init__(self, admin_name, password, newAdmin=False, isCompetitor=None):
+    def __init__(self, admin_name, password, newAdmin=False, isCompetitor=None, is_sandbox=False):
         """
         class representing the admin.
         This class should allow for an admin to:
@@ -44,9 +44,11 @@ class Admin:
         self.pubkey = None
         self.privkey = None
         self.pki = None
+        self.fl = FileAction(username=admin_name)
         self.newAdmin = newAdmin
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
+        self.is_sandbox = is_sandbox
 
         self.__set_or_create_pki_pair()
 
@@ -68,7 +70,7 @@ class Admin:
 
         # overwrites admin_name
         elif self.newAdmin is True:
-            pki.generate_pub_priv_key(save_in_folder=admins_folder, overwrite=False)
+            pki.generate_pub_priv_key(save_in_folder=self.fl.get_keys_folder_path(), overwrite=False)
 
             # set self.pki to pki
             self.pki = pki

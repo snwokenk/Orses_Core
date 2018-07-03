@@ -13,10 +13,11 @@ import base64
 
 
 class PKI:
-    def __init__(self, username, password):
+    def __init__(self, username, password, user_instance=None):
         self.combinedkey = ECC.generate(curve="P-256")
         self.username = username
         self.password = password
+        self.user_instance = user_instance
         self.pubkey = None
         self.privkey_file = Filenames_VariableNames.priv_key_filename.format(username)
         self.pubkey_file = Filenames_VariableNames.pub_key_filename.format(username)
@@ -67,10 +68,10 @@ class PKI:
         # load encryped private key list with tag, nonce and salt
         if user_or_wallet == "user":
             list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
-                filename=self.privkey_file, in_folder=Filenames_VariableNames.admins_folder)
+                filename=self.privkey_file, in_folder=self.user_instance.get_keys_folder_path())
         else:
             list_of_encrypted_privkey_tag_nonce_salt = FileAction.open_file_from_json(
-                filename=self.privkey_file, in_folder=Filenames_VariableNames.wallets_folder)
+                filename=self.privkey_file, in_folder=self.user_instance.get_wallets_folder_path)
 
         # if it is an empty list then no key created and saved on username so generate new key
         if not list_of_encrypted_privkey_tag_nonce_salt:
@@ -104,10 +105,10 @@ class PKI:
 
         if user_or_wallet == "user":
             pubkey = FileAction.open_file_from_json(
-                self.pubkey_file, in_folder=Filenames_VariableNames.admins_folder)
+                self.pubkey_file, in_folder=self.user_instance.get_keys_folder_path())
         else:
            pubkey =  FileAction.open_file_from_json(
-               self.pubkey_file, in_folder=Filenames_VariableNames.wallets_folder)
+               self.pubkey_file, in_folder=self.user_instance.get_wallets_folder_path())
 
         if not pubkey:  # no public key saved with user name
             return False

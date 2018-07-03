@@ -3,9 +3,9 @@ priv_key_filename = "{}_encrypted_key"
 pub_key_filename = "{}_pubkey"
 username_wallets = "{}_wallets"
 wallet_details_folder = "wallet_detail"
-admins_folder = "admins"
+key_folder = "keys"
 wallets_folder = "wallets"
-
+data_folder = "live_data"
 
 # names for wallet private keys
 
@@ -46,3 +46,16 @@ blockchain_dbname = "Orses_Blockchain_db"
 
 # name of folder storing client, veri node and wallet details (id, pubkey, time of creation, *last use)
 
+
+
+# names of Sandbox folders and file names
+
+sandbox_folder = "sandbox"
+sandox_asgn_stmt_dbname_with_username = "{}_cond_asgn_stmt_db"
+sandox_asgn_stmt_tname_with_username = "{}_cond_asgn_stmt"
+sandbox_ttx_dbname_with_username = "{}_transfer_tx_db"
+sandbox_ttx_tname_with_username = "{}_transfer_tx"
+sandbox_trr_dbname_with_username = "{}_token_rsv_req_db"
+sandbox_trr_tname_with_username = "{}_token_rsv_req"
+sandbox_trx_dbname_with_username = "{}_token_rvk_req_db"
+sandbox_trx_tname_with_username = "{}_token_rvk_req"
