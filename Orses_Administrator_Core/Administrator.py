@@ -43,6 +43,7 @@ class Admin:
         self.creation_time = None
         self.pubkey = None
         self.privkey = None
+        self.pki = None
         self.newAdmin = newAdmin
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
@@ -69,6 +70,9 @@ class Admin:
         elif self.newAdmin is True:
             pki.generate_pub_priv_key(save_in_folder=admins_folder, overwrite=False)
 
+            # set self.pki to pki
+            self.pki = pki
+
             # load public key, loaded as bytes and not key object
             self.pubkey = pki.load_pub_key(importedKey=False)
 
@@ -93,8 +97,15 @@ class Admin:
         return "VID-" + RIPEMD160.new(step1).hexdigest()
 
     def save_admin(self):
-        StoreData.store_admin_info_in_db(admin_id=self.admin_id, pubkey=self.pubkey.hex(), username=self.admin_name,
-                                            timestamp_of_creation=self.creation_time, isCompetitor=self.isCompetitor)
+
+        # pubkey should be saved as a json encoded python dictonary
+        StoreData.store_admin_info_in_db(
+            admin_id=self.admin_id,
+            pubkey=json.dumps(self.pki.load_pub_key(x_y_only=True)),
+            username=self.admin_name,
+            timestamp_of_creation=self.creation_time,
+            isCompetitor=self.isCompetitor
+        )
 
     def load_user(self):
         admin_data = RetrieveData.get_admin_info(self.admin_name)
@@ -106,7 +117,9 @@ class Admin:
             self.isCompetitor = admin_data[2]
             self.pubkey = pki.load_pub_key(importedKey=False)
             self.privkey = pki.load_priv_key(importedKey=True)
+            self.pki = pki
 
+            print("in Administrator.py/load_user(), self.pubkey: ", self.pubkey)
 
         else:  # no user info, user not created
             return None
@@ -124,7 +137,7 @@ class Admin:
         :return:
         """
 
-        pki = PKI(username=self.admin_name, password=self.password)
+        # pki = PKI(username=self.admin_name, password=self.password)
         exp_path = os.path.join(pathlib.Path.home(), "Desktop", "Orses_External_Files", "Exported_Accounts",
                                 self.admin_name + ".orses")
 
@@ -134,8 +147,8 @@ class Admin:
         user_info_dict["admin_name"] = self.admin_name
         user_info_dict["admin_id"] = self.admin_id
         user_info_dict["creation_time"] = self.creation_time
-        user_info_dict["pubkey_dict"] = pki.load_pub_key(x_y_only=True)
-        user_info_dict["encrypted_private_key"] = pki.load_priv_key(importedKey=False, encrypted=True)
+        user_info_dict["pubkey_dict"] = self.pki.load_pub_key(x_y_only=True)
+        user_info_dict["encrypted_private_key"] = self.pki.load_priv_key(importedKey=False, encrypted=True)
 
         with open(exp_path, "w") as outfile:
             json.dump(user_info_dict, outfile)

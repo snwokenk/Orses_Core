@@ -17,10 +17,16 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
-# todo: save_user() method should save the two separate numbers x and y
+# todo: finish export/import admin copy from Orses_Client since that has been done
+
+# todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
+
+# todo: try to create a mock twisted protocol class, This class will receive message using a pipe, this
+# todo: will be for testing internal testing of network propagation and validation.
+# todo: This class then be used in a Start_virtual_node script which will allow for testing of certian functionaility
+
 # todo: CONTINUE IMPLEMENTING ECC, MAKE SURE LOAD PUBKEY AND PRIVKEY ARE IMPLEMENTING ECC AND NOT RSA
 
-# todo: reimplement PKI to use ECDSA vs RSA, to reduce key and signature size
 # todo: refactor convo_dict in blockchainpropagator and self.convo_id
 
 # todo: start competing/block creation process, finish up the blockchain process
