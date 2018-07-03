@@ -19,7 +19,7 @@ class RetrieveData:
     @staticmethod
     def get_admin_info(username, user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
-                             in_folder=Filenames_VariableNames.admin_data)
+                             in_folder=user_instance.fl.get_admin_data_folder_path())
         columnToSelect = "admin_id, timestamp_of_creation, isCompetitor"
         try:
 
@@ -38,7 +38,7 @@ class RetrieveData:
         return None
 
     @staticmethod
-    def get_pubkey_of_wallet(wid):
+    def get_pubkey_of_wallet(wid, user_instance):
         """
         returns pubkey of wallet id
         :param wid: wallet id
@@ -49,7 +49,7 @@ class RetrieveData:
         if wid_check(wid=wid):
 
             db = Sqlite3Database(dbName=Filenames_VariableNames.wallet_id_dbname,
-                                 in_folder=Filenames_VariableNames.clients_wallets_data)
+                                 in_folder=user_instance.fl.get_clients_wallet_folder_path())
 
             columnToSelect = "wallet_pubkey"
             boolCriteria = "wallet_id = '{}'".format(wid)
@@ -71,14 +71,14 @@ class RetrieveData:
         pass
 
     @staticmethod
-    def get_valid_transfer_transactions(tx_hash=None):
+    def get_valid_transfer_transactions(user_instance, tx_hash=None):
         """
         returns a dictionary in which:
         {'tx_hash': ['base_85 sig string', dictionary with keys: 'snd_wid', 'rcv_wid', 'timestamp', 'fee', 'amt']}
         :return:
         """
         db = Sqlite3Database(dbName=Filenames_VariableNames.ttx_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
         columnToSelect = ['tx_hash', 'json_ttx_dict', 'sig_base85']
         boolCriteria = "tx_hash = '{}'".format(tx_hash) if tx_hash else None
         ttx = db.select_data_from_table(
@@ -95,7 +95,7 @@ class RetrieveData:
         pass
 
     @staticmethod
-    def get_token_reservation_requests(tx_hash=None):
+    def get_token_reservation_requests(user_instance, tx_hash=None):
         """
 
         returns a dictionary in which:
@@ -103,7 +103,7 @@ class RetrieveData:
         :return: dict
         """
         db = Sqlite3Database(dbName=Filenames_VariableNames.trr_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
         columnToSelect = ['tx_hash', 'json_trr_dict', 'sig_base85']
         boolCriteria = "tx_hash = '{}'".format(tx_hash) if tx_hash else None
         trr = db.select_data_from_table(
@@ -115,14 +115,14 @@ class RetrieveData:
         return {i[0]: [i[2], json.loads(i[1])] for i in trr}
 
     @staticmethod
-    def get_token_reservation_revoke_requests(tx_hash=None):
+    def get_token_reservation_revoke_requests(user_instance, tx_hash=None):
         """
         used to get all valid token reservation revoke requests
         :return:
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.trx_dbname,
-                             in_folder=Filenames_VariableNames.mempool_data)
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
         columnToSelect = ['tx_hash', 'json_trx_dict', 'sig_base85']
         boolCriteria = "tx_hash = '{}'".format(tx_hash) if tx_hash else None
 

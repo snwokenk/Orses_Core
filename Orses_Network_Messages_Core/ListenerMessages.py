@@ -19,7 +19,7 @@ class ListenerMessages:
     base class, create ListenerMessages subclasses for each type of message.
     These subclasses can then be used in the Network manager depending on the type of connection
     """
-    def __init__(self,  messages_heard, netmsginst, msg_type):
+    def __init__(self,  messages_heard, netmsginst, msg_type, admin_instance):
         """
 
         :param messages_heard: a list of messages already heard from client
@@ -31,6 +31,7 @@ class ListenerMessages:
         """
         assert (isinstance(messages_heard, list)), "first argument of ListnerMessages Class must be a list"
 
+        self.admin_instance = admin_instance
         self.messages_heard = messages_heard
         self.last_msg = b'end'
         self.reject_msg = b'rej'
@@ -62,13 +63,14 @@ class ListenerMessages:
 
 class ListenerForSendingTokens(ListenerMessages):
 
-    def __init__(self, messages_heard, netmsginst, msg_type, q_object=None):
+    def __init__(self, messages_heard, netmsginst, msg_type, admin_instance,q_object=None):
         """
         :param messages_heard: this is the two initial messages already heard, list
         :param netmsginst: used to pass the
         :param msg_type: this will be used to determine the validator to call depending on msg type
         """
-        super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type)
+        super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type,
+                         admin_instance=admin_instance)
         self.need_pubkey = b'wpk'
         self.q_object = q_object
 
@@ -92,7 +94,8 @@ class ListenerForSendingTokens(ListenerMessages):
 
                 rsp = validator_dict_callable[self.msg_type](
                     json.loads(self.messages_heard[2].decode()),
-                    q_object=self.q_object
+                    q_object=self.q_object,
+                    admin_instance=self.admin_instance
                 ).check_validity()
 
                 if rsp is None: # wallet_pubkey not in database
@@ -116,7 +119,8 @@ class ListenerForSendingTokens(ListenerMessages):
                         json.loads(self.messages_heard[2].decode()),
                         # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}
                         wallet_pubkey=self.messages_heard[-1].decode(),
-                        q_object=self.q_object
+                        q_object=self.q_object,
+                        admin_instance=self.admin_instance
                     ).check_validity()
 
                     if rsp is True:

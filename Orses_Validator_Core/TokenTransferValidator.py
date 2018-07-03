@@ -7,7 +7,8 @@ import time, json
 
 
 class TokenTransferValidator:
-    def __init__(self, transfer_tx_dict, wallet_pubkey=None,  timelimit=300, q_object=None):
+    def __init__(self, transfer_tx_dict, admin_instance, wallet_pubkey=None,  timelimit=300, q_object=None):
+        self.admin_instance = admin_instance
         self.transfer_tx_dict = transfer_tx_dict
         self.transfer_tx_dict_json = json.dumps(transfer_tx_dict["ttx"])
         self.sending_wallet_pubkey = wallet_pubkey
@@ -33,7 +34,10 @@ class TokenTransferValidator:
         if self.sending_wallet_pubkey is None:
             snd_wid = self.sending_wid
 
-            self.sending_wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+            self.sending_wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(
+                wid=snd_wid,
+                user_instance=self.admin_instance
+            )
             self.non_json_wallet_pubkey = None if not self.sending_wallet_pubkey else \
                 json.loads(self.sending_wallet_pubkey)
             # print(len(snd_wid))
@@ -51,7 +55,8 @@ class TokenTransferValidator:
                 StoreData.StoreData.store_wallet_info_in_db(
                     wallet_id=self.sending_wid,
                     wallet_owner=self.sending_client_id,
-                    wallet_pubkey=self.sending_wallet_pubkey
+                    wallet_pubkey=self.sending_wallet_pubkey,
+                    user_instance=self.admin_instance
                 )
 
             StoreData.StoreData.store_token_transfer_tx_info_in_db(
@@ -62,7 +67,8 @@ class TokenTransferValidator:
                 time=self.timestamp,
                 sig=self.signature,
                 json_ttx_dict=self.transfer_tx_dict_json,
-                tx_hash=self.tx_hash
+                tx_hash=self.tx_hash,
+                user_instance=self.admin_instance
 
 
             )

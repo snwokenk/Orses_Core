@@ -13,7 +13,7 @@ class AssignmentStatementValidator:
     if message is validated, node sends a ver message
     else a rej message is sent if invalid
     """
-    def __init__(self, asgn_stmt_dict, wallet_pubkey=None, q_object=None):
+    def __init__(self, asgn_stmt_dict, admin_instance, wallet_pubkey=None, q_object=None):
         """
 
         :param asgn_stmt_dict: assignment statement dict with
@@ -34,6 +34,7 @@ class AssignmentStatementValidator:
                 x_int = int.from_bytes(x_int, "big")
         :param q_object: a queue.Queue instance (or similar)
         """
+        self.admin_instance = admin_instance
         self.asgn_stmt_dict = asgn_stmt_dict
         self.asgn_stmt= asgn_stmt_dict["asgn_stmt"]
         self.asgn_stmt_list = asgn_stmt_dict["asgn_stmt"].split(sep='|')
@@ -58,7 +59,10 @@ class AssignmentStatementValidator:
         if self.sending_wallet_pubkey is None:
             snd_wid = self.asgn_stmt_list[0]
 
-            self.sending_wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+            self.sending_wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(
+                wid=snd_wid,
+                user_instance=self.admin_instance
+            )
 
             print("sending wallet pubkey in AssignmentStatementValidator.py : ", self.sending_wallet_pubkey,
                   type(self.sending_wallet_pubkey))
@@ -93,7 +97,9 @@ class AssignmentStatementValidator:
                 StoreData.StoreData.store_wallet_info_in_db(
                     wallet_id=self.sending_wid,
                     wallet_owner=self.sending_client_id,
-                    wallet_pubkey=self.sending_wallet_pubkey
+                    wallet_pubkey=self.sending_wallet_pubkey,
+                    user_instance=self.admin_instance
+
                 )
             StoreData.StoreData.store_cond_asgn_stmt_info_in_db(
                 amt=float(self.asgn_stmt_list[3]),
@@ -105,7 +111,8 @@ class AssignmentStatementValidator:
                 time=self.timestamp,
                 limit=self.timelimit,
                 asgn_stmt=self.asgn_stmt,
-                tx_hash=self.stmt_hash
+                tx_hash=self.stmt_hash,
+                user_instance=self.admin_instance
 
             )
 

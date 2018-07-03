@@ -14,8 +14,9 @@ class NetworkMessages:
     class is to listen for first 2 messages, then choose which ListenerMessages class to use
     """
 
-    def __init__(self, q_obj=None):
+    def __init__(self, admin_instance, q_obj=None):
 
+        self.admin_instance=admin_instance
         self.first_two_msgs = list()
         self.message_object = None
         self.valid_first_msg = {b'rcn', b'rcnv'}
@@ -42,6 +43,7 @@ class NetworkMessages:
                     netmsginst=self,
                     msg_type=type_key,
                     q_object=self.q_obj,
+                    admin_instance=self.admin_instance
                 )
                 self.message_object.listen(msg)
             except KeyError:

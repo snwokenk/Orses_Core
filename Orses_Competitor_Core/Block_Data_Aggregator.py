@@ -67,7 +67,7 @@ def hex_to_int(hex_string):
 
 class BlockAggregator:
 
-    def __init__(self, block_id, software_version, wid):
+    def __init__(self, admin_instance, block_id, software_version, wid):
         # block_h == block header | w_h_state == wallet hash states of blockchain connected wallet| txs == transactions |
         # rwd == reward transaction dicts | txs_no == total number of transactions in block
         self.new_block = {"block_h": {"block_id": block_id, 'version': software_version, "time": int(time.time()),
@@ -81,6 +81,7 @@ class BlockAggregator:
 
                           }
         self.previous_block = RetrieveData.get_previous_block()
+        self.admin_instance = admin_instance
 
     def create_block(self):
         """
@@ -137,7 +138,7 @@ class BlockAggregator:
         used to set update current block with valid
         :return:
         """
-        d = RetrieveData.get_valid_transfer_transactions()
+        d = RetrieveData.get_valid_transfer_transactions(user_instance=self.admin_instance)
         self.new_block["block_h"]["fees_earned"] += sum(d[k][1]['fee'] for k in d) if d else 0
         self.new_block["txs"]["ttx"] = d
 
@@ -152,7 +153,7 @@ class BlockAggregator:
         used to set or update trr section of block
         :return:
         """
-        d = RetrieveData.get_token_reservation_requests()
+        d = RetrieveData.get_token_reservation_requests(user_instance=self.admin_instance)
         self.new_block["block_h"]["fees_earned"] += sum(d[k][1]['fee'] for k in d) if d else 0
 
         self.new_block["txs"]["trr"] = d

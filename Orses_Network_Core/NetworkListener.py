@@ -55,4 +55,5 @@ class NetworkListenerFactory(Factory):
         self.q_object =q_obj
 
     def buildProtocol(self, addr):
-        return NetworkListener(factory=self, message_object=self.message_object(q_obj=self.q_object))
+        return NetworkListener(factory=self,
+                               message_object=self.message_object(q_obj=self.q_object, admin_instance=self.admin))

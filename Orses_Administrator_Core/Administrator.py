@@ -109,11 +109,12 @@ class Admin:
             pubkey=json.dumps(self.pki.load_pub_key(x_y_only=True)),
             username=self.admin_name,
             timestamp_of_creation=self.creation_time,
-            isCompetitor=self.isCompetitor
+            isCompetitor=self.isCompetitor,
+            user_instance=self
         )
 
     def load_user(self):
-        admin_data = RetrieveData.get_admin_info(self.admin_name, self)
+        admin_data = RetrieveData.get_admin_info(username=self.admin_name, user_instance=self)
 
         pki = PKI(username=self.admin_name, password=self.password)
         if admin_data:

@@ -7,7 +7,8 @@ import time, json
 
 
 class TokenReservationRevokeValidator:
-    def __init__(self, tkn_rvk_dict, wallet_pubkey=None, q_object=None):
+    def __init__(self, tkn_rvk_dict, admin_instance, wallet_pubkey=None, q_object=None):
+        self.admin_instance = admin_instance
         self.tkn_rvk_dict = tkn_rvk_dict
         self.wallet_pubkey = wallet_pubkey
         self.non_json_wallet_pubkey = None
@@ -33,7 +34,10 @@ class TokenReservationRevokeValidator:
         if self.wallet_pubkey is None:
             snd_wid = self.wallet_id
 
-            self.wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+            self.wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(
+                wid=snd_wid,
+                user_instance=self.admin_instance
+            )
             self.non_json_wallet_pubkey = None if not self.wallet_pubkey else \
                 json.loads(self.wallet_pubkey)
             # print(len(snd_wid))
@@ -53,7 +57,8 @@ class TokenReservationRevokeValidator:
                 StoreData.StoreData.store_wallet_info_in_db(
                     wallet_id=self.wallet_id,
                     wallet_owner=self.client_id,
-                    wallet_pubkey=self.wallet_pubkey
+                    wallet_pubkey=self.wallet_pubkey,
+                    user_instance=self.admin_instance
                 )
             StoreData.StoreData.store_token_revoke_req_in_db(
                 tx_hash=self.tx_hash,
@@ -63,7 +68,8 @@ class TokenReservationRevokeValidator:
                 timestamp=int(self.timestamp),
                 owner_id=self.client_id,
                 sig=self.signature,
-                json_trx_dict=self.rvk_req_json
+                json_trx_dict=self.rvk_req_json,
+                user_instance=self.admin_instance
 
             )
 
@@ -107,7 +113,8 @@ class TokenReservationRevokeValidator:
 
         # TODO: Because blockchain not open, use this, but once blockchain running, this will be a function
         # todo: to query the blockchain and look for token reservation request with hash
-        trr_dict = RetrieveData.RetrieveData.get_token_reservation_requests(tx_hash=self.trr_tx_hash)
+        trr_dict = RetrieveData.RetrieveData.get_token_reservation_requests(tx_hash=self.trr_tx_hash,
+                                                                            user_instance=self.admin_instance)
         print("trr_hash: ", self.trr_tx_hash)
 
         if self.trr_tx_hash in trr_dict:

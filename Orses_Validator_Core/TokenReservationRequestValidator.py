@@ -9,7 +9,8 @@ import time, json
 # Todo: complete validator class, after checking validity store in db for token reservation
 class TokenReservationRequestValidator:
 
-    def __init__(self, tkn_rsv_dict, wallet_pubkey=None, q_object=None):
+    def __init__(self, tkn_rsv_dict, admin_instance, wallet_pubkey=None, q_object=None):
+        self.admin_instance = admin_instance
         self.tkn_rsv_dict = tkn_rsv_dict
         self.rsv_req_json = json.dumps(tkn_rsv_dict["rsv_req"])
         self.amount = tkn_rsv_dict["rsv_req"]["amt"]
@@ -42,7 +43,8 @@ class TokenReservationRequestValidator:
                 StoreData.StoreData.store_wallet_info_in_db(
                     wallet_id=self.wallet_id,
                     wallet_owner=self.client_id,
-                    wallet_pubkey=self.wallet_pubkey
+                    wallet_pubkey=self.wallet_pubkey,
+                    user_instance=self.admin_instance
                 )
             StoreData.StoreData.store_token_rsv_req_info_in_db(
                 tx_hash=self.tx_hash,
@@ -53,7 +55,8 @@ class TokenReservationRequestValidator:
                 expiration=int(self.resevation_expiration),
                 owner_id=self.client_id,
                 sig=self.signature,
-                json_trr_dict=self.rsv_req_json
+                json_trr_dict=self.rsv_req_json,
+                user_instance=self.admin_instance
 
             )
 
@@ -78,7 +81,10 @@ class TokenReservationRequestValidator:
         if self.wallet_pubkey is None:
             snd_wid = self.wallet_id
 
-            self.wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(wid=snd_wid)
+            self.wallet_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(
+                wid=snd_wid,
+                user_instance=self.admin_instance
+            )
             self.non_json_wallet_pubkey = None if not self.wallet_pubkey else \
                 json.loads(self.wallet_pubkey)
             # print(len(snd_wid))
