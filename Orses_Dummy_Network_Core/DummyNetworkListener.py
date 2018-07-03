@@ -1,0 +1,2 @@
+from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyProtocol
+
