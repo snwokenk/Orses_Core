@@ -103,11 +103,12 @@ class PKI:
 
     def load_pub_key(self, importedKey=True, x_y_only=False, user_or_wallet="user"):
 
+        print("in PKIGeneration.py, load_pub_key: ", self.user_instance.fl.get_keys_folder_path())
         if user_or_wallet == "user":
-            pubkey = FileAction.open_file_from_json(
+            pubkey = self.user_instance.fl.open_file_from_json(
                 self.pubkey_file, in_folder=self.user_instance.fl.get_keys_folder_path())
         else:
-           pubkey =  FileAction.open_file_from_json(
+           pubkey = self.user_instance.fl.open_file_from_json(
                self.pubkey_file, in_folder=self.user_instance.fl.get_wallets_folder_path())
 
         if not pubkey:  # no public key saved with user name

@@ -6,26 +6,32 @@ getting the last block received and requesting for blocks
 
 It includes class with data
 """
-import os, json
+import os, json, shutil
 from Orses_Validator_Core.NewBlockValidator import NewBlockValidator
 
 
 class BlockChainData:
-    def __init__(self):
-        self.block_number = None
+    def __init__(self, admin_instance, create_genesis_only=False):
+
+        path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data")
+        try:
+            shutil.copytree(path_of_main, admin_instance.fl.get_block_data_folder_path())
+        except FileExistsError:
+            print("In BlockChainData.py, __init__: Blockchain_Data folder already exists")
+
+
 
     def load_data(self):
         pass
 
     @staticmethod
-    def get_current_known_block():
+    def get_current_known_block(admin_instance):
         """
         retrieves the last block known to this node.
         This info is the used by network propagator to find out if
         :return: returns the last known block, this is then used to query the network for newer blocks
         """
-        file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data", "last_block_number")
-
+        file1 = os.path.join(admin_instance.fl.get_block_data_folder_path(), "last_block_number")
 
         try:
             with open(file1, "r") as jfile:

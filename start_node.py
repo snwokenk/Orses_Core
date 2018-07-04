@@ -145,7 +145,8 @@ def main():
         q_object_to_competing_process=q_for_compete,
         q_for_bk_propagate=q_for_bk_propagate,
         q_object_between_initial_setup_propagators=q_for_initial_setup,
-        reactor_instance=reactor
+        reactor_instance=reactor,
+        admin_instance=admin
 
     )
 

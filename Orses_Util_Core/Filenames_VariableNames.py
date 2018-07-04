@@ -51,11 +51,3 @@ blockchain_dbname = "Orses_Blockchain_db"
 # names of Sandbox folders and file names
 
 sandbox_folder = "sandbox"
-sandox_asgn_stmt_dbname_with_username = "{}_cond_asgn_stmt_db"
-sandox_asgn_stmt_tname_with_username = "{}_cond_asgn_stmt"
-sandbox_ttx_dbname_with_username = "{}_transfer_tx_db"
-sandbox_ttx_tname_with_username = "{}_transfer_tx"
-sandbox_trr_dbname_with_username = "{}_token_rsv_req_db"
-sandbox_trr_tname_with_username = "{}_token_rsv_req"
-sandbox_trx_dbname_with_username = "{}_token_rvk_req_db"
-sandbox_trx_tname_with_username = "{}_token_rvk_req"

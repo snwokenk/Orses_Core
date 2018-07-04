@@ -41,7 +41,12 @@ from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
 class BlockChainPropagator:
     def __init__(self, q_object_connected_to_block_validator, q_object_to_competing_process,
-                 q_for_bk_propagate, q_object_between_initial_setup_propagators,reactor_instance):
+                 q_for_bk_propagate, q_object_between_initial_setup_propagators,reactor_instance,
+                 admin_instance):
+        # initiate Blockchain Data folder if not already created. If create_genesis_only is True, then
+        BlockChainData(admin_instance, create_genesis_only=False)
+
+        self.admin_instance = admin_instance
         self.q_object_connected_to_block_validator = q_object_connected_to_block_validator
         self.q_object_compete = q_object_to_competing_process
         self.q_for_bk_propagate = q_for_bk_propagate
@@ -50,7 +55,7 @@ class BlockChainPropagator:
         self.convo_dict = dict()
         self.convo_id = 0
         self.connected_protocols_dict = dict()
-        self.locally_known_block = BlockChainData.get_current_known_block()[0]
+        self.locally_known_block = BlockChainData.get_current_known_block(admin_instance)[0]
         self.has_current_block = False
         self.protocol_with_most_recent_block = None  # [protocol id, convo_id, block_no known]
 
@@ -417,10 +422,10 @@ class RequestNewBlock(BlockChainMessageSender):
 
 # send requested block
 class SendNewBlocksRequested(BlockChainMessageReceiver):
-    def __init__(self, protocol, convo_id):
+    def __init__(self, protocol, convo_id, admin_instance):
         super().__init__(protocol, convo_id)
         self.blocks_to_send = None  # becomes an iterator when first message sent
-        self.last_known_block = BlockChainData.get_current_known_block()
+        self.last_known_block = BlockChainData.get_current_known_block(admin_instance=admin_instance)
         self.cur_block_no = None
 
     def listen(self, msg):

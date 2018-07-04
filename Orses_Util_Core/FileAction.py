@@ -12,8 +12,7 @@ class FileAction:
         self.__live_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.data_folder)
         self.__username_folder_path = None
 
-        if not self.check_if_admin_folder_exist(is_sandbox):
-            self.create_admin_folder(is_sandbox=is_sandbox)
+        self.create_admin_folder(is_sandbox=is_sandbox)
 
 
     """
@@ -52,6 +51,7 @@ class FileAction:
             is_created = create_f(self.__live_folder_path)
             self.__username_folder_path = os.path.join(self.__live_folder_path, self.username)
 
+
         is_created1 = create_f(self.__username_folder_path)
         self.__folders_created = True if (is_created and is_created1) else False
 
@@ -70,7 +70,8 @@ class FileAction:
             return self.__sandbox_folder_path
 
     def get_keys_folder_path(self):
-        return os.path.join(self.__username_folder_path, Filenames_VariableNames.key_folder)
+        rsp = os.path.join(self.get_username_folder_path(), Filenames_VariableNames.key_folder)
+        return rsp
 
     def get_wallets_folder_path(self):
         """
@@ -205,6 +206,9 @@ class FileAction:
 
         return True
 
+    @staticmethod
+    def copy_file(src, st):
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     @classmethod
     def splitTheFiles(cls, file_name, numberOfPart=3):
 

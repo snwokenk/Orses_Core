@@ -1,6 +1,5 @@
 from Orses_Cryptography_Core.PKIGeneration import PKI
 from Orses_Database_Core.CreateDatabase import CreateDatabase
-from Orses_Util_Core.FileAction import FileAction
 from Orses_Database_Core.StoreData import StoreData
 from Orses_Database_Core.RetrieveData import RetrieveData
 from Orses_Util_Core.FileAction import FileAction
@@ -44,7 +43,7 @@ class Admin:
         self.pubkey = None
         self.privkey = None
         self.pki = None
-        self.fl = FileAction(username=admin_name)
+        self.fl = None
         self.newAdmin = newAdmin
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
@@ -57,6 +56,7 @@ class Admin:
         sets or, if not already created, creates public private key pair for admin_name on local machine.
         :return: none
         """
+        self.fl = FileAction(username=self.admin_name)
 
         # create an instance of PKI class (uses RSA 3072)
         pki = PKI(username=self.admin_name, password=self.password, user_instance=self)
@@ -116,7 +116,7 @@ class Admin:
     def load_user(self):
         admin_data = RetrieveData.get_admin_info(username=self.admin_name, user_instance=self)
 
-        pki = PKI(username=self.admin_name, password=self.password)
+        pki = PKI(username=self.admin_name, password=self.password, user_instance=self)
         if admin_data:
             self.admin_id = admin_data[0]
             self.creation_time = admin_data[1]
@@ -125,14 +125,14 @@ class Admin:
             self.privkey = pki.load_priv_key(importedKey=True)
             self.pki = pki
 
-            print("in Administrator.py/load_user(), self.pubkey: ", self.pubkey)
+
 
         else:  # no user info, user not created
             return None
 
         if self.privkey:  # everything is well
             # creates user info database and wallet info database (if not already created)
-            CreateDatabase()
+            CreateDatabase(user_instance=self)
             return self
         else: # wrong password
             return False
