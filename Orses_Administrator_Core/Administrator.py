@@ -59,7 +59,7 @@ class Admin:
         """
 
         # create an instance of PKI class (uses RSA 3072)
-        pki = PKI(username=self.admin_name, password=self.password)
+        pki = PKI(username=self.admin_name, password=self.password, user_instance=self)
 
         # try to load pub key, it should return false if new admin, if it returns pubkey then admin with admin_name already created
         rsp = pki.load_pub_key()

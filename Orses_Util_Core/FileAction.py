@@ -4,13 +4,17 @@ import os, json, pathlib
 
 
 class FileAction:
-    def __init__(self, username=None):
+    def __init__(self, username=None, is_sandbox=False):
         self.username = username
         self.__folders_created = False
         self.__project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.__sandbox_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.sandbox_folder)
         self.__live_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.data_folder)
-        self.__username_folder_path = os.path.join(self.__sandbox_folder_path, self.username)
+        self.__username_folder_path = None
+
+        if not self.check_if_admin_folder_exist(is_sandbox):
+            self.create_admin_folder(is_sandbox=is_sandbox)
+
 
     """
     use section for creation of folders and returning of paths
@@ -43,8 +47,10 @@ class FileAction:
         # make sure data folder or sandbox folder is created
         if is_sandbox is True:
             is_created = create_f(self.__sandbox_folder_path)
+            self.__username_folder_path = os.path.join(self.__sandbox_folder_path, self.username)
         else:
             is_created = create_f(self.__live_folder_path)
+            self.__username_folder_path = os.path.join(self.__live_folder_path, self.username)
 
         is_created1 = create_f(self.__username_folder_path)
         self.__folders_created = True if (is_created and is_created1) else False

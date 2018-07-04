@@ -18,6 +18,7 @@ class RetrieveData:
 
     @staticmethod
     def get_admin_info(username, user_instance):
+        print(user_instance.fl.get_admin_data_folder_path())
         db = Sqlite3Database(dbName=Filenames_VariableNames.admin_dbname.format(username),
                              in_folder=user_instance.fl.get_admin_data_folder_path())
         columnToSelect = "admin_id, timestamp_of_creation, isCompetitor"

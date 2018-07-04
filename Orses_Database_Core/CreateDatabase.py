@@ -73,7 +73,7 @@ class CreateDatabase:
 
         db = Sqlite3Database(
             dbName=Filenames_VariableNames.wallet_id_dbname,
-            in_folder=user_instance.get_clients_wallet_folder_path
+            in_folder=user_instance.fl.get_clients_wallet_folder_path()
         )
 
         db.create_table_if_not_exist(
@@ -91,7 +91,7 @@ class CreateDatabase:
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.asgn_stmt_dbname,
-                             in_folder=user_instance.get_mempool_data_folder_path())
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.asgn_stmt_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_bk_conn_wid="TEXT", C_snd_wid="TEXT",
@@ -109,7 +109,7 @@ class CreateDatabase:
         """
 
         db = Sqlite3Database(dbName=Filenames_VariableNames.fulfilled_asgn_stmt_dbname,
-                             in_folder=user_instance.get_mempool_data_folder_path())
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.fulfilled_asgn_stmt_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_snd_wid="TEXT", C_rcv_wid="TEXT", D_bk_con_wid="TEXT",
@@ -119,7 +119,7 @@ class CreateDatabase:
     @staticmethod
     def _create_transfer_tx_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.ttx_dbname,
-                             in_folder=user_instance.get_mempool_data_folder_path())
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.ttx_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_snd_wid="TEXT", C_rcv_wid="TEXT", D_amt="REAL", E_fee="REAL",
@@ -130,7 +130,7 @@ class CreateDatabase:
     @staticmethod
     def _create_tkn_rsv_req_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.trr_dbname,
-                             in_folder=user_instance.get_mempool_data_folder_path())
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.trr_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_wid="TEXT", C_amt="REAL", E_fee="REAL", F_timestamp="INT",
@@ -141,7 +141,7 @@ class CreateDatabase:
     @staticmethod
     def _create_tkn_rvk_req_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.trx_dbname,
-                             in_folder=user_instance.get_mempool_data_folder_path())
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
 
         db.create_table_if_not_exist(tableName=Filenames_VariableNames.trx_tname, primary_key="tx_hash",
                                      A_tx_hash="TEXT", B_trr_hash="TEXT", C_wid="TEXT", D_fee="REAL", E_timestamp="INT",
@@ -152,7 +152,7 @@ class CreateDatabase:
     @staticmethod
     def _create_blockchain_db(user_instance):
         db = Sqlite3Database(dbName=Filenames_VariableNames.blockchain_dbname,
-                             in_folder=user_instance.get_mempool_data_folder_path())
+                             in_folder=user_instance.fl.get_mempool_data_folder_path())
         db.close_connection()
 
     @staticmethod
