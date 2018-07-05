@@ -92,6 +92,7 @@ class FileAction:
     def get_block_data_folder_path(self):
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.block_folder)
 
+
     """
     section for static functions for saving/loading text, bytes and json files
     also for creating folders for export/import

@@ -13,7 +13,10 @@ class NetworkManager:
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
         # self.addresses = {"127.0.0.1": 55603}
-        self.addresses = FileAction.open_file_from_json(filename=Filenames_VariableNames.default_addr_list,)
+        self.addresses = FileAction.open_file_from_json(
+            filename=Filenames_VariableNames.default_addr_list,
+            in_folder=admin.fl.get_username_folder_path()
+        )
         self.listening_port = veri_listening_port
         self.veri_connecting_factory = VeriNodeConnectorFactory(
             q_object_from_protocol=q_object_from_protocol,
