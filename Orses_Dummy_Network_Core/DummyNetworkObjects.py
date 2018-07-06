@@ -21,6 +21,10 @@ class DummyProtocol:
         else:
             pass
 
+    def set_transport_peer_data_received(self, peer_data_received_callable):
+        if isinstance(self._transport, DummyTransport):
+            self._transport.peer_dataReceived =peer_data_received_callable
+
     def makeConnection(self, transport):
         """
         do not overwrite
@@ -88,11 +92,11 @@ class DummyClientFactory(DummyFactory):
 
 class DummyTransport:
     def __init__(self):
-        self.peer = None
-        self.host = None
+        self.peer_dataReceived = None  # calls the dataReceived method ofl local
 
     def write(self, data: bytes):
-        pass
+        if callable(self.peer_dataReceived):
+            self.peer_dataReceived(data=data)
 
     def loseConnection(self):
         pass
@@ -159,7 +163,7 @@ class DummyAdminNode(DummyNode):
 class DummyReactor:
     def __init__(self, node_instance: DummyNode):
         self.node = node_instance
-        self.node_host_addr = self.node.addr
+        self.node_host_addr = self.node.addr #addr
         self.node_dummy_internet = self.node.internet
         self.port_to_factory_dict = dict()  # {port: [listening_factory, backlog or max connections]}
 
@@ -167,6 +171,7 @@ class DummyReactor:
     Methods mimicking twisteds reactor
     """
     def listenTCP(self, port, factory, backlog=50):
+
         success = self.node_dummy_internet.add_to_listening(addr=self.node_host_addr, port=port)
         if success:
             self.port_to_factory_dict[port] = [factory, backlog]
@@ -176,6 +181,7 @@ class DummyReactor:
         transport = DummyTransport()
 
         protocol = factory.buildProtocol(addr=[port, host])
+
         protocol.transport = transport
 
         temp_conn_inst = ConnectedInstance(
@@ -184,7 +190,7 @@ class DummyReactor:
             listener_port_addr=[host, port]
         )
 
-        fully_conn_inst = self.node_dummy_internet.connect_to_listening(
+        dataReceivedOfPeer = self.node_dummy_internet.connect_to_listening(
             temp_connected_instance=temp_conn_inst,
             node=self.node
         )
@@ -310,6 +316,7 @@ class DummyInternet:
         self.listening_nodes = {
             addr: {
                   port: {
+                        factory: factory instance to call factory.buildProtocol on
                         listener protocol: connecting_protocol
                 }
 
@@ -341,11 +348,32 @@ class DummyInternet:
 
 
 
-    def add_to_listening(self, addr, port):
+    def add_to_listening(self, addr, port, factory):
         pass
 
     def connect_to_listening(self, temp_connected_instance: ConnectedInstance, node: DummyNode):
-        pass
+        listener_host = temp_connected_instance.listener_host
+        listener_port = temp_connected_instance.listener_port
+
+        if listener_host in self.listening_nodes and listener_port in self.listening_nodes[listener_host]:
+            try:
+                tmp_node = self.address_to_node_dict[temp_connected_instance.connector_host]
+            except KeyError:
+                print("Please call give_address_to_node() to get an address")
+                return None  # connecting node not connected to DummyInternet
+            else:
+                if tmp_node == node:
+                    listener_protocol = self.listening_nodes[listener_host][listener_port]["factory"].buildProtocol(
+                        addr=[temp_connected_instance.connector_host, temp_connected_instance.listener_port]
+                    )
+                    self.listening_nodes[listener_host][listener_port][listener_protocol] = temp_connected_instance.connector_protocol
+                    self.address_to_node_dict[listener_host].reactor.re
+
+                    return self.listening_nodes[listener_host][listener_port][listener_protocol].dataReceived
+
+        else:
+            return False
+
 
 
     def run_dummy_internet(self):
