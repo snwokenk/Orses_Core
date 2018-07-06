@@ -6,7 +6,7 @@ from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferVali
     TokenReservationRequestValidator, TokenReservationRevokeValidator
 # from twisted.internet.protocol import Protocol
 
-import json
+import json, os, shutil
 
 
 validator_dict = dict()
@@ -19,13 +19,14 @@ validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeVali
 class NetworkPropagator:
 
     def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
-                 q_object_between_initial_setup_propagators, q_object_to_competing_process=None):
+                 q_object_between_initial_setup_propagators, q_object_to_competing_process=None, is_sandbox=False):
         """
 
         :param q_object_connected_to_validator: q object used to get validated messages from Message validators
         :param q_object_to_competing_process: q object used to send new validated messages to competing process,
         if active
         """
+        self.is_sandbox = is_sandbox
         self.q_object_validator = q_object_connected_to_validator
         self.q_object_compete = q_object_to_competing_process
         self.q_object_propagate = q_for_propagate
@@ -48,6 +49,19 @@ class NetworkPropagator:
         self.reactor_instance = reactor_instance
 
         self.network_manager = None
+
+    def copy_main_default_address_to_admin(self, admin_instance):
+
+        if self.is_sandbox is True:
+            addr_file_name = "Default_Addresses_Sandbox"
+        else:
+            addr_file_name = "Default_Addresses"
+
+        path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), addr_file_name)
+        try:
+            shutil.copy(src=path_of_main, dst=admin_instance.fl.get_username_folder_path())
+        except FileExistsError:
+            print("In NetworkPropagator.py, __init__: Blockchain_Data folder already exists")
 
     def add_protocol(self, protocol):
 

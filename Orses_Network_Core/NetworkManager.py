@@ -12,11 +12,17 @@ class NetworkManager:
 
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
-        # self.addresses = {"127.0.0.1": 55603}
+
+        # get sandbox address or live address
+        self.addresses_file = Filenames_VariableNames.default_addr_list_sandbox if self.admin.is_sandbox is True else \
+            Filenames_VariableNames.default_addr_list
+
         self.addresses = FileAction.open_file_from_json(
-            filename=Filenames_VariableNames.default_addr_list,
+            filename=self.addresses_file,
             in_folder=admin.fl.get_username_folder_path()
         )
+
+        # set listening port
         self.listening_port = veri_listening_port
         self.veri_connecting_factory = VeriNodeConnectorFactory(
             q_object_from_protocol=q_object_from_protocol,
@@ -40,9 +46,7 @@ class NetworkManager:
         self.Connected_Port_Veri = list()
 
     def run_veri_node_network(self, reactor_instance):
-
         for i in self.addresses:
-
             temp_p = reactor_instance.connectTCP(
                 host=i,
                 port=self.addresses[i],

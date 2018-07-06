@@ -20,6 +20,7 @@ client_id_tname = "client_id_info"
 admin_data = "data_admin"
 clients_wallets_data = "data_client_wallet"
 default_addr_list = "Default_Addresses"
+default_addr_list_sandbox = "Default_Addresses_Sandbox"
 
 
 wallet_id_dbname = "wallet_id_info_db"

@@ -86,7 +86,6 @@ class Admin:
 
             # if the a new admin then creation time is now and new databases are created with initial info stored
 
-
             self.creation_time = int(time.time())
 
             # create all the databases needed in either sandbox/username or live_data/username folders
