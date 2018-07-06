@@ -2,6 +2,12 @@
 Tries to mimic Twisted connection with a dummy internet for a dummy testing network
 """
 from twisted.internet import reactor, defer, threads
+import multiprocessing
+
+# todo: when coding, think about the viewpoint of instantiating the DummyInternetClass and then Running the
+# todo: veriNode classes in reactor.CallInThread. Methods of the DummyInternetClass will be the only way nodes are
+# todo: able to communicate with each other. ie when transport.write() is called have a way to call dataReceived()
+
 
 class DummyProtocol:
     """
@@ -17,9 +23,12 @@ class DummyProtocol:
     @transport.setter
     def transport(self, value):
         if isinstance(value, DummyTransport):
-            self.transport = value
+            self._transport = value
         else:
             pass
+    @transport.deleter
+    def transport(self):
+        self._transport = None
 
     def set_transport_peer_data_received(self, peer_data_received_callable):
         if isinstance(self._transport, DummyTransport):
@@ -59,9 +68,8 @@ class DummyFactory:
     meant for listening
     """
 
-    def __init__(self, self_addr):
+    def __init__(self):
         self.f_type = "listening"
-        self.self_addr = self_addr
 
     def startFactory(self):
         pass
@@ -75,9 +83,15 @@ class DummyClientFactory(DummyFactory):
     meant for connecting
     """
 
-    def __init__(self, self_addr):
-        super().__init__(self_addr)
+    def __init__(self, ):
+        super().__init__()
         self.f_type = "connecting"
+
+    def clientConnectionFailed(self, connector, reason):
+        pass
+
+    def clientConnectionLost(self, connector, reason):
+        pass
 
     def startFactory(self):
         """
@@ -88,24 +102,6 @@ class DummyClientFactory(DummyFactory):
 
     def buildProtocol(self, addr):
         return DummyProtocol()
-
-
-class DummyTransport:
-    def __init__(self):
-        self.peer_dataReceived = None  # calls the dataReceived method ofl local
-
-    def write(self, data: bytes):
-        if callable(self.peer_dataReceived):
-            self.peer_dataReceived(data=data)
-
-    def loseConnection(self):
-        pass
-
-    def getPeer(self):
-        pass
-
-    def getHost(self):
-        pass
 
 
 class DummyNode:
@@ -160,6 +156,40 @@ class DummyAdminNode(DummyNode):
         self.is_competitor = isCompetitor
 
 
+class DummyTransport:
+    """
+    Transport
+    """
+    def __init__(self, peer_protocol: DummyProtocol, dummy_internet_inst: DummyInternet,
+                 data_access_dict: list, is_listener:bool):
+        self.is_listener = is_listener
+        self.protocol = peer_protocol
+        self.dataReceived = peer_protocol.dataReceived  # calls the dataReceived method off peer protocol
+        self.internet = dummy_internet_inst
+        self.data_for_listening_dict = data_access_dict # [listener_host, listener_port, listener_protocol, connector_host, connector_port],
+        self.host = [data_access_dict[0], data_access_dict[1]] if is_listener else [data_access_dict[3], data_access_dict[4]]
+        self.peer = [data_access_dict[0], data_access_dict[1]] if not is_listener else [data_access_dict[3], data_access_dict[4]]
+
+    def write(self, data: bytes):
+        if callable(self.dataReceived):
+            self.dataReceived(data=data)
+
+    def loseConnection(self):
+
+        self.internet.disconnect(self.data_for_listening_dict)
+        del self.protocol.transport
+        self.protocol = None
+        self.dataReceived = None
+        self.internet = None
+        self.data_for_listening_dict = None
+
+    def getPeer(self):
+        return self.peer
+
+    def getHost(self):
+        return self.host
+
+
 class DummyReactor:
     def __init__(self, node_instance: DummyNode):
         self.node = node_instance
@@ -178,24 +208,21 @@ class DummyReactor:
 
     def connectTCP(self, host, port, factory: DummyClientFactory):
 
-        transport = DummyTransport()
 
-        protocol = factory.buildProtocol(addr=[port, host])
+        # todo: use connector to have a way for retrying connection
 
-        protocol.transport = transport
-
-        temp_conn_inst = ConnectedInstance(
-            connector_protocol=protocol,
-            connector_port_addr=[self.node_host_addr, self.node.get_a_port()],
-            listener_port_addr=[host, port]
+        connected_instance = self.node_dummy_internet.connect_to_listening(
+            connecting_addr=[self.node_host_addr, self.node.get_a_port()],
+            listening_addr=[host, port],
+            connector_factory=factory,
+            connector_node=self.node
         )
 
-        dataReceivedOfPeer = self.node_dummy_internet.connect_to_listening(
-            temp_connected_instance=temp_conn_inst,
-            node=self.node
-        )
+        if connected_instance is False:
+            factory.clientConnectionFailed(connector=None, reason="No Listening Node In Addr")
 
-        pass
+
+
 
     def callLater(self, delay, callable_func, *args, **kw):
         if reactor.running:  # this might change, probably have to pass reactor instance
@@ -211,19 +238,6 @@ class DummyReactor:
     these methods not mimicking any functions in twisted
     """
 
-    def receive_connection(self, connect_instance: ConnectedInstance):
-        """
-        should look at port and then use factory to return a protcol using buildProtocol
-        :param port:
-        :return:
-        """
-        port = connect_instance
-
-        if port in self.port_to_factory_dict and not isinstance(self.port_to_factory_dict[port][0], DummyClientFactory):
-
-            return True
-        else:
-            return False
 
 
 class ConnectedInstance:
@@ -231,11 +245,11 @@ class ConnectedInstance:
     will represent a connected instance
     """
 
-    def __init__(self, connector_protocol, connector_port_addr, listener_port_addr):
+    def __init__(self, connector_protocol, listener_protocol, connector_port_addr, listener_port_addr):
         self._connector_protocol = connector_protocol
         self._connector_port = connector_port_addr[1]
         self._connector_host = connector_port_addr[0]  # address
-        self._listener_protocol = None
+        self._listener_protocol = listener_protocol
         self._listener_port = listener_port_addr[1]
         self._listener_host = listener_port_addr[0]
 
@@ -311,13 +325,13 @@ class ConnectedInstance:
 
 class DummyInternet:
 
-    def __init__(self):
+    def __init__(self, q_to_add_list: multiprocessing.Queue, q_to_conn_listen: multiprocessing.Queue):
         """
         self.listening_nodes = {
             addr: {
                   port: {
-                        factory: factory instance to call factory.buildProtocol on
-                        listener protocol: connecting_protocol
+                        factory: factory class for instantiating protocol
+                        listener_protocol: connectedInstance
                 }
 
             }
@@ -327,7 +341,8 @@ class DummyInternet:
         self.listening_nodes = dict()
         self.address_number = 0
         self.address_to_node_dict = dict()
-        self.q_obj = None
+        self.q_to_add_listening = q_to_add_list
+        self.q_to_connect_to_listening = q_to_conn_listen
 
     def give_address_to_node(self, instance_of_node):
         """
@@ -346,33 +361,74 @@ class DummyInternet:
         else:
             return ""  # if instance_of_node is not an instance of DummyNode or Derived Classes
 
-
-
     def add_to_listening(self, addr, port, factory):
         pass
 
-    def connect_to_listening(self, temp_connected_instance: ConnectedInstance, node: DummyNode):
-        listener_host = temp_connected_instance.listener_host
-        listener_port = temp_connected_instance.listener_port
+    def connect_to_listening(self, connecting_addr, listening_addr, connector_factory: DummyClientFactory,
+                             connector_node: DummyNode):
+
+        listener_host = listening_addr[0]
+        listener_port = listening_addr[1]
+        connector_host = connecting_addr[0]
+        connector_port = connecting_addr[1]
 
         if listener_host in self.listening_nodes and listener_port in self.listening_nodes[listener_host]:
             try:
-                tmp_node = self.address_to_node_dict[temp_connected_instance.connector_host]
+                tmp_node = self.address_to_node_dict[connector_host]
             except KeyError:
                 print("Please call give_address_to_node() to get an address")
-                return None  # connecting node not connected to DummyInternet
+                return None  # connecting node not connected to DummyInternet and not in address dictionary
             else:
-                if tmp_node == node:
-                    listener_protocol = self.listening_nodes[listener_host][listener_port]["factory"].buildProtocol(
-                        addr=[temp_connected_instance.connector_host, temp_connected_instance.listener_port]
+                if tmp_node == connector_node:  # checks to make sure node at address same node sending
+
+                    # get listener factory instance
+                    listener_factory = self.listening_nodes[listener_host][listener_port]["factory"]
+
+                    # create protocol for listenier
+                    listener_protocol = listener_factory.buildProtocol(addr=[connector_host, connector_port])
+
+                    # create protocol for connector
+                    connector_protocol = connector_factory.buildProtocol(addr=[listener_host, listener_port])
+
+                    transport_for_listener = DummyTransport(
+                        peer_protocol=connector_protocol,
+                        dummy_internet_inst=self,
+                        data_access_dict=[listener_host, listener_port, listener_protocol, connector_host, connector_port],
+                        is_listener=True
                     )
-                    self.listening_nodes[listener_host][listener_port][listener_protocol] = temp_connected_instance.connector_protocol
-                    self.address_to_node_dict[listener_host].reactor.re
+                    listener_protocol.transport = transport_for_listener
+                    transport_for_connector = DummyTransport(
+                        peer_protocol=listener_protocol,
+                        dummy_internet_inst=self,
+                        data_access_dict=[listener_host, listener_port, listener_protocol, connector_host, connector_port],
+                        is_listener=False
+                    )
+                    connector_protocol.transport = transport_for_connector
+                    connected_inst = ConnectedInstance(
+                        connector_protocol=connector_protocol,
+                        listener_protocol=listener_protocol,
+                        connector_port_addr=[connector_host, connector_port],
+                        listener_port_addr=[listener_host, listener_port]
+                    )
 
-                    return self.listening_nodes[listener_host][listener_port][listener_protocol].dataReceived
+                    self.listening_nodes[listener_host][listener_port][listener_protocol] = connected_inst
+                   # call connectionMade methods of listener protocol and connector_protocol
+                    listener_protocol.connectionMade()
+                    connector_protocol.connectionMade()
 
+                    return True
         else:
             return False
+
+    def disconnect(self, data_access_dict: list):
+        try:
+            del self.listening_nodes[data_access_dict[0]][data_access_dict[1]][data_access_dict[2]]
+
+        except KeyError:
+            return False
+
+        else:
+            return True
 
 
 

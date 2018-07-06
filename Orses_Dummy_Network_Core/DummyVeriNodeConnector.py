@@ -1,23 +1,12 @@
-from twisted.internet.protocol import Protocol, ReconnectingClientFactory, connectionDone
-
-"""
-Used to connect and maintain long lived connections, this is unlike non-admin nodes with short lived connection
-When a connection is made, the instance of VeriNodeConnector Protocol sends itself to another process using q_object 
-passed to it. The process can then use the Protocol.transport.write and Protocol.transport.loseConnection methods
+from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyProtocol, DummyClientFactory
 
 
-another instance could be to instantiate a new NetworkPropagator class whenever a reason+hashpreview message is 
-received and set
-
-"""
-
-
-class VeriNodeConnector(Protocol):
+class DummyVeriNodeConnector(DummyProtocol):
     created = 1
 
     def __init__(self, addr, factory):
-        self.proto_id = VeriNodeConnector.created
-        VeriNodeConnector.created += 1
+        self.proto_id = DummyVeriNodeConnector.created
+        DummyVeriNodeConnector.created += 1
         super().__init__()
         self.propagator = factory.propagator
         self.factory = factory
@@ -63,19 +52,19 @@ class VeriNodeConnector(Protocol):
         print("connection made: ", self.addr)
         self.propagator.add_protocol(self)
 
-    def connectionLost(self, reason=connectionDone):
+    def connectionLost(self, reason="ConnectionDone"):
         # removes self from connected protocol, this del entry in dict with protocol
         self.propagator.remove_protocol(self)
 
         # reduces number of created
-        VeriNodeConnector.created -= 1
+        DummyVeriNodeConnector.created -= 1
 
         self.factory.number_of_connections -= 1
         print("Connection Lost In Connector", self.propagator.connected_protocols_dict)
         print()
 
 
-class VeriNodeConnectorFactory(ReconnectingClientFactory):
+class DummyVeriNodeConnectorFactory(DummyClientFactory):
 
     def __init__(self, q_object_from_protocol, propagator,
                  number_of_connections_wanted=2):
@@ -83,16 +72,13 @@ class VeriNodeConnectorFactory(ReconnectingClientFactory):
         self.q_object_from_protocol = q_object_from_protocol
         self.number_of_wanted_connections = number_of_connections_wanted
         self.number_of_connections = 0
-        self.maxRetries = 2
         self.propagator = propagator
 
     def clientConnectionFailed(self, connector, reason):
-        connector.disconnect()
+        print(reason)
 
     def clientConnectionLost(self, connector, unused_reason):
-
-        connector.disconnect()
+        print(unused_reason)
 
     def buildProtocol(self, addr):
-        return VeriNodeConnector(addr, self)
-
+        return DummyVeriNodeConnector(addr, self)
