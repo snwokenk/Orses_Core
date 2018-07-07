@@ -56,7 +56,7 @@ class Admin:
         sets or, if not already created, creates public private key pair for admin_name on local machine.
         :return: none
         """
-        self.fl = FileAction(username=self.admin_name)
+        self.fl = FileAction(admin=self)
 
         # create an instance of PKI class (uses RSA 3072)
         pki = PKI(username=self.admin_name, password=self.password, user_instance=self)

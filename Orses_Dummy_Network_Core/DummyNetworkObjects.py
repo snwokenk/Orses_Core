@@ -9,6 +9,24 @@ import multiprocessing
 # todo: able to communicate with each other. ie when transport.write() is called have a way to call dataReceived()
 
 
+class DummyInternetTemplate:
+    def __init__(self):
+        """
+        self.listening_nodes = {
+            addr: {
+                  port: {
+                        factory: factory class for instantiating protocol
+                        listener_protocol: connectedInstance
+                }
+
+            }
+
+        }
+        """
+        self.listening_nodes = dict()
+        self.address_number = 0
+        self.address_to_node_dict = dict()
+
 class DummyProtocol:
     """
     have standard protocol attributes and methods
@@ -109,9 +127,8 @@ class DummyNode:
     acts as base class dummy node, essentially acts as a container that loads a user
     """
 
-    def __init__(self, username, password, dummy_internet: DummyInternet):
-        self.username = username
-        self.password = password
+    def __init__(self, admin, dummy_internet: DummyInternetTemplate):
+        self.admin = admin
         self.internet = dummy_internet  # should be an instance of DummyInternet
         self.addr = None
         self.reactor = None
@@ -148,19 +165,28 @@ class DummyAdminNode(DummyNode):
     mimic an admin node
     """
 
-    def __init__(self, username, password, new_admin, isCompetitor, dummy_internet=None):
+    def __init__(self, admin, new_admin, isCompetitor, dummy_internet=None):
 
-        super().__init__(username=username, password=password, dummy_internet=dummy_internet)
+        super().__init__(admin=admin, dummy_internet=dummy_internet)
 
-        self.new_admin = new_admin
-        self.is_competitor = isCompetitor
+        self.new_admin = admin.isNewAdmin
+        self.is_competitor = admin.isCompetitor
+
+    def run_node(self, real_reactor_instance):
+        """
+        Run node
+        :param real_reactor_instance: this is an instance of reactor from Twisted framework. NOT THE DUMMYREACTOR!
+        :return:
+        """
+        pass
+
 
 
 class DummyTransport:
     """
     Transport
     """
-    def __init__(self, peer_protocol: DummyProtocol, dummy_internet_inst: DummyInternet,
+    def __init__(self, peer_protocol: DummyProtocol, dummy_internet_inst: DummyInternetTemplate,
                  data_access_dict: list, is_listener:bool):
         self.is_listener = is_listener
         self.protocol = peer_protocol
@@ -191,8 +217,9 @@ class DummyTransport:
 
 
 class DummyReactor:
-    def __init__(self, node_instance: DummyNode):
+    def __init__(self, node_instance: DummyNode, real_reactor_instance):
         self.node = node_instance
+        self.real_reactor_instance = real_reactor_instance
         self.node_host_addr = self.node.addr #addr
         self.node_dummy_internet = self.node.internet
         self.port_to_factory_dict = dict()  # {port: [listening_factory, backlog or max connections]}
@@ -221,23 +248,19 @@ class DummyReactor:
         if connected_instance is False:
             factory.clientConnectionFailed(connector=None, reason="No Listening Node In Addr")
 
-
-
-
     def callLater(self, delay, callable_func, *args, **kw):
-        if reactor.running:  # this might change, probably have to pass reactor instance
-            reactor.callLater(delay, callable_func, *args, **kw)
+        if self.real_reactor_instance.running:  # this might change, probably have to pass reactor instance
+            self.real_reactor_instance.callLater(delay, callable_func, *args, **kw)
 
     def callFromThread(self, callable_func, *args, **kw):
-        reactor.callFromThread(callable_func, *args, **kw)
+        self.real_reactor_instance.callFromThread(callable_func, *args, **kw)
 
     def callInThread(self, callable_func, *args, **kw):
-        reactor.callInThread(callable_func, *args, **kw)
+        self.real_reactor_instance.callInThread(callable_func, *args, **kw)
 
     """
     these methods not mimicking any functions in twisted
     """
-
 
 
 class ConnectedInstance:
@@ -323,9 +346,9 @@ class ConnectedInstance:
             self._listener_host = ""
 
 
-class DummyInternet:
+class DummyInternet(DummyInternetTemplate):
 
-    def __init__(self, q_to_add_list: multiprocessing.Queue, q_to_conn_listen: multiprocessing.Queue):
+    def __init__(self):
         """
         self.listening_nodes = {
             addr: {
@@ -338,11 +361,7 @@ class DummyInternet:
 
         }
         """
-        self.listening_nodes = dict()
-        self.address_number = 0
-        self.address_to_node_dict = dict()
-        self.q_to_add_listening = q_to_add_list
-        self.q_to_connect_to_listening = q_to_conn_listen
+        super().__init__()
 
     def give_address_to_node(self, instance_of_node):
         """

@@ -17,7 +17,7 @@ on the orses network
 
 class NetworkListener(Protocol):
     def __init__(self, factory, message_object):
-        Protocol().__init__()
+        super().__init__()
         self.factory = factory
         self.message_object = message_object
 
@@ -49,7 +49,7 @@ class NetworkListenerFactory(Factory):
         :param spkn_msg_obj_creator: a callable class, this is used to instatiate a spkn_msg class for each connection
         :param administrator:
         """
-        Factory().__init__()
+        super().__init__()
         self.message_object = spkn_msg_obj_creator
         self.admin = admin
         self.q_object =q_obj

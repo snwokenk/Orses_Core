@@ -4,15 +4,15 @@ import os, json, pathlib
 
 
 class FileAction:
-    def __init__(self, username=None, is_sandbox=False):
-        self.username = username
+    def __init__(self, admin=None):
+        self.username = admin.admin_name if admin is not None else None
         self.__folders_created = False
         self.__project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.__sandbox_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.sandbox_folder)
         self.__live_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.data_folder)
         self.__username_folder_path = None
 
-        self.create_admin_folder(is_sandbox=is_sandbox)
+        self.create_admin_folder(is_sandbox=admin.is_sandbox)
 
 
     """

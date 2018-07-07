@@ -5,12 +5,16 @@ from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagato
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from twisted.internet.error import CannotListenError
 
+# for sandbox internet
+
+from Orses_Dummy_Network_Core.DummyNetworkObjects import *
+
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
 
-import sys, multiprocessing, queue
+import sys, multiprocessing, queue, getopt, time
 
 p_version = sys.version_info
 
@@ -86,6 +90,96 @@ def send_stop_to_reactor(reactor_instance, *args):
     response_thread.addCallback(lambda x: reactor.stop())  # lambda function is fired when blocking function returns (and return anything)
 
 
+def create_admins(number_of_admins_to_create: int):
+    assert number_of_admins_to_create > 0, "number of admins to create must be at least 1"
+    admins_list = list()
+    while number_of_admins_to_create:
+        admins_list.append(Admin(
+            admin_name=f'v{number_of_admins_to_create}', password="xxxxxx", newAdmin=True, is_sandbox=True))
+        number_of_admins_to_create -= 1
+
+    return admins_list
+
+
+
+
+
+def sandbox_main():
+    admin_name = input("admin name: ")
+    password = getpass("password: ")
+
+    # admin loaded, if no admin by username, offer to create admin
+    admin = Admin(admin_name=admin_name, password=password, newAdmin=False, is_sandbox=True).load_user()
+    assert admin is not False, "Wrong Password"
+    if admin is None:
+        ans = input("No admin id under that admin name, would you like to create a new admin id? y/N ")
+        if ans.lower() == "y":
+            admin = Admin(admin_name=admin_name, password=password, newAdmin=True, is_sandbox=True)
+        else:
+            exit(0)
+    print(admin)
+    print(vars(admin))
+
+    if admin.isCompetitor is True:
+        compete = input("Start Competing? Y/n(default is Y)").lower()
+        if compete in {"y", ""}:
+            print("Competing Process Started...")
+    elif admin.isCompetitor is None:
+        compete = input("Would You like to compete to create blocks on the Orses Network?\n"
+                        "press enter to skip, y for yes or n for no: ").lower()
+
+        if compete == "y":
+            print("\n a new competitor message will be sent to the network and included in the blockchain. \n"
+                  "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other "
+                  "competitors and proxy nodes")
+            admin.isCompetitor = True
+            # todo: add logic to create new competitor network message for inclusion into the blockchain
+        elif compete == "n":
+            admin.isCompetitor = False
+
+        else:  # sets compete to n for now and skps setting admin competitor status
+            compete = 'n'
+    else:
+        compete = 'n'
+
+    # *** instantiate queue variables ***
+    q_for_compete = multiprocessing.Queue() if compete == 'y' else None
+    q_for_validator = multiprocessing.Queue()
+    q_for_propagate = multiprocessing.Queue()
+    q_for_bk_propagate = multiprocessing.Queue()
+    q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
+    q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
+    q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
+
+    # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
+    if compete == 'y':
+        pass
+
+    # *** start dummy internet
+
+    dummy_internet = DummyInternet()
+
+    # *** start blockchain propagator in different thread ***
+    blockchain_propagator = BlockChainPropagator(
+        q_object_connected_to_block_validator=q_for_block_validator,
+        q_object_to_competing_process=q_for_compete,
+        q_for_bk_propagate=q_for_bk_propagate,
+        q_object_between_initial_setup_propagators=q_for_initial_setup,
+        reactor_instance=reactor,
+        admin_instance=admin
+
+    )
+
+    # *** set intial setup to start in 3 seconds. This will get new blocks and data before other processes start ***
+    reactor.callLater(3.0, blockchain_propagator.initial_setup)
+
+    # *** start blockchain propagator manager in separate thread ***
+    reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
+
+    # *** start blockchain propagator initiator in separate thread ***
+    reactor.callInThread(blockchain_propagator.run_propagator_convo_initiator)
+
+
 def main():
 
     # input admin name and password
@@ -93,12 +187,12 @@ def main():
     password = getpass("password: ")
 
     # admin loaded, if no admin by username, offer to create admin
-    admin = Admin(admin_name=admin_name, password=password, newAdmin=False).load_user()
+    admin = Admin(admin_name=admin_name, password=password, newAdmin=False, is_sandbox=False).load_user()
     assert admin is not False, "Wrong Password"
     if admin is None:
         ans = input("No admin id under that admin name, would you like to create a new admin id? y/N ")
         if ans.lower() == "y":
-            admin = Admin(admin_name=admin_name, password=password, newAdmin=True)
+            admin = Admin(admin_name=admin_name, password=password, newAdmin=True, is_sandbox=False)
         else:
             exit(0)
 
@@ -233,12 +327,42 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except (SystemExit, KeyboardInterrupt) as e:
-        if reactor.running:
-            reactor.stop()
-        print(e)
+
+    create_admins(2)
+    # long_opt = ["sandbox"]
+    # short_opt = "s"
+    #
+    # try:
+    #     optlist, args = getopt.getopt(sys.argv[1:], shortopts=short_opt, longopts=long_opt)
+    #
+    # except getopt.GetoptError as e:
+    #     print(e)
+    #     print("only option available is -s or --sandbox, both will run sandbox network for testing")
+    # else:
+    #
+    #     if optlist:  # only option available is sandbox
+    #         try:
+    #             print("Starting Sandbox Network")
+    #             print("Network only for testing on local computer...")
+    #             time.sleep(2)
+    #             sandbox_main()
+    #         except (SystemExit, KeyboardInterrupt) as e:
+    #             if reactor.running:
+    #                 reactor.stop()
+    #             print(e)
+    #     else:
+    #         try:
+    #             print("Starting Node....")
+    #
+    #             main()
+    #         except (SystemExit, KeyboardInterrupt) as e:
+    #             if reactor.running:
+    #                 reactor.stop()
+    #             print(e)
+
+
+
+
 
 
 
