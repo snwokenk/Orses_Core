@@ -5,14 +5,19 @@ from Orses_Network_Messages_Core.NetworkMessages import NetworkMessages
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Util_Core import Filenames_VariableNames
 
+# for sandbox mode
+from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnectorFactory
+from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListenerFactory
+from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyReactor
+
 
 class NetworkManager:
-    def __init__(self, admin, q_object_from_protocol, q_object_to_validator, propagator, reg_listening_port=55600,
-                 veri_listening_port=55602):
+    def __init__(self, admin, q_object_from_protocol, q_object_to_validator, propagator, reg_network_sandbox: bool,
+                 reg_listening_port=55600, veri_listening_port=55602):
 
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
-
+        self.reg_network_sandbox = reg_network_sandbox
         # get sandbox address or live address
         self.addresses_file = Filenames_VariableNames.default_addr_list_sandbox if self.admin.is_sandbox is True else \
             Filenames_VariableNames.default_addr_list
@@ -22,16 +27,28 @@ class NetworkManager:
             in_folder=admin.fl.get_username_folder_path()
         )
 
-        # set listening port
-        self.listening_port = veri_listening_port
-        self.veri_connecting_factory = VeriNodeConnectorFactory(
-            q_object_from_protocol=q_object_from_protocol,
-            propagator=propagator
-        )
-        self.veri_listening_factory = VeriNodeListenerFactory(
-            q_object_from_protocol=q_object_from_protocol,
-            propagator=propagator
-        )
+        if admin.is_sandbox is True:
+
+            self.veri_connecting_factory = DummyVeriNodeConnectorFactory(
+                q_object_from_protocol=q_object_from_protocol,
+                propagator=propagator
+            )
+
+            self.veri_listening_factory = DummyVeriNodeListenerFactory(
+                q_object_from_protocol=q_object_from_protocol,
+                propagator=propagator
+            )
+        else:
+            # set listening port
+            self.listening_port = veri_listening_port
+            self.veri_connecting_factory = VeriNodeConnectorFactory(
+                q_object_from_protocol=q_object_from_protocol,
+                propagator=propagator
+            )
+            self.veri_listening_factory = VeriNodeListenerFactory(
+                q_object_from_protocol=q_object_from_protocol,
+                propagator=propagator
+            )
         self.regular_listening_factory = NetworkListenerFactory(spkn_msg_obj_creator=NetworkMessages, admin=admin,
                                                                 q_obj=q_object_to_validator)
         self.propagator = propagator
@@ -46,6 +63,10 @@ class NetworkManager:
         self.Connected_Port_Veri = list()
 
     def run_veri_node_network(self, reactor_instance):
+
+        if self.admin.is_sandbox:
+            if not isinstance(reactor_instance, DummyReactor):
+                return False
         for i in self.addresses:
             temp_p = reactor_instance.connectTCP(
                 host=i,
@@ -56,6 +77,8 @@ class NetworkManager:
             self.Connected_Port_Veri.append(temp_p)
 
         self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
+
+        return True
 
     def run_regular_node_network(self, reactor_instance):
 

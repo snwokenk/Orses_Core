@@ -104,7 +104,13 @@ def create_admins(number_of_admins_to_create: int):
 
 
 
-def sandbox_main():
+def sandbox_main(reg_network_sandbox=False):
+    """
+
+    :param reg_network_sandbox: if false regular network will not be sandbox. This allows to send data to main node
+    and then see how it reacts with the sandbox nodes
+    :return:
+    """
     admin_name = input("admin name: ")
     password = getpass("password: ")
 
@@ -156,7 +162,6 @@ def sandbox_main():
         pass
 
     # *** start dummy internet
-
     dummy_internet = DummyInternet()
 
     # *** start blockchain propagator in different thread ***
@@ -178,6 +183,32 @@ def sandbox_main():
 
     # *** start blockchain propagator initiator in separate thread ***
     reactor.callInThread(blockchain_propagator.run_propagator_convo_initiator)
+
+
+    # *** Instantiate Network Propagator ***
+    propagator = NetworkPropagator(
+        q_for_validator,
+        q_for_propagate,
+        reactor,
+        q_for_initial_setup,
+        q_for_compete
+    )
+
+    # *** start propagator manager in another thread ***
+    reactor.callInThread(propagator.run_propagator_convo_manager)
+
+    # *** start propagator initiator in another thread ***
+    reactor.callInThread(propagator.run_propagator_convo_initiator)
+
+    # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
+    network_manager = NetworkManager(
+        admin=admin,
+        q_object_from_protocol=q_object_from_protocol,
+        q_object_to_validator=q_for_validator,
+        propagator=propagator,
+        reg_listening_port=55600,
+        reg_network_sandbox=reg_network_sandbox
+    )
 
 
 def main():
@@ -276,7 +307,8 @@ def main():
         q_object_from_protocol=q_object_from_protocol,
         q_object_to_validator=q_for_validator,
         propagator=propagator,
-        reg_listening_port=55600
+        reg_listening_port=55600,
+        reg_network_sandbox=False
     )
 
     # *** instantiate network message sorter ***

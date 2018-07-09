@@ -127,7 +127,7 @@ class DummyNode:
     acts as base class dummy node, essentially acts as a container that loads a user
     """
 
-    def __init__(self, admin, dummy_internet: DummyInternetTemplate):
+    def __init__(self, admin, dummy_internet):
         self.admin = admin
         self.internet = dummy_internet  # should be an instance of DummyInternet
         self.addr = None
@@ -229,7 +229,12 @@ class DummyReactor:
     """
     def listenTCP(self, port, factory, backlog=50):
 
-        success = self.node_dummy_internet.add_to_listening(addr=self.node_host_addr, port=port)
+        success = self.node_dummy_internet.add_to_listening(
+            addr=self.node_host_addr,
+            port=port,
+            factory=factory,
+            listening_node=self.node
+        )
         if success:
             self.port_to_factory_dict[port] = [factory, backlog]
 
@@ -247,6 +252,8 @@ class DummyReactor:
 
         if connected_instance is False:
             factory.clientConnectionFailed(connector=None, reason="No Listening Node In Addr")
+
+        return port
 
     def callLater(self, delay, callable_func, *args, **kw):
         if self.real_reactor_instance.running:  # this might change, probably have to pass reactor instance
@@ -380,8 +387,37 @@ class DummyInternet(DummyInternetTemplate):
         else:
             return ""  # if instance_of_node is not an instance of DummyNode or Derived Classes
 
-    def add_to_listening(self, addr, port, factory):
-        pass
+    def add_to_listening(self, addr, port, factory, listening_node: DummyNode):
+        """
+
+        :param addr: address of node trying to listen
+        :param port: port on which to listen
+        :param factory: factory instance for listening
+        :return: bool
+        """
+
+        if addr in self.address_to_node_dict and self.address_to_node_dict[addr] == listening_node and port <= 65535:
+            if isinstance(factory, DummyInternet):
+                if addr in self.listening_nodes:
+                    if port in self.listening_nodes[addr]:
+                        return None
+                    else:
+                        self.listening_nodes[addr][port] = {
+                            "factory": factory
+                        }
+                else:
+                    self.listening_nodes[addr] = {
+                        port: {
+                            "factory": factory
+                        }
+                    }
+
+                return True
+
+        return False
+
+
+
 
     def connect_to_listening(self, connecting_addr, listening_addr, connector_factory: DummyClientFactory,
                              connector_node: DummyNode):
