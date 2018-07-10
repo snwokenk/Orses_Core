@@ -6,8 +6,8 @@ from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from twisted.internet.error import CannotListenError
 
 # for sandbox internet
-
-from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyInternet, DummyAdminNode
+from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyInternet
+from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 
@@ -56,14 +56,17 @@ file used to start node
 
 
 # loads or, if not yet created, creates new admin details. Also Creates the necessary database for running node
-def send_stop_to_reactor(reactor_instance, *args):
+def send_stop_to_reactor(reactor_instance, q_object_to_each_node, *args, **kwargs):
     """
     runs once the reactor is running, opens another thread that runs local function temp().
     This function waits for an exit signal, it then sends exit signal to other threads running, using the queue objects
     THese exit signals then trigger for other break off any loops and exit program
 
-    :param args: should be list of blocking objects: in this case q objects
+
     :param reactor_instance, reactor instance from twisted reactor
+    :param q_object_to_each_node: Queue object to send "exit" signal to each created node
+    :param args: should be list of blocking objects: in this case q objects
+    :param kwargs: option keywork argument of "number_of_nodes" can be passed
     :return:
     """
     print(args)
@@ -77,11 +80,15 @@ def send_stop_to_reactor(reactor_instance, *args):
 
                 if ans in {"exit", "quit"}:
                     for i in args:
-                        if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
+                        if isinstance(i, (multiprocessing.Queue, queue.Queue)):
                             i.put(ans)
 
 
                     break
+            if "number_of_nodes" in kwargs and isinstance(kwargs["number_of_nodes"], int):
+                for i in range(kwargs["number_of_nodes"]):
+                    q_object_to_each_node.put(ans)
+
             return ans
 
 
@@ -118,13 +125,19 @@ def create_node_instances(dummy_internet, number_of_nodes_to_create: int, prefer
     return nodes_dict
 
 
-def sandbox_main(reg_network_sandbox=False):
+def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     """
 
     :param reg_network_sandbox: if false regular network will not be sandbox. This allows to send data to main node
     and then see how it reacts with the sandbox nodes
     :return:
     """
+
+    print("You Are Running In Sandbox Mode")
+    print("You will be able connect to the sandbox network using a regular client node and test by sending txs\n") if\
+        reg_network_sandbox is True else \
+        print("You will not be able to connect to the sandbox network and can only view automated interactions\n")
+
     admin_name = input("admin name: ")
     password = getpass("password: ")
 
@@ -257,12 +270,14 @@ def sandbox_main(reg_network_sandbox=False):
     reactor.callWhenRunning(
         send_stop_to_reactor,
         reactor,
+        q_object_to_each_node,
         q_for_propagate,
         q_for_bk_propagate,
         q_for_compete,
         q_object_from_protocol,
         q_for_validator,
-        q_for_block_validator
+        q_for_block_validator,
+        number_of_nodes=number_of_nodes
     )
 
     # *** set propagator's network manager variable to network manager instance ***
@@ -410,7 +425,8 @@ def main():
         q_for_compete,
         q_object_from_protocol,
         q_for_validator,
-        q_for_block_validator
+        q_for_block_validator,
+
     )
 
     # *** set propagator's network manager variable to network manager instance ***
@@ -427,8 +443,8 @@ def main():
 
 
 if __name__ == '__main__':
+    sandbox_main(number_of_nodes=4, reg_network_sandbox=True)
 
-    pass
     # long_opt = ["sandbox"]
     # short_opt = "s"
     #
