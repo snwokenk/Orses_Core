@@ -7,7 +7,7 @@ from twisted.internet.error import CannotListenError
 
 # for sandbox internet
 
-from Orses_Dummy_Network_Core.DummyNetworkObjects import *
+from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyInternet, DummyAdminNode
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 
@@ -63,6 +63,7 @@ def send_stop_to_reactor(reactor_instance, *args):
     THese exit signals then trigger for other break off any loops and exit program
 
     :param args: should be list of blocking objects: in this case q objects
+    :param reactor_instance, reactor instance from twisted reactor
     :return:
     """
     print(args)
@@ -90,18 +91,31 @@ def send_stop_to_reactor(reactor_instance, *args):
     response_thread.addCallback(lambda x: reactor.stop())  # lambda function is fired when blocking function returns (and return anything)
 
 
-def create_admins(number_of_admins_to_create: int):
-    assert number_of_admins_to_create > 0, "number of admins to create must be at least 1"
+def create_node_instances(dummy_internet, number_of_nodes_to_create: int, preferred_no_of_mining_nodes=0):
+    assert number_of_nodes_to_create > 0, "number of admins to create must be at least 1"
     admins_list = list()
-    while number_of_admins_to_create:
+    nodes_dict ={
+        "competing": [],
+        "non-competing": []
+    }
+    while number_of_nodes_to_create:
         admins_list.append(Admin(
-            admin_name=f'v{number_of_admins_to_create}', password="xxxxxx", newAdmin=True, is_sandbox=True))
-        number_of_admins_to_create -= 1
+            admin_name=f'v{number_of_nodes_to_create}', password="xxxxxx", newAdmin=True, is_sandbox=True))
+        number_of_nodes_to_create -= 1
 
-    return admins_list
+    for _ in range(preferred_no_of_mining_nodes):  # creating competing nodes
+        admin = admins_list.pop()
+        admin.isCompetitor = True
 
+        # create DummyAdminNode this automatically receives addr from dummy internet
+        node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
+        nodes_dict["competing"].append(node)
 
+    for admin in admins_list:
+        node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
+        nodes_dict["non-competing"].append(node)
 
+    return nodes_dict
 
 
 def sandbox_main(reg_network_sandbox=False):
@@ -148,6 +162,12 @@ def sandbox_main(reg_network_sandbox=False):
     else:
         compete = 'n'
 
+    # instantiated Dummy Internet
+    dummy_internet = DummyInternet()
+
+    # instantiate main node
+    main_node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
+
     # *** instantiate queue variables ***
     q_for_compete = multiprocessing.Queue() if compete == 'y' else None
     q_for_validator = multiprocessing.Queue()
@@ -156,13 +176,11 @@ def sandbox_main(reg_network_sandbox=False):
     q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
     q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
     q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
+    q_object_to_each_node = multiprocessing.Queue()  # for exit signal
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if compete == 'y':
         pass
-
-    # *** start dummy internet
-    dummy_internet = DummyInternet()
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(
@@ -170,7 +188,7 @@ def sandbox_main(reg_network_sandbox=False):
         q_object_to_competing_process=q_for_compete,
         q_for_bk_propagate=q_for_bk_propagate,
         q_object_between_initial_setup_propagators=q_for_initial_setup,
-        reactor_instance=reactor,
+        reactor_instance=main_node.reactor,  # use DummyReactor which implements real reactor.CallFromThread
         admin_instance=admin
 
     )
@@ -187,11 +205,12 @@ def sandbox_main(reg_network_sandbox=False):
 
     # *** Instantiate Network Propagator ***
     propagator = NetworkPropagator(
-        q_for_validator,
-        q_for_propagate,
-        reactor,
-        q_for_initial_setup,
-        q_for_compete
+        q_object_connected_to_validator=q_for_validator,
+        q_for_propagate=q_for_propagate,
+        reactor_instance=main_node.reactor,
+        q_object_between_initial_setup_propagators=q_for_initial_setup,
+        is_sandbox=True,
+        q_object_to_competing_process=q_for_compete,
     )
 
     # *** start propagator manager in another thread ***
@@ -209,6 +228,54 @@ def sandbox_main(reg_network_sandbox=False):
         reg_listening_port=55600,
         reg_network_sandbox=reg_network_sandbox
     )
+
+    # *** instantiate network message sorter ***
+    network_message_sorter = NetworkMessageSorter(q_object_from_protocol, q_for_bk_propagate, q_for_propagate)
+
+    # *** run sorter in another thread ***
+    reactor.callInThread(network_message_sorter.run_sorter)
+
+    # *** use to connect to or listen for connection from other verification nodes ***
+    reactor.callFromThread(
+        network_manager.run_veri_node_network,
+        main_node.reactor
+    )
+
+    # *** use to listen for connections from regular nodes ***
+    if reg_network_sandbox is False:  # will run regular network with real reactor allowing outside client node testing
+        reactor.callFromThread(
+            network_manager.run_regular_node_network,
+            reactor
+        )
+    else:  # will run regular network with dummy reactor for complete Sandbox testing
+        reactor.callFromThread(
+            network_manager.run_regular_node_network,
+            main_node.reactor
+        )
+
+    # *** creates a deferral, which allows user to exit program by typing "exit" or "quit" ***
+    reactor.callWhenRunning(
+        send_stop_to_reactor,
+        reactor,
+        q_for_propagate,
+        q_for_bk_propagate,
+        q_for_compete,
+        q_object_from_protocol,
+        q_for_validator,
+        q_for_block_validator
+    )
+
+    # *** set propagator's network manager variable to network manager instance ***
+    propagator.network_manager = network_manager
+
+    # *** start reactor ***
+    reactor.run()
+
+    # *** This will only print when reactor is stopped
+    print("Node Stopped")
+
+    # *** when reactor is stopped save admin details ***
+    admin.save_admin()
 
 
 def main():
@@ -288,11 +355,12 @@ def main():
 
     # *** Instantiate Network Propagator ***
     propagator = NetworkPropagator(
-        q_for_validator,
-        q_for_propagate,
-        reactor,
-        q_for_initial_setup,
-        q_for_compete
+        q_object_connected_to_validator=q_for_validator,
+        q_for_propagate=q_for_propagate,
+        reactor_instance=reactor,
+        q_object_between_initial_setup_propagators=q_for_initial_setup,
+        is_sandbox=False,
+        q_object_to_competing_process=q_for_compete,
     )
 
     # *** start propagator manager in another thread ***
@@ -318,7 +386,7 @@ def main():
     reactor.callInThread(network_message_sorter.run_sorter)
 
 
-    # *** use to connect to or listen for connection from other verification nodes ***
+    # *** use to connect to and listen for connection from other verification nodes ***
     reactor.callFromThread(
         network_manager.run_veri_node_network,
         reactor
@@ -360,7 +428,7 @@ def main():
 
 if __name__ == '__main__':
 
-    create_admins(2)
+    pass
     # long_opt = ["sandbox"]
     # short_opt = "s"
     #

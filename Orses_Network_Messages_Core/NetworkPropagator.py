@@ -19,7 +19,7 @@ validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeVali
 class NetworkPropagator:
 
     def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
-                 q_object_between_initial_setup_propagators, q_object_to_competing_process=None, is_sandbox=False):
+                 q_object_between_initial_setup_propagators, is_sandbox=False, q_object_to_competing_process=None, ):
         """
 
         :param q_object_connected_to_validator: q object used to get validated messages from Message validators
