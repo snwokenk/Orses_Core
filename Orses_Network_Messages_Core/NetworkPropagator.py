@@ -67,7 +67,7 @@ class NetworkPropagator:
 
     def add_protocol(self, protocol):
 
-        # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 9999 and resets)]
+        # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 20000 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
 
@@ -158,6 +158,7 @@ class NetworkPropagator:
                         protocol_id = rsp[0]
 
                         # data is python list = ['n', convo_id_list, msg], already json decoded in NetworkMessageSorter
+
                         msg = rsp[1]
 
                         # convo_id_list == [local convo id, other convo id]
@@ -251,14 +252,14 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
 
     else:  # send end message
         propagator_inst.reactor_instance.callInThread(
-            callable=notify_of_ended_message,
+            notify_of_ended_message,
             protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
             convo_id=convo_id,
             propagator_instance=propagator_inst
         )
         return
 
-    while True:
+    while True:  # gives new convo a convo_id that is not taken
         convo_id[0] = propagator_inst.connected_protocols_dict[protocol_id][1]
         if convo_id[0] in propagator_inst.convo_dict[protocol_id] and \
                 propagator_inst.convo_dict[protocol_id][convo_id].end_convo is False:
@@ -278,8 +279,9 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
         propagatorInst=propagator_inst,
         statement_validator=statement_validator
     )
-    print(f"in NetworkPropagtor.py, msg_receiver_creator, \n{protocol_id}\n{convo_id}")
-    propagator_inst.convo_dict[protocol_id].update({convo_id: prop_receiver})
+
+    # updates convo_dict of protocol with local convo id
+    propagator_inst.convo_dict[protocol_id].update({convo_id[0]: prop_receiver})
     prop_receiver.listen(msg=msg)
 
 

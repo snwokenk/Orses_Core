@@ -489,7 +489,7 @@ def main():
 
 
 if __name__ == '__main__':
-    sandbox_main(number_of_nodes=4, reg_network_sandbox=False)
+    sandbox_main(number_of_nodes=2, reg_network_sandbox=False)
 
     # long_opt = ["sandbox"]
     # short_opt = "s"
