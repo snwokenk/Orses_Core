@@ -240,8 +240,7 @@ class DummyReactor:
         return port
 
     def callLater(self, delay, callable_func, *args, **kw):
-        if self.real_reactor_instance.running:  # this might change, probably have to pass reactor instance
-            self.real_reactor_instance.callLater(delay, callable_func, *args, **kw)
+        self.real_reactor_instance.callLater(delay, callable_func, *args, **kw)
 
     def callFromThread(self, callable_func, *args, **kw):
         self.real_reactor_instance.callFromThread(callable_func, *args, **kw)

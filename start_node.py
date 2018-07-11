@@ -82,8 +82,6 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, *args, **kwarg
                     for i in args:
                         if isinstance(i, (multiprocessing.Queue, queue.Queue)):
                             i.put(ans)
-
-
                     break
             if "number_of_nodes" in kwargs and isinstance(kwargs["number_of_nodes"], int):
                 for i in range(kwargs["number_of_nodes"]):
@@ -224,6 +222,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         is_sandbox=True,
         q_object_to_competing_process=q_for_compete,
+        admin_inst=admin
     )
 
     # *** start propagator manager in another thread ***
@@ -282,6 +281,29 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
 
     # *** set propagator's network manager variable to network manager instance ***
     propagator.network_manager = network_manager
+
+    # **** CREATE OTHER NODE INSTANCES **** #
+
+    node_dict = create_node_instances(
+        dummy_internet=dummy_internet,
+        number_of_nodes_to_create=number_of_nodes,
+        preferred_no_of_mining_nodes=0
+    )
+
+    for temp_node in node_dict["competing"]:
+        temp_node.run_node(
+            real_reactor_instance=reactor,
+            q_object_to_each_node=q_object_to_each_node,
+            reg_network_sandbox=True
+        )
+
+    for temp_node in node_dict["non-competing"]:
+        temp_node.run_node(
+            real_reactor_instance=reactor,
+            q_object_to_each_node=q_object_to_each_node,
+            reg_network_sandbox=True
+        )
+
 
     # *** start reactor ***
     reactor.run()
@@ -376,6 +398,7 @@ def main():
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         is_sandbox=False,
         q_object_to_competing_process=q_for_compete,
+        admin_inst=admin
     )
 
     # *** start propagator manager in another thread ***

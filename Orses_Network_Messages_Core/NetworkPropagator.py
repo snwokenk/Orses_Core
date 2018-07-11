@@ -19,13 +19,15 @@ validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeVali
 class NetworkPropagator:
 
     def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
-                 q_object_between_initial_setup_propagators, is_sandbox=False, q_object_to_competing_process=None, ):
+                 q_object_between_initial_setup_propagators, is_sandbox=False, q_object_to_competing_process=None,
+                 admin_inst=None):
         """
 
         :param q_object_connected_to_validator: q object used to get validated messages from Message validators
         :param q_object_to_competing_process: q object used to send new validated messages to competing process,
         if active
         """
+        self.admin = admin_inst
         self.is_sandbox = is_sandbox
         self.q_object_validator = q_object_connected_to_validator
         self.q_object_compete = q_object_to_competing_process
@@ -137,7 +139,7 @@ class NetworkPropagator:
         if initial_setup_done is False:
             print("ending convo, Setup Not Able")
             return
-        print("Network Propagator, Initial Setup Done")
+        print("Network Propagator, Initial Setup Done in ", self.admin.admin_name)
         reactor = self.reactor_instance
         try:
 

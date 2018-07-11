@@ -26,7 +26,7 @@ class NetworkManager:
             filename=self.addresses_file,
             in_folder=admin.fl.get_username_folder_path()
         )
-
+        self.listening_port = veri_listening_port
         if admin.is_sandbox is True:
 
             self.veri_connecting_factory = DummyVeriNodeConnectorFactory(
@@ -40,7 +40,7 @@ class NetworkManager:
             )
         else:
             # set listening port
-            self.listening_port = veri_listening_port
+
             self.veri_connecting_factory = VeriNodeConnectorFactory(
                 q_object_from_protocol=q_object_from_protocol,
                 propagator=propagator
