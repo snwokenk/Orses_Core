@@ -84,6 +84,7 @@ class NetworkPropagator:
         :return:
         """
         initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
+
         if initial_setup_done is False:
             print("ending initiator, Setup Not Able")
             return
@@ -139,13 +140,13 @@ class NetworkPropagator:
         if initial_setup_done is False:
             print("ending convo, Setup Not Able")
             return
-        print("Network Propagator, Initial Setup Done in ", self.admin.admin_name)
         reactor = self.reactor_instance
         try:
 
             while True:
                 # rsp == [protocol_instance_id, data]
                 rsp = self.q_object_propagate.get()
+
 
                 print("in propagator: ", rsp)
                 try:

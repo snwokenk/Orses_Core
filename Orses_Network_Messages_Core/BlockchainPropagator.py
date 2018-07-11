@@ -192,8 +192,6 @@ class BlockChainPropagator:
         except (KeyboardInterrupt, SystemExit):
             pass
 
-        print("in BlockchainPropagator convo initiator ended")
-
     def run_propagator_convo_manager(self):
 
         initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
@@ -208,7 +206,6 @@ class BlockChainPropagator:
             break
 
         print("In BlockchainPropagator.py convo manager ended")
-
 
     def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids,*args):
         """

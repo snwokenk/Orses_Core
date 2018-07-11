@@ -22,8 +22,7 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
                                                         "goto www.python.org to install/upgrade"
 
 
-# todo: finish export/import admin copy from Orses_Client since that has been done
-
+# todo: when node created allow for copy of "Default_Addresses_Sandbox" folder in node folder
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
@@ -56,7 +55,7 @@ file used to start node
 
 
 # loads or, if not yet created, creates new admin details. Also Creates the necessary database for running node
-def send_stop_to_reactor(reactor_instance, q_object_to_each_node, *args, **kwargs):
+def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet=None,*args, **kwargs):
     """
     runs once the reactor is running, opens another thread that runs local function temp().
     This function waits for an exit signal, it then sends exit signal to other threads running, using the queue objects
@@ -70,6 +69,9 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, *args, **kwarg
     :return:
     """
     print(args)
+    number_of_nodes = kwargs["number_of_nodes"] if (
+        "number_of_nodes" in kwargs and isinstance(kwargs["number_of_nodes"], int)
+    ) else 0
 
     def temp():
 
@@ -83,9 +85,13 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, *args, **kwarg
                         if isinstance(i, (multiprocessing.Queue, queue.Queue)):
                             i.put(ans)
                     break
-            if "number_of_nodes" in kwargs and isinstance(kwargs["number_of_nodes"], int):
-                for i in range(kwargs["number_of_nodes"]):
-                    q_object_to_each_node.put(ans)
+                elif ans == "print internet":
+                    print("dummy internet instance: ",dummy_internet)
+                    print("listening nodes: ",dummy_internet.listening_nodes)
+                    print("addr to node: ", dummy_internet.address_to_node_dict)
+
+            for i in range(number_of_nodes):
+                q_object_to_each_node.put(ans)
 
             return ans
 
@@ -131,9 +137,15 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     :return:
     """
 
+    # few setup:
+    t_pool = reactor.getThreadPool()
+    print(f"ThreadPool size is: {t_pool.max}")
+    t_pool.adjustPoolsize(minthreads=0, maxthreads=int(number_of_nodes*10))
+    print(f"ThreadPool size is: {reactor.getThreadPool().max}")
+
     print("You Are Running In Sandbox Mode")
     print("You will be able connect to the sandbox network using a regular client node and test by sending txs\n") if\
-        reg_network_sandbox is True else \
+        reg_network_sandbox is False else \
         print("You will not be able to connect to the sandbox network and can only view automated interactions\n")
 
     admin_name = input("admin name: ")
@@ -270,6 +282,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
         send_stop_to_reactor,
         reactor,
         q_object_to_each_node,
+        dummy_internet,
         q_for_propagate,
         q_for_bk_propagate,
         q_for_compete,
@@ -291,17 +304,24 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     )
 
     for temp_node in node_dict["competing"]:
-        temp_node.run_node(
+
+        reactor.callInThread(
+
+            temp_node.run_node,
             real_reactor_instance=reactor,
             q_object_to_each_node=q_object_to_each_node,
             reg_network_sandbox=True
+
         )
 
     for temp_node in node_dict["non-competing"]:
-        temp_node.run_node(
+        reactor.callInThread(
+
+            temp_node.run_node,
             real_reactor_instance=reactor,
             q_object_to_each_node=q_object_to_each_node,
             reg_network_sandbox=True
+
         )
 
 
@@ -365,6 +385,7 @@ def main():
     q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
     q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
     q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
+    q_object_to_each_node = multiprocessing.Queue()  # for exit signal
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if compete == 'y':
@@ -443,6 +464,8 @@ def main():
     reactor.callWhenRunning(
         send_stop_to_reactor,
         reactor,
+        q_object_to_each_node,
+        None,
         q_for_propagate,
         q_for_bk_propagate,
         q_for_compete,
@@ -466,7 +489,7 @@ def main():
 
 
 if __name__ == '__main__':
-    sandbox_main(number_of_nodes=4, reg_network_sandbox=True)
+    sandbox_main(number_of_nodes=4, reg_network_sandbox=False)
 
     # long_opt = ["sandbox"]
     # short_opt = "s"

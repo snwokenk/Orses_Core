@@ -41,10 +41,12 @@ class DummyAdminNode(DummyNode):
                     if isinstance(i, (multiprocessing.Queue, queue.Queue)):
                         i.put("exit")
 
-                    # ******  THIS LINE IS IMPORTANT FOR CLEAN ENDING OF REACTOR ****** #
-        # ****** THIS WAITS FOR EXIT SIGNAL AND THE FIRES CALLBACK WHICH RUNS reactor.stop() in the main thread ***** #
-        response_thread = threads.deferToThread(temp)  # deffering blocking function to thread
-        response_thread.addCallback(lambda x: print(f"{self.admin.admin_name} is Stopped"))
+        temp()
+
+        #             # ******  THIS LINE IS IMPORTANT FOR CLEAN ENDING OF REACTOR ****** #
+        # # ****** THIS WAITS FOR EXIT SIGNAL AND THE FIRES CALLBACK WHICH RUNS reactor.stop() in the main thread ***** #
+        # response_thread = threads.deferToThread(temp)  # deffering blocking function to thread
+        # response_thread.addCallback(lambda x: print(f"{self.admin.admin_name} is Stopped"))
 
     def run_node(self, real_reactor_instance, q_object_to_each_node: multiprocessing.Queue, reg_network_sandbox=True):
         """
@@ -55,7 +57,7 @@ class DummyAdminNode(DummyNode):
         :return:
         """
 
-        print(f'{self.admin.admin_name} is running, addr is {self.addr}')
+        print(f'in DummyAdminNode.py, {self.admin.admin_name} is running, addr is {self.addr}')
         # *** instantiate queue variables ***
         q_for_compete = multiprocessing.Queue() if self.is_competitor == 'y' else None
         q_for_validator = multiprocessing.Queue()

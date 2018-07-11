@@ -226,6 +226,7 @@ class DummyReactor:
 
 
         # todo: use connector to have a way for retrying connection
+        print(f"in connectTCP() dummy reactor, connected instance  of node {self.node_host_addr}")
 
         connected_instance = self.node_dummy_internet.connect_to_listening(
             connecting_addr=[self.node_host_addr, self.node.get_a_port()],
@@ -233,6 +234,8 @@ class DummyReactor:
             connector_factory=factory,
             connector_node=self.node
         )
+
+
 
         if connected_instance is False:
             factory.clientConnectionFailed(connector=None, reason="No Listening Node In Addr")
