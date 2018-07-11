@@ -26,7 +26,6 @@ class NetworkManager:
             filename=self.addresses_file,
             in_folder=admin.fl.get_username_folder_path()
         )
-        print(f"in networkmanager.py: addresses: {self.addresses_file}, folder {admin.fl.get_username_folder_path()}")
         self.listening_port = veri_listening_port
         if admin.is_sandbox is True:
 
@@ -68,17 +67,17 @@ class NetworkManager:
             if not isinstance(reactor_instance, DummyReactor):
                 return False
 
-        print("in Network manager: addresses: ", self.addresses, self.addresses_file)
+        self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
         for i in self.addresses:
             temp_p = reactor_instance.connectTCP(
                 host=i,
                 port=self.addresses[i],
                 factory=self.veri_connecting_factory
             )
-            print("connected Port", temp_p)
+            print("in run_veri_node_networ, connected Port", temp_p)
             self.Connected_Port_Veri.append(temp_p)
 
-        self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
+
 
         return True
 

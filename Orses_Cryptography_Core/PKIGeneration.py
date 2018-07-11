@@ -103,7 +103,6 @@ class PKI:
 
     def load_pub_key(self, importedKey=True, x_y_only=False, user_or_wallet="user"):
 
-        print("in PKIGeneration.py, load_pub_key: ", self.user_instance.fl.get_keys_folder_path())
         if user_or_wallet == "user":
             pubkey = self.user_instance.fl.open_file_from_json(
                 self.pubkey_file, in_folder=self.user_instance.fl.get_keys_folder_path())
@@ -115,7 +114,6 @@ class PKI:
             return False
 
         # turn back to original bytes from base85encoded string/bytes
-        print(pubkey)
         pubkey_bytes = base64.b85decode(pubkey['x'].encode())+base64.b85decode(pubkey['y'].encode())
 
         if importedKey is True and x_y_only is False:

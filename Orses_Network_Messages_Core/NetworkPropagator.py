@@ -147,7 +147,6 @@ class NetworkPropagator:
                 # rsp == [protocol_instance_id, data]
                 rsp = self.q_object_propagate.get()
 
-
                 print("in propagator: ", rsp)
                 try:
                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
@@ -173,7 +172,7 @@ class NetworkPropagator:
                             if self.convo_dict[protocol_id][local_convo_id].end_convo:
                                 # notify other node about ended convo
                                 self.reactor_instance.callInThread(
-                                    callable=notify_of_ended_message,
+                                    notify_of_ended_message,
                                     protocol=self.connected_protocols_dict[protocol_id][0],
                                     convo_id=msg[1],
                                     propagator_instance=self
@@ -182,13 +181,13 @@ class NetworkPropagator:
                             else:
                                 # convo is still on, call listen() in another thread
                                 self.reactor_instance.callInThread(
-                                    callable=self.convo_dict[protocol_id][local_convo_id].listen,
+                                    self.convo_dict[protocol_id][local_convo_id].listen,
                                     msg=msg
                                 )
 
                         elif local_convo_id is None: # new convo
                             self.reactor_instance.callInThread(
-                                callable=msg_receiver_creator,
+                                msg_receiver_creator,
                                 protocol_id=protocol_id,
                                 msg=msg,
                                 propagator_inst=self
@@ -198,7 +197,7 @@ class NetworkPropagator:
                         else:
                             # end convo in other node, since it can't be found locally
                             self.reactor_instance.callInThread(
-                                callable=notify_of_ended_message,
+                                notify_of_ended_message,
                                 protocol=self.connected_protocols_dict[protocol_id][0],
                                 convo_id=msg[1],
                                 propagator_instance=self
@@ -279,6 +278,7 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
         propagatorInst=propagator_inst,
         statement_validator=statement_validator
     )
+    print(f"in NetworkPropagtor.py, msg_receiver_creator, \n{protocol_id}\n{convo_id}")
     propagator_inst.convo_dict[protocol_id].update({convo_id: prop_receiver})
     prop_receiver.listen(msg=msg)
 
@@ -295,7 +295,10 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
         return None
 
     for i in propagator_inst.connected_protocols_dict:  # make sure not propagating to same node that sent it
-        if rsp[0] not in propagator_inst.message_from_other_veri_node_dict[i]:
+
+        if not propagator_inst.message_from_other_veri_node_dict or \
+                (i in propagator_inst.message_from_other_veri_node_dict and
+                         rsp[0] not in propagator_inst.message_from_other_veri_node_dict[i]):
 
             while True:  # gets a convo id that is not in use
                 convo_id=propagator_inst.connected_protocols_dict[i][1]

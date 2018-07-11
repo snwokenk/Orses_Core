@@ -209,7 +209,6 @@ class DummyReactor:
     Methods mimicking twisteds reactor
     """
     def listenTCP(self, port, factory, backlog=50):
-
         success = self.node_dummy_internet.add_to_listening(
             addr=self.node_host_addr,
             port=port,
@@ -217,23 +216,28 @@ class DummyReactor:
             listening_node=self.node
         )
         if success is True:
+
             self.port_to_factory_dict[port] = [factory, backlog]
+            return port
         elif success is None:
             print(f"Log Message at listenTCP: {self.node} with address {self.node_host_addr} "
                   f"is already listening on port {port} ")  # this should be logged
+            return None
 
     def connectTCP(self, host, port, factory: DummyClientFactory):
 
 
         # todo: use connector to have a way for retrying connection
-        print(f"in connectTCP() dummy reactor, connected instance  of node {self.node_host_addr}")
-
+        if self.node_host_addr == host:
+            print("in connectTCP, Same Node")
+            return None
         connected_instance = self.node_dummy_internet.connect_to_listening(
             connecting_addr=[self.node_host_addr, self.node.get_a_port()],
             listening_addr=[host, port],
             connector_factory=factory,
             connector_node=self.node
         )
+
 
 
 
@@ -389,14 +393,16 @@ class DummyInternet(DummyInternetTemplate):
         """
 
         if addr in self.address_to_node_dict and self.address_to_node_dict[addr] == listening_node and port <= 65535:
-            if isinstance(factory, DummyInternet):
+            if isinstance(factory, DummyFactory):
                 if addr in self.listening_nodes:
+
                     if port in self.listening_nodes[addr]:
                         return None
                     else:
                         self.listening_nodes[addr][port] = {
                             "factory": factory
                         }
+                        return True
                 else:
                     self.listening_nodes[addr] = {
                         port: {
@@ -404,12 +410,9 @@ class DummyInternet(DummyInternetTemplate):
                         }
                     }
 
-                return True
+                    return True
 
         return False
-
-
-
 
     def connect_to_listening(self, connecting_addr, listening_addr, connector_factory: DummyClientFactory,
                              connector_node: DummyNode):

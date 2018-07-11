@@ -6,7 +6,8 @@ from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
 
-import multiprocessing, queue
+import multiprocessing, queue, shutil, os
+
 
 class DummyAdminNode(DummyNode):
     """
@@ -19,6 +20,14 @@ class DummyAdminNode(DummyNode):
 
         self.new_admin = admin.isNewAdmin
         self.is_competitor = admin.isCompetitor
+        self.copy_important_files()
+
+    def copy_important_files(self):
+        path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Default_Addresses_Sandbox")
+        try:
+            shutil.copy(path_of_main, self.admin.fl.get_username_folder_path())
+        except FileExistsError:
+            print("In DummyAdminNode.py, copy_important_files(): Default_Addresses_Sandbox file already exists")
 
     def send_stop_to_reactor(self, q_object_to_each_node, *args):
         """

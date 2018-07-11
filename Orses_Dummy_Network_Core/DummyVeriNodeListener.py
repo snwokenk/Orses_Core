@@ -44,7 +44,7 @@ class DummyVeriNodeListener(DummyProtocol):
         """
 
         # adds protocol to network propagator.connected_protocols_dict
-        print("connection made: ", self.addr)
+        print("connection made in listener: ", self.addr)
         self.propagator.add_protocol(self)
 
     def connectionLost(self, reason="ConnectionDone"):
