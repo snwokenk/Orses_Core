@@ -22,7 +22,7 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
                                                         "goto www.python.org to install/upgrade"
 
 
-# todo: Now that, find a way in which a node DOES NOT PROPAGATE a transaction to the node that prpagated it.
+# todo: have a way of updating default_addresses/default_addresses_sandbox and then checking and sending to other nodes
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used

@@ -253,6 +253,7 @@ def notify_of_ended_message(protocol, convo_id: list, propagator_instance: Netwo
 
 def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, admin_inst):
     convo_id = msg[1]
+    print(f"in NetworkPropagtor.py, message receiver creator, msg {msg}")
 
     if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd'}:
         statement_validator = validator_dict[msg[-1][0]]
@@ -289,6 +290,11 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     # updates convo_dict of protocol with local convo id
     propagator_inst.convo_dict[protocol_id].update({convo_id[0]: prop_receiver})
     prop_receiver.listen(msg=msg)
+    if protocol_id in propagator_inst.message_from_other_veri_node_dict:
+
+        propagator_inst.message_from_other_veri_node_dict[protocol_id].add(msg[-1])
+    else:
+        propagator_inst.message_from_other_veri_node_dict[protocol_id] = {msg[-1], }
 
 
 def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
@@ -304,7 +310,7 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
 
     for i in propagator_inst.connected_protocols_dict:  # make sure not propagating to same node that sent it
 
-        if not propagator_inst.message_from_other_veri_node_dict or \
+        if i not in propagator_inst.message_from_other_veri_node_dict or \
                 (i in propagator_inst.message_from_other_veri_node_dict and
                          rsp[0] not in propagator_inst.message_from_other_veri_node_dict[i]):
 
@@ -331,6 +337,8 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
             # update protocol's convo dictionary with new convo
             propagator_inst.convo_dict[i].update({convo_id: prop_sender})
             prop_sender.speak()
+        else:
+            print(f"In NetworkPropagator.py, protocol: {i} sent tx with preview of: {rsp[0]} ")
 
 
 # *** base message sender class ***
@@ -437,12 +445,10 @@ class StatementSender(PropagatorMessageSender):
                 return
 
             if self.other_convo_id is None:
-                print("other convo id is none")
                 self.other_convo_id = msg[1][1]  # msg = ['n', [your convo id, other convo id], main_msg]
                 self.convo_id = [self.other_convo_id, self.local_convo_id]
 
-                print(f"other convo id is now {self.other_convo_id}, gotten from message {msg}\n"
-                      f"convo id list: {self.convo_id}")
+
 
             if msg[-1] == self.send_tx_msg:
                 self.speak(self.main_msg)
@@ -458,10 +464,6 @@ class StatementReceiver(PropagatorMessageReceiver):
     def listen(self, msg):
 
         if self.end_convo is False:
-            print(f"end convo is False\n"
-                  f"received_first_message: {self.received_first_msg}\n"
-                  f"received tx msg: {self.received_tx_msg}\n"
-                  f"received_tx_msg_but_pubkey_needed: {self.received_tx_msg_but_pubkey_needed}")
             if isinstance(msg[-1], str) and msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
                 self.end_convo = True
 
