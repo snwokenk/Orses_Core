@@ -105,7 +105,12 @@ class NetworkPropagator:
                     elif rsp[3] is True:
                         print("in convo initiator, reached here", self.connected_protocols_dict)
                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
-                        self.reactor_instance.callInThread(msg_sender_creator, rsp=rsp, propagator_inst=self)
+                        self.reactor_instance.callInThread(
+                            msg_sender_creator,
+                            rsp=rsp,
+                            propagator_inst=self,
+                            admin_inst=self.admin
+                        )
                     else:
                         self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
 
@@ -192,7 +197,8 @@ class NetworkPropagator:
                                 msg_receiver_creator,
                                 protocol_id=protocol_id,
                                 msg=msg,
-                                propagator_inst=self
+                                propagator_inst=self,
+                                admin_inst=self.admin
 
                             )
 
@@ -245,7 +251,7 @@ def notify_of_ended_message(protocol, convo_id: list, propagator_instance: Netwo
     propagator_instance.reactor_instance.callFromThread(protocol.transport.write, msg)
 
 
-def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
+def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, admin_inst):
     convo_id = msg[1]
 
     if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd'}:
@@ -276,7 +282,8 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
         protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
         convo_id=convo_id,
         propagatorInst=propagator_inst,
-        statement_validator=statement_validator
+        statement_validator=statement_validator,
+        admin_instance=admin_inst
     )
 
     # updates convo_dict of protocol with local convo id
@@ -284,7 +291,7 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
     prop_receiver.listen(msg=msg)
 
 
-def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
+def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
     """
 
     :param rsp: ['reason(a, b,c,d)+8charhashprev', snd_wallet_pubkey, main_message_dict, if valid(True or False)]
@@ -316,7 +323,8 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
                 protocol=propagator_inst.connected_protocols_dict[i][0],
                 convo_id=convo_id,
                 validated_message_list=rsp,
-                propagator_inst=propagator_inst
+                propagator_inst=propagator_inst,
+                admin_inst=admin_inst
 
             )
 
@@ -327,12 +335,13 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator):
 
 # *** base message sender class ***
 class PropagatorMessageSender:
-    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator):
+    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator, admin_instance):
         """
 
         :param protocol: the protocol class representing a connection, use as self.protocol.transport.write()
         :param convo_id: the convo id used by propagator to keep track of message
         """
+        self.admin_instance = admin_instance
         self.propagator_inst = propagator_inst
         self.last_msg = 'end'
         self.verified_msg = 'ver'
@@ -365,12 +374,13 @@ class PropagatorMessageSender:
 
 # *** base  message receiver class ***
 class PropagatorMessageReceiver:
-    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator):
+    def __init__(self, protocol, convo_id, propagator_inst: NetworkPropagator, admin_instance):
         """
 
         :param protocol: the protocol class representing a connection, use as self.protocol.transport.write()
         :param convo_id: the convo id used by propagator to keep track of message
         """
+        self.admin_instance = admin_instance
         self.last_msg = 'end'
         self.verified_msg = 'ver'
         self.rejected_msg = 'rej'
@@ -404,8 +414,8 @@ class PropagatorMessageReceiver:
 
 
 class StatementSender(PropagatorMessageSender):
-    def __init__(self, protocol, convo_id, validated_message_list, propagator_inst):
-        super().__init__(protocol, convo_id, propagator_inst)
+    def __init__(self, protocol, convo_id, validated_message_list, propagator_inst, admin_inst):
+        super().__init__(protocol, convo_id, propagator_inst, admin_inst)
         self.tx_hash_preview_with_reason = validated_message_list[0]  # string with reason letter-8char hash preview
         self.msg_pubkey = validated_message_list[1]
         self.main_msg = validated_message_list[2]  # this will be serialized at later stage
@@ -441,13 +451,17 @@ class StatementSender(PropagatorMessageSender):
 
 
 class StatementReceiver(PropagatorMessageReceiver):
-    def __init__(self, protocol, convo_id, propagatorInst, statement_validator):
-        super().__init__(protocol, convo_id, propagatorInst)
+    def __init__(self, protocol, convo_id, propagatorInst, statement_validator, admin_instance):
+        super().__init__(protocol, convo_id, propagatorInst, admin_instance)
         self.statement_validator = statement_validator
 
     def listen(self, msg):
 
         if self.end_convo is False:
+            print(f"end convo is False\n"
+                  f"received_first_message: {self.received_first_msg}\n"
+                  f"received tx msg: {self.received_tx_msg}\n"
+                  f"received_tx_msg_but_pubkey_needed: {self.received_tx_msg_but_pubkey_needed}")
             if isinstance(msg[-1], str) and msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
                 self.end_convo = True
 
@@ -469,24 +483,30 @@ class StatementReceiver(PropagatorMessageReceiver):
                     rsp = self.statement_validator(
                         msg[-1],
                         wallet_pubkey=None,
-                        q_object=self.q_object
-                    )
+                        q_object=self.q_object,
+                        admin_instance=self.admin_instance
+                    ).check_validity()
                 except KeyError:  # wrong tx message sent (or invalid format maybe using different version)
                     rsp = False
 
+                print("rsp of validator, ", rsp)
                 self.main_message = msg[-1] if rsp is True or rsp is None else None
                 self.speak(rsp=rsp)
             elif self.received_tx_msg_but_pubkey_needed is True:  # needed pubkey to validate transaction
+                print(f"needed pubkey, {msg}")
                 try:
                     rsp = self.statement_validator(
                         self.main_message,
                         wallet_pubkey=msg[-1],
-                        q_object=self.q_object
-                    )
+                        q_object=self.q_object,
+                        admin_instance=self.admin_instance
+                    ).check_validity()
                 except KeyError:  # wrong tx message sent (or invalid format maybe using different version)
                     rsp = False
 
                 self.speak(rsp=rsp)
+            else:
+                print("in NetworkPropagator, statementreceiver, No option available")
 
     def speak(self, rsp=None):
         if self.end_convo is False:

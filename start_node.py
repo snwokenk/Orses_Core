@@ -22,7 +22,7 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
                                                         "goto www.python.org to install/upgrade"
 
 
-# todo: when node created allow for copy of "Default_Addresses_Sandbox" folder in node folder
+# todo: Now that, find a way in which a node DOES NOT PROPAGATE a transaction to the node that prpagated it.
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
@@ -140,7 +140,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     # ThreadPool setup, 10 thread pools * number of node instances + 10 for main node:
     t_pool = reactor.getThreadPool()
     print(f"ThreadPool size is: {t_pool.max}")
-    t_pool.adjustPoolsize(minthreads=0, maxthreads=int((number_of_nodes*10) + 10))
+    t_pool.adjustPoolsize(minthreads=0, maxthreads=int((number_of_nodes*15) + 15))
     print(f"ThreadPool size is: {reactor.getThreadPool().max}")
 
     print("You Are Running In Sandbox Mode")
