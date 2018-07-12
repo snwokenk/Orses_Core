@@ -272,8 +272,6 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator):
         propagator_inst.connected_protocols_dict[protocol_id][1] += 1
         break
 
-
-
     prop_receiver = StatementReceiver(
         protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
         convo_id=convo_id,
@@ -358,6 +356,7 @@ class PropagatorMessageSender:
         """override"""
 
     def speaker(self, msg):
+
         self.propagator_inst.reactor_instance.callFromThread(
             self.protocol.transport.write,
             json.dumps([self.prop_type, self.convo_id, msg]).encode()
@@ -428,7 +427,12 @@ class StatementSender(PropagatorMessageSender):
                 return
 
             if self.other_convo_id is None:
+                print("other convo id is none")
                 self.other_convo_id = msg[1][1]  # msg = ['n', [your convo id, other convo id], main_msg]
+                self.convo_id = [self.other_convo_id, self.local_convo_id]
+
+                print(f"other convo id is now {self.other_convo_id}, gotten from message {msg}\n"
+                      f"convo id list: {self.convo_id}")
 
             if msg[-1] == self.send_tx_msg:
                 self.speak(self.main_msg)
@@ -444,9 +448,11 @@ class StatementReceiver(PropagatorMessageReceiver):
     def listen(self, msg):
 
         if self.end_convo is False:
-            if msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
+            if isinstance(msg[-1], str) and msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
                 self.end_convo = True
-            elif self.received_first_msg is False:  # will be turned to true in self.speak()
+
+            # will be turned to true in self.speak()
+            elif self.received_first_msg is False and isinstance(msg[-1], str):
                 # have seen and accepted transaction
                 if msg[-1] in self.propagator_inst.validated_message_dict_with_hash_preview:
                     self.speak(rsp=True)
@@ -456,7 +462,9 @@ class StatementReceiver(PropagatorMessageReceiver):
                 # has not seen transaction
                 else:
                     self.speak()
-            elif self.received_tx_msg is False:  # expecting tx message
+
+            # expecting tx message
+            elif self.received_tx_msg is False and isinstance(msg[-1], dict):
                 try:
                     rsp = self.statement_validator(
                         msg[-1],
@@ -472,7 +480,7 @@ class StatementReceiver(PropagatorMessageReceiver):
                 try:
                     rsp = self.statement_validator(
                         self.main_message,
-                        wallet_pubkey=bytes.fromhex(msg[-1]),
+                        wallet_pubkey=msg[-1],
                         q_object=self.q_object
                     )
                 except KeyError:  # wrong tx message sent (or invalid format maybe using different version)
