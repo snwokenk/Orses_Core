@@ -229,7 +229,7 @@ class DummyReactor:
 
         # todo: use connector to have a way for retrying connection
         if self.node_host_addr == host:
-            print("in connectTCP, Same Node")
+            print(f"in connectTCP, Same Node: {self.node_host_addr} and {host}")
             return None
         connected_instance = self.node_dummy_internet.connect_to_listening(
             connecting_addr=[self.node_host_addr, self.node.get_a_port()],

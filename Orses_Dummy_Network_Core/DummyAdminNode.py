@@ -39,18 +39,19 @@ class DummyAdminNode(DummyNode):
         :param args: should be list of blocking objects: in this case q objects
         :return:
         """
-        print(args)
+        # print(args)
 
-        def temp():
-            # wait for signal
-            q_object_to_each_node.get()
+        # wait for signal
+        q_object_to_each_node.get()
 
-            if self.reactor.running:
-                for i in args:
-                    if isinstance(i, (multiprocessing.Queue, queue.Queue)):
-                        i.put("exit")
+        if self.reactor.running:
+            for i in args:
+                if isinstance(i, (multiprocessing.Queue, queue.Queue)):
+                    i.put("exit")
 
-        temp()
+            self.reactor.stop()
+
+
 
         #             # ******  THIS LINE IS IMPORTANT FOR CLEAN ENDING OF REACTOR ****** #
         # # ****** THIS WAITS FOR EXIT SIGNAL AND THE FIRES CALLBACK WHICH RUNS reactor.stop() in the main thread ***** #
@@ -66,7 +67,6 @@ class DummyAdminNode(DummyNode):
         :return:
         """
 
-        print(f'in DummyAdminNode.py, {self.admin.admin_name} is running, addr is {self.addr}')
         # *** instantiate queue variables ***
         q_for_compete = multiprocessing.Queue() if self.is_competitor == 'y' else None
         q_for_validator = multiprocessing.Queue()
@@ -128,16 +128,23 @@ class DummyAdminNode(DummyNode):
 
 
         # *** instantiate network message sorter ***
-        network_message_sorter = NetworkMessageSorter(q_object_from_protocol, q_for_bk_propagate, q_for_propagate)
+        network_message_sorter = NetworkMessageSorter(
+            q_object_from_protocol,
+            q_for_bk_propagate,
+            q_for_propagate,
+            node=self
+        )
 
         # *** run sorter in another thread ***
         self.reactor.callInThread(network_message_sorter.run_sorter)
 
         # *** use to connect to or listen for connection from other verification nodes ***
+
         self.reactor.callInThread(
             network_manager.run_veri_node_network,
             self.reactor
         )
+
 
         # *** use to listen for connections from regular nodes ***
         if reg_network_sandbox is False:  # will run regular network with real reactor allowing outside client node testing
@@ -154,6 +161,7 @@ class DummyAdminNode(DummyNode):
         # *** set propagator's network manager variable to network manager instance ***
         propagator.network_manager = network_manager
         self.reactor.run()
+
         self.reactor.callInThread(
             self.send_stop_to_reactor,
             q_object_to_each_node,
@@ -166,4 +174,4 @@ class DummyAdminNode(DummyNode):
 
         )
 
-        self.reactor.stop()
+

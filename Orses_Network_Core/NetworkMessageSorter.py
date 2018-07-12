@@ -12,7 +12,8 @@ import json
 
 
 class NetworkMessageSorter:
-    def __init__(self, q_object_from_protocol, q_for_bk_propagate, q_for_propagate):
+    def __init__(self, q_object_from_protocol, q_for_bk_propagate, q_for_propagate, node=None):
+        self.node = node
         self.q_for_propagate = q_for_propagate
         self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_from_protocol = q_object_from_protocol
@@ -35,9 +36,12 @@ class NetworkMessageSorter:
                 else:
                     continue
 
-
             try: # check what type of message, if 'n' then networkpropagator, if 'b' then blockchainpropagator
-                print("in message sorter", msg)
+                try:
+                    print(f"in message sorter, msg: {msg}, admin {self.node.admin.admin_name if self.node else None}")
+                except AttributeError:
+                    pass
+
                 if msg[1][0] == 'n':
                     self.q_for_propagate.put(msg)
                 elif msg[1][0] == 'b':

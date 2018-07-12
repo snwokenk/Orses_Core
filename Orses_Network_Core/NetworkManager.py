@@ -66,15 +66,14 @@ class NetworkManager:
         if self.admin.is_sandbox:
             if not isinstance(reactor_instance, DummyReactor):
                 return False
-
         self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
+
         for i in self.addresses:
             temp_p = reactor_instance.connectTCP(
                 host=i,
                 port=self.addresses[i],
                 factory=self.veri_connecting_factory
             )
-            print("in run_veri_node_networ, connected Port", temp_p)
             self.Connected_Port_Veri.append(temp_p)
 
 

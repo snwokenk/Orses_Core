@@ -103,6 +103,7 @@ class NetworkPropagator:
                     elif rsp[3] is None:
                         pass
                     elif rsp[3] is True:
+                        print("in convo initiator, reached here", self.connected_protocols_dict)
                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
                         self.reactor_instance.callInThread(msg_sender_creator, rsp=rsp, propagator_inst=self)
                     else:

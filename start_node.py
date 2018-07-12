@@ -137,10 +137,10 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     :return:
     """
 
-    # few setup:
+    # ThreadPool setup, 10 thread pools * number of node instances + 10 for main node:
     t_pool = reactor.getThreadPool()
     print(f"ThreadPool size is: {t_pool.max}")
-    t_pool.adjustPoolsize(minthreads=0, maxthreads=int(number_of_nodes*10))
+    t_pool.adjustPoolsize(minthreads=0, maxthreads=int((number_of_nodes*10) + 10))
     print(f"ThreadPool size is: {reactor.getThreadPool().max}")
 
     print("You Are Running In Sandbox Mode")
@@ -254,7 +254,12 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     )
 
     # *** instantiate network message sorter ***
-    network_message_sorter = NetworkMessageSorter(q_object_from_protocol, q_for_bk_propagate, q_for_propagate)
+    network_message_sorter = NetworkMessageSorter(
+        q_object_from_protocol,
+        q_for_bk_propagate,
+        q_for_propagate,
+        node=main_node
+    )
 
     # *** run sorter in another thread ***
     reactor.callInThread(network_message_sorter.run_sorter)
@@ -489,7 +494,7 @@ def main():
 
 
 if __name__ == '__main__':
-    sandbox_main(number_of_nodes=2, reg_network_sandbox=False)
+    sandbox_main(number_of_nodes=1, reg_network_sandbox=False)
 
     # long_opt = ["sandbox"]
     # short_opt = "s"
