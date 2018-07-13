@@ -1,5 +1,5 @@
 from Crypto.Hash import SHA256, SHA512, RIPEMD160
-
+import base64
 
 class Hasher:
     def __init__(self):
@@ -31,8 +31,10 @@ class Hasher:
 
         if hash_form == "hex":
             return h.hexdigest()
-        elif hash_form == "bytes":
-            return h.digest()
+        elif hash_form == "b85_str":
+            return base64.b85encode(h.digest()).decode()
+        else:
+            return h.digest()  # bytes
 
 
     @staticmethod
@@ -55,8 +57,10 @@ class Hasher:
 
         if hash_form == "hex":
             return h.hexdigest()
-        elif hash_form == "bytes":
-            return h.digest()
+        elif hash_form == "b85_str":
+            return base64.b85encode(h.digest()).decode()
+        else:
+            return h.digest()  # bytes
 
 
 if __name__ == '__main__':

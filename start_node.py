@@ -21,8 +21,12 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: allow nodes to check each other's sha256 hash of software running. This allows nodes to validate that the other
+# todo: peers are running the same or compatible versions. During this time, nodes also share knowledge of other
+# todo: known nodes and sends the full connection details to each other, IF NEEDED.
+# todo: to accomplish this, a networkpropagator msg_receiver_creator and networkpropagator.msg_sender_creator should be
+# todo: created. the reason letter for this message is 'e'.
 
-# todo: have a way of updating default_addresses/default_addresses_sandbox and then checking and sending to other nodes
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used

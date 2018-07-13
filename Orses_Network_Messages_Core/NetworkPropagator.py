@@ -14,6 +14,7 @@ validator_dict['a'] = AssignmentStatementValidator.AssignmentStatementValidator
 validator_dict['b'] = TokenTransferValidator.TokenTransferValidator
 validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
+validator_dict['e'] = None  #
 
 
 class NetworkPropagator:
@@ -255,7 +256,10 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     convo_id = msg[1]
     print(f"in NetworkPropagtor.py, message receiver creator, msg {msg}")
 
-    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd'}:
+
+    # a: assignment statement validator, b:token transfer validator, c:token reservation request validator,
+    # d:token reservation request validator, e: address list update
+    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd', 'e'}:
         statement_validator = validator_dict[msg[-1][0]]
 
     else:  # send end message
