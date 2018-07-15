@@ -3,7 +3,7 @@ This module will be used  propagate messages to other verification nodes or admi
 Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator, ConnectedNodeValidator
 # from twisted.internet.protocol import Protocol
 
 import json, os, shutil
@@ -14,7 +14,7 @@ validator_dict['a'] = AssignmentStatementValidator.AssignmentStatementValidator
 validator_dict['b'] = TokenTransferValidator.TokenTransferValidator
 validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
-validator_dict['e'] = None  #
+validator_dict['e'] = ConnectedNodeValidator.ConnectedNodeValidator
 
 
 class NetworkPropagator:
@@ -256,6 +256,8 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     convo_id = msg[1]
     print(f"in NetworkPropagtor.py, message receiver creator, msg {msg}")
 
+    # todo: limit protocol to only sending connectorvalidator messages if not yet validated
+
     # a: assignment statement validator, b:token transfer validator, c:token reservation request validator,
     # d:token reservation request validator, e: ConnectedNodeValidator
     if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd', 'e'}:
@@ -288,6 +290,12 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
         propagatorInst=propagator_inst,
         statement_validator=statement_validator,
         admin_instance=admin_inst
+    ) if msg[-1][0] != 'e' else NodeValidatorReceiver(
+        protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+        convo_id=convo_id,
+        propagatorInst=propagator_inst,
+        admin_instance=admin_inst,
+        conn_node_validator=statement_validator
     )
 
     # updates convo_dict of protocol with local convo id
@@ -532,3 +540,10 @@ class StatementReceiver(PropagatorMessageReceiver):
                 self.end_convo = True
                 msg = self.verified_msg if rsp is True else self.rejected_msg
                 self.speaker(msg=msg)
+
+
+class NodeValidatorReceiver(PropagatorMessageReceiver):
+    def __init__(self, protocol, convo_id, propagatorInst, admin_instance, conn_node_validator):
+
+        super().__init__(protocol, convo_id, propagatorInst, admin_instance)
+        self.connected_node_validator = conn_node_validator

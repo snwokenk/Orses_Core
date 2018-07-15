@@ -21,6 +21,8 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+
+# todo: continue coding nodevalidatorreceiver and sender, to be used in validating nodes and sharing addresses.
 # todo: allow nodes to check each other's sha256 hash of software running. This allows nodes to validate that the other
 # todo: peers are running the same or compatible versions. During this time, nodes also share knowledge of other
 # todo: known nodes and sends the full connection details to each other, IF NEEDED.

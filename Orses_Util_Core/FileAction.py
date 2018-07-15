@@ -5,6 +5,7 @@ import os, json, pathlib, platform, hashlib
 
 class FileAction:
     def __init__(self, admin=None):
+        self.admin = admin
         self.username = admin.admin_name if admin is not None else None
         self.__folders_created = False
         self.__project_path = FileAction.get_main_folder()
@@ -57,6 +58,10 @@ class FileAction:
 
         return self.__folders_created
 
+    def get_address_file_path(self):
+        return os.path.join(self.get_username_folder_path(), Filenames_VariableNames.default_addr_list_sandbox) if (
+            self.admin.is_sandbox) else \
+            os.path.join(self.get_username_folder_path(), Filenames_VariableNames.default_addr_list)
 
     def get_username_folder_path(self):
         if isinstance(self.__username_folder_path, str) and self.__folders_created:

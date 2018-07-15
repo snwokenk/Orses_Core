@@ -9,16 +9,30 @@ import base64
 
 
 class ConnectedNodeValidator:
-    def __init__(self, peer_node_info_dict, admin_inst, ):
+    def __init__(self, peer_node_info_dict, admin_inst, wallet_pubkey=None, q_object=None):
 
         self.admin_inst = admin_inst
         self.peer_software_hash_list = peer_node_info_dict["1"]
+        self.peer_addr = peer_node_info_dict["2"]  # "ip address"
         self.compatible_hashes = admin_inst.compatible_hash if admin_inst.compatible_hash else \
             ConnectedNodeValidator.get_hash_of_important_files(self.admin_inst)
 
     def check_validity(self):
 
-        return self._compare_software_hash_list()
+        if self._compare_software_hash_list() is True:
+            #  update address_list if
+            addr_filename = self.admin_inst.fl.get_address_file_path()
+            addr_data = self.admin_inst.fl.open_file_from_json(filename=addr_filename)
+            if self.peer_addr not in addr_data:
+                addr_data.update({self.peer_addr: 55602})
+                self.admin_inst.fl.save_json_into_file(
+                    filename=addr_filename,
+                    python_json_serializable_object=addr_data
+                )
+            return True
+
+        return False
+
 
     def _compare_software_hash_list(self):
         local_software_hash_list = self.get_hash_of_important_files(self.admin_inst)
