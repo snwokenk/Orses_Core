@@ -1,13 +1,13 @@
 from Orses_Util_Core import Filenames_VariableNames
 
-import os, json, pathlib
+import os, json, pathlib, platform, hashlib
 
 
 class FileAction:
     def __init__(self, admin=None):
         self.username = admin.admin_name if admin is not None else None
         self.__folders_created = False
-        self.__project_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.__project_path = FileAction.get_main_folder()
         self.__sandbox_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.sandbox_folder)
         self.__live_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.data_folder)
         self.__username_folder_path = None
@@ -56,6 +56,7 @@ class FileAction:
         self.__folders_created = True if (is_created and is_created1) else False
 
         return self.__folders_created
+
 
     def get_username_folder_path(self):
         if isinstance(self.__username_folder_path, str) and self.__folders_created:
@@ -210,6 +211,7 @@ class FileAction:
     @staticmethod
     def copy_file(src, st):
         os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     @classmethod
     def splitTheFiles(cls, file_name, numberOfPart=3):
 
@@ -249,6 +251,53 @@ class FileAction:
 
         return listOfParts
 
+    @staticmethod
+    def get_main_folder():
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    @staticmethod
+    def get_path_of_important_files():
+        """
+        returns a list of paths for important files for hashing
+        Files to get:
+        start_node.py
+        note for windows rather than "/" use "\"
+        Orses_Validator_Core/AssignmentStatementValidator.py
+        Orses_Validator_Core/TokenReservationRequestValidator.py
+        Orses_Validator_Core/TokenReservationRevokeValidator.py
+        Orses_Validator_Core/TokenTransferValidator.py
+
+        Orses_Cryptography_Core/DigitalSignerValidator.py
+        Orses_Cryptography_Core/DigitalSigner.py
+        Orses_Cryptography_Core/Encryption.py
+        Orses_Cryptography_Core/Decryption.py
+        Orses_Cryptography_Core/PKIGeneration.py
+        :return: list of paths of importan files. This list is used to
+        """
+        main_folder = FileAction.get_main_folder()
+        sys_dep_slash = "\\"  if platform.system() == "Windows" else "/"
+        list_filenames = [
+            "start_node.py",
+            f"Orses_Validator_Core{sys_dep_slash}AssignmentStatementValidator.py",
+            f"Orses_Validator_Core{sys_dep_slash}TokenTransferValidator.py",
+            f"Orses_Validator_Core{sys_dep_slash}TokenReservationRequestValidator.py",
+            f"Orses_Validator_Core{sys_dep_slash}TokenReservationRevokeValidator.py",
+            f"Orses_Cryptography_Core{sys_dep_slash}DigitalSignerValidator.py",
+            f"Orses_Cryptography_Core{sys_dep_slash}DigitalSigner.py",
+            f"Orses_Cryptography_Core{sys_dep_slash}Encryption.py",
+            f"Orses_Cryptography_Core{sys_dep_slash}Decryption.py",
+            f"Orses_Cryptography_Core{sys_dep_slash}PKIGeneration.py"
+
+        ]
+        list_of_filepaths = []
+
+        for name in list_filenames:
+            list_of_filepaths.append(os.path.join(main_folder, name))
+
+        return list_of_filepaths
+
 if __name__ == '__main__':
     print(os.getcwd())
-    print(os.path.abspath(__file__))
+    main_folder = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    k = FileAction.get_path_of_important_files()
+    print(len(k))

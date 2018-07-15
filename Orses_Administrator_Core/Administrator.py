@@ -48,6 +48,7 @@ class Admin:
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
         self.is_sandbox = is_sandbox
+        self.compatible_hashes = None  # set compatible hashes
 
         self.__set_or_create_pki_pair()
 

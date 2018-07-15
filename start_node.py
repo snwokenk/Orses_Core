@@ -29,6 +29,7 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
 
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
+# todo: get compatible hashes and check if peer combined_hash in compabitible hashes
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
 
 # todo: try to create a mock twisted protocol class, This class will receive message using a pipe, this

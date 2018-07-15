@@ -7,7 +7,7 @@ class Hasher:
 
 
     @staticmethod
-    def sha_hasher(data, hash_strength=256, hash_form="hex"):
+    def sha_hasher(data: (str, bytes, ), hash_strength=256, hash_form="hex"):
         """
 
         :param data: data to be hashed str or bytes
@@ -15,7 +15,7 @@ class Hasher:
         :param hash_strength: strength of hash either 256 or 512
         :type hash_strength: int
         :param hash_form: format to return
-        :type hash_form: str
+        :type hash_form: str ('hex', 'b85_str')
         :return: hex or byte of hash
         """
 
@@ -23,15 +23,17 @@ class Hasher:
             data = str(data).encode()
         elif isinstance(data, str):
             data = data.encode()
+        elif isinstance(data, bytes):
+            pass
 
         if hash_strength == 512:
             h = SHA512.new(data)
         else:  # use SHA256
             h = SHA256.new(data)
 
-        if hash_form == "hex":
+        if hash_form.lower() == "hex":
             return h.hexdigest()
-        elif hash_form == "b85_str":
+        elif hash_form.lower() == "b85_str":
             return base64.b85encode(h.digest()).decode()
         else:
             return h.digest()  # bytes
