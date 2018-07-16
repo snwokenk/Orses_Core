@@ -38,9 +38,7 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
 # todo: will be for testing internal testing of network propagation and validation.
 # todo: This class then be used in a Start_virtual_node script which will allow for testing of certian functionaility
 
-# todo: CONTINUE IMPLEMENTING ECC, MAKE SURE LOAD PUBKEY AND PRIVKEY ARE IMPLEMENTING ECC AND NOT RSA
 
-# todo: refactor convo_dict in blockchainpropagator and self.convo_id
 
 # todo: start competing/block creation process, finish up the blockchain process
 # todo: Build a way to finish up any conversations with peers before ending program

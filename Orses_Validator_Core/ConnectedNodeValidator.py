@@ -21,18 +21,10 @@ class ConnectedNodeValidator:
 
         if self._compare_software_hash_list() is True:
             #  update address_list if
-            addr_filename = self.admin_inst.fl.get_address_file_path()
-            addr_data = self.admin_inst.fl.open_file_from_json(filename=addr_filename)
-            if self.peer_addr not in addr_data:
-                addr_data.update({self.peer_addr: 55602})
-                self.admin_inst.fl.save_json_into_file(
-                    filename=addr_filename,
-                    python_json_serializable_object=addr_data
-                )
+            self.admin_inst.fl.update_addresses(address_list=[self.peer_addr, ])
             return True
 
         return False
-
 
     def _compare_software_hash_list(self):
         local_software_hash_list = self.get_hash_of_important_files(self.admin_inst)

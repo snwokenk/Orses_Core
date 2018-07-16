@@ -98,6 +98,18 @@ class FileAction:
     def get_block_data_folder_path(self):
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.block_folder)
 
+    def update_addresses(self, address_list):
+        addr_filename = self.get_address_file_path()
+        addr_data = self.open_file_from_json(filename=addr_filename)
+
+        for ip_address in address_list:
+            if ip_address not in addr_data:
+                addr_data.update({ip_address: 55602})
+                self.save_json_into_file(
+                    filename=addr_filename,
+                    python_json_serializable_object=addr_data
+                )
+
 
     """
     section for static functions for saving/loading text, bytes and json files
