@@ -650,7 +650,8 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
                     rsp = False
 
                 if rsp is True:
-
+                    #TODO: COntinue
+                    pass
                 else:  # rsp is False / non compatible software being run by peer node
                     self.speak(False)
 
