@@ -110,6 +110,12 @@ class FileAction:
                     python_json_serializable_object=addr_data
                 )
 
+    def get_blacklisted_admin(self):
+        # TODO: get or created blacklisted file
+
+        return {}
+
+
 
     """
     section for static functions for saving/loading text, bytes and json files

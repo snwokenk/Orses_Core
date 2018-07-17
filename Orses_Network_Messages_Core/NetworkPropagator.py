@@ -632,12 +632,28 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
             if isinstance(msg[-1], str) and msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
                 self.end_convo = True
             elif self.received_first_msg is False and isinstance(msg[-1], str):  # "e{adminId}" ie. "e"
-                # TODO: check adminId  to see if banned list, if banned self.speak(false)
-                self.speak()
+                if msg[-1][1:] in self.admin_instance.fl.get_blacklisted_admin():
+                    self.speak(rsp=False)
+                else:
+                    self.speak()
 
             # expecting dict of hashes
             elif self.received_tx_msg is False and isinstance(msg[-1], dict):
-                pass
+                try:
+                    rsp = self.connected_node_validator(
+                        peer_node_info_dict=msg[-1],
+                        wallet_pubkey=None,
+                        q_object=self.q_object,
+                        admin_inst=self.admin_instance
+                    ).check_validity()
+                except KeyError:  # wrong tx message sent (or invalid format maybe using different version)
+                    rsp = False
+
+                if rsp is True:
+
+                else:  # rsp is False / non compatible software being run by peer node
+                    self.speak(False)
+
             elif self.need_to_send_addr is True:
                 pass
             elif self.need_to_receive_addr is True:
