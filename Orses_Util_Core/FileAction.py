@@ -99,16 +99,30 @@ class FileAction:
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.block_folder)
 
     def update_addresses(self, address_list):
+        """
+        updates address list file and Admin.known_addresses with new address
+        :param address_list:
+        :return:
+        """
         addr_filename = self.get_address_file_path()
         addr_data = self.open_file_from_json(filename=addr_filename)
 
         for ip_address in address_list:
             if ip_address not in addr_data:
                 addr_data.update({ip_address: 55602})
+                try:
+                    self.admin.known_addresses.update({ip_address: 55602})
+                except AttributeError:
+                    pass
+
                 self.save_json_into_file(
                     filename=addr_filename,
                     python_json_serializable_object=addr_data
                 )
+
+    def get_addresses(self):
+        addr_filename = self.get_address_file_path()
+        return self.open_file_from_json(filename=addr_filename)
 
     def get_blacklisted_admin(self):
         # TODO: get or created blacklisted file

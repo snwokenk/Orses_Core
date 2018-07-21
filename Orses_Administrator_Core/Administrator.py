@@ -49,6 +49,7 @@ class Admin:
         self.isCompetitor = isCompetitor
         self.is_sandbox = is_sandbox
         self.compatible_hashes = None  # set compatible hashes
+        self.known_addresses = None
 
         self.__set_or_create_pki_pair()
 
@@ -58,6 +59,7 @@ class Admin:
         :return: none
         """
         self.fl = FileAction(admin=self)
+        self.known_addresses = self.fl.get_addresses()
 
         # create an instance of PKI class (uses RSA 3072)
         pki = PKI(username=self.admin_name, password=self.password, user_instance=self)

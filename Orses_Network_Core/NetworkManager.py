@@ -19,13 +19,14 @@ class NetworkManager:
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
         self.reg_network_sandbox = reg_network_sandbox
         # get sandbox address or live address
-        self.addresses_file = Filenames_VariableNames.default_addr_list_sandbox if self.admin.is_sandbox is True else \
-            Filenames_VariableNames.default_addr_list
+        # self.addresses_file = Filenames_VariableNames.default_addr_list_sandbox if self.admin.is_sandbox is True else \
+        #     Filenames_VariableNames.default_addr_list
 
-        self.addresses = FileAction.open_file_from_json(
-            filename=self.addresses_file,
-            in_folder=admin.fl.get_username_folder_path()
-        )
+        # self.addresses = FileAction.open_file_from_json(
+        #     filename=self.addresses_file,
+        #     in_folder=admin.fl.get_username_folder_path()
+        # )
+        self.addresses = self.admin.known_addresses
         self.listening_port = veri_listening_port
         if admin.is_sandbox is True:
 

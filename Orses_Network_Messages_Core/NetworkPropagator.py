@@ -554,6 +554,7 @@ class NodeValidatorSender(PropagatorMessageSender):
         # {"1": software_hash_list, "2": ip address, "3": number of known address}
         self.main_msg = message_list[0]
         self.addr_list = message_list[1]
+        self.not_compatible_msg = "ntc"
 
     def speak(self, rsp=None):
 
@@ -576,6 +577,13 @@ class NodeValidatorSender(PropagatorMessageSender):
 
             if msg[-1] == self.send_tx_msg:  # msg[-1] == "snd"
                 self.speak(self.main_msg)
+
+            elif msg == self.not_compatible_msg:
+                # todo: if peer node is not running a compatible software then it is not part of network
+                # todo: find a way to note nodes not running compatible software for now end convo
+                self.end_convo = True
+                self.end_convo_reason = msg[-1]
+
             elif isinstance(msg[-1], dict):
                 msg_dict = msg[-1]
 
@@ -604,7 +612,7 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
 
         Otherwise a dictionary is sent. In this dictionary
         '1': True if the local node needs addresses else False
-        '2': [list of addresses] if the peer node has 3 or less addresses
+        '2': [list of addresses] if the peer node has 3 or less addresses else None
 
 
         THIRD  message is received only if the local node requested for peer's address list. Third message is a list of
@@ -623,7 +631,6 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
         self.connected_node_validator = conn_node_validator
         self.not_compatible_msg = "ntc"
         self.need_addr_msg = "ndr"
-        self.need_to_send_addr = None
         self.need_to_receive_addr = None
 
     def listen(self, msg):
@@ -637,7 +644,7 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
                 else:
                     self.speak()
 
-            # expecting dict of hashes
+            # expecting dict of hashes/ second message
             elif self.received_tx_msg is False and isinstance(msg[-1], dict):
                 try:
                     rsp = self.connected_node_validator(
@@ -650,15 +657,29 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
                     rsp = False
 
                 if rsp is True:
-                    #TODO: COntinue
-                    pass
-                else:  # rsp is False / non compatible software being run by peer node
-                    self.speak(False)
+                    known_addr_peer = msg[-1]["3"]
+                    known_addr_local = len(self.admin_instance.known_addresses)
+                    if known_addr_peer > 3 and known_addr_local > 3:  # no need to send
+                        self.speak(rsp=self.last_msg)
+                    else:  # todo: minimize to only sending 7 addresses
+                        rsp_dict = dict()
+                        rsp_dict['1'] = self.need_to_receive_addr = known_addr_local <= 3
+                        try:
+                            rsp_dict['2'] = list(self.admin_instance.known_addresses) if known_addr_local <= 3 else {}
+                        except TypeError:
+                            rsp_dict['2'] = {}
 
-            elif self.need_to_send_addr is True:
-                pass
+
+                        self.speak(rsp_dict)
+
+                else:  # rsp is False / non compatible software being run by peer node
+                    self.speak(self.not_compatible_msg)
+
             elif self.need_to_receive_addr is True:
-                pass
+                if isinstance(msg[-1], list):
+                    self.admin_instance.fl.update_addresses(msg[-1])
+
+                self.speak(self.last_msg)
             else:
                 print("in NetworkPropagator, NodeValidatorReceiver, No option available")
 
@@ -669,3 +690,10 @@ class NodeValidatorReceiver(PropagatorMessageReceiver):
                 msg = self.verified_msg if rsp is True else(self.rejected_msg if rsp is False else self.send_tx_msg)
                 self.end_convo = True if (rsp is True) or (rsp is False) else False
                 self.speaker(msg=msg)
+            elif self.received_tx_msg is False:
+                self.received_tx_msg = True
+                if rsp == self.not_compatible_msg or isinstance(rsp, dict):
+                    self.speaker(msg=rsp)
+            elif rsp == self.last_msg:
+                self.end_convo = True
+                self.speaker(msg=rsp)
