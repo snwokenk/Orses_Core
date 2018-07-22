@@ -122,13 +122,13 @@ class FileAction:
 
     def get_addresses(self):
         addr_filename = self.get_address_file_path()
+
         return self.open_file_from_json(filename=addr_filename)
 
     def get_blacklisted_admin(self):
         # TODO: get or created blacklisted file
 
         return {}
-
 
 
     """

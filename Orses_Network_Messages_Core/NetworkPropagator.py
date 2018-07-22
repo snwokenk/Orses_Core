@@ -4,7 +4,8 @@ Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
     TokenReservationRequestValidator, TokenReservationRevokeValidator, ConnectedNodeValidator
-# from twisted.internet.protocol import Protocol
+
+from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListener
 
 import json, os, shutil
 
@@ -53,7 +54,9 @@ class NetworkPropagator:
 
         self.network_manager = None
 
-    def copy_main_default_address_to_admin(self, admin_instance):
+        self.copy_main_default_address_to_admin()
+
+    def copy_main_default_address_to_admin(self):
 
         if self.is_sandbox is True:
             addr_file_name = "Default_Addresses_Sandbox"
@@ -62,9 +65,11 @@ class NetworkPropagator:
 
         path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), addr_file_name)
         try:
-            shutil.copy(src=path_of_main, dst=admin_instance.fl.get_username_folder_path())
+            shutil.copy(src=path_of_main, dst=self.admin.fl.get_username_folder_path())
         except FileExistsError:
-            print("In NetworkPropagator.py, __init__: Blockchain_Data folder already exists")
+            print("In NetworkPropagator.py, __init__: Default Address Already folder already exists")
+        else:
+            self.admin.known_addresses = self.admin.fl.get_addresses()
 
     def copy_or_created_banned_admin_list(self):
         pass
@@ -75,6 +80,12 @@ class NetworkPropagator:
         # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 20000 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
+
+        if isinstance(protocol, DummyVeriNodeListener):
+            print(f"in NetworkPropagator.py Listener Protocol Created When Connected {protocol}")
+
+            # todo: listener protocol means a node connected to you, send a Node Validator message
+
 
     def remove_protocol(self, protocol):
 

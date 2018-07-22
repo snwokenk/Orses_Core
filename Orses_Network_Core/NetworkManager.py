@@ -68,7 +68,7 @@ class NetworkManager:
             if not isinstance(reactor_instance, DummyReactor):
                 return False
         self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
-
+        print(f"in NetworkManager.py addresses {self.addresses}")
         for i in self.addresses:
             temp_p = reactor_instance.connectTCP(
                 host=i,
@@ -76,8 +76,6 @@ class NetworkManager:
                 factory=self.veri_connecting_factory
             )
             self.Connected_Port_Veri.append(temp_p)
-
-
 
         return True
 
