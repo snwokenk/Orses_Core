@@ -116,24 +116,28 @@ class DummyAdminNode(DummyNode):
         # *** start propagator initiator in another thread ***
         self.reactor.callInThread(propagator.run_propagator_convo_initiator)
 
-        # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
-        network_manager = NetworkManager(
-            admin=self.admin,
-            q_object_from_protocol=q_object_from_protocol,
-            q_object_to_validator=q_for_validator,
-            propagator=propagator,
-            reg_listening_port=55600,
-            reg_network_sandbox=reg_network_sandbox
-        )
-
-
         # *** instantiate network message sorter ***
         network_message_sorter = NetworkMessageSorter(
             q_object_from_protocol,
             q_for_bk_propagate,
             q_for_propagate,
-            node=self
+            node=self,
+            b_propagator_inst=blockchain_propagator,
+            n_propagator_inst=propagator
         )
+
+        # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
+        network_manager = NetworkManager(
+            admin=self.admin,
+            q_object_from_protocol=q_object_from_protocol,
+            q_object_to_validator=q_for_validator,
+            net_msg_sorter=network_message_sorter,
+            reg_listening_port=55600,
+            reg_network_sandbox=reg_network_sandbox
+        )
+
+
+
 
         # *** run sorter in another thread ***
         self.reactor.callInThread(network_message_sorter.run_sorter)

@@ -12,7 +12,7 @@ from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyReactor
 
 
 class NetworkManager:
-    def __init__(self, admin, q_object_from_protocol, q_object_to_validator, propagator, reg_network_sandbox: bool,
+    def __init__(self, admin, q_object_from_protocol, q_object_to_validator, net_msg_sorter, reg_network_sandbox: bool,
                  reg_listening_port=55600, veri_listening_port=55602):
 
         self.admin = admin
@@ -32,27 +32,27 @@ class NetworkManager:
 
             self.veri_connecting_factory = DummyVeriNodeConnectorFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=propagator
+                propagator=net_msg_sorter
             )
 
             self.veri_listening_factory = DummyVeriNodeListenerFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=propagator
+                propagator=net_msg_sorter
             )
         else:
             # set listening port
 
             self.veri_connecting_factory = VeriNodeConnectorFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=propagator
+                propagator=net_msg_sorter
             )
             self.veri_listening_factory = VeriNodeListenerFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=propagator
+                propagator=net_msg_sorter
             )
         self.regular_listening_factory = NetworkListenerFactory(spkn_msg_obj_creator=NetworkMessages, admin=admin,
                                                                 q_obj=q_object_to_validator)
-        self.propagator = propagator
+        self.propagator = net_msg_sorter
         self.regular_listening_port = reg_listening_port
 
 

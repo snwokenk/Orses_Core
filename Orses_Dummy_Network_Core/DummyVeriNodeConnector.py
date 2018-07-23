@@ -8,7 +8,7 @@ class DummyVeriNodeConnector(DummyProtocol):
         self.proto_id = DummyVeriNodeConnector.created
         DummyVeriNodeConnector.created += 1
         super().__init__()
-        self.propagator = factory.propagator
+        self.propagator = factory.propagator  # is not prop
         self.factory = factory
         self.q_object = factory.q_object_from_protocol
         self.addr = addr

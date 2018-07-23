@@ -21,8 +21,10 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: connector node validation is done in NetworkMessageSorter and add_protocol is added with NetworkMessagesorter
 
 # todo: have listening node send NodeValidator message to a connecting node, when protocol added in NetworkPropagator
+# todo: refactor name from propagator to network sorter in protocol/ factory
 # todo: continue coding nodevalidatorreceiver and sender, to be used in validating nodes and sharing addresses.
 # todo: allow nodes to check each other's sha256 hash of software running. This allows nodes to validate that the other
 # todo: peers are running the same or compatible versions. During this time, nodes also share knowledge of other
@@ -32,7 +34,6 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
 
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
-# todo: get compatible hashes and check if peer combined_hash in compabitible hashes
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
 
 # todo: try to create a mock twisted protocol class, This class will receive message using a pipe, this
@@ -249,23 +250,27 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     # *** start propagator initiator in another thread ***
     reactor.callInThread(propagator.run_propagator_convo_initiator)
 
-    # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
-    network_manager = NetworkManager(
-        admin=admin,
-        q_object_from_protocol=q_object_from_protocol,
-        q_object_to_validator=q_for_validator,
-        propagator=propagator,
-        reg_listening_port=55600,
-        reg_network_sandbox=reg_network_sandbox
-    )
-
     # *** instantiate network message sorter ***
     network_message_sorter = NetworkMessageSorter(
         q_object_from_protocol,
         q_for_bk_propagate,
         q_for_propagate,
-        node=main_node
+        node=main_node,
+        b_propagator_inst=blockchain_propagator,
+        n_propagator_inst=propagator
     )
+
+    # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
+    network_manager = NetworkManager(
+        admin=admin,
+        q_object_from_protocol=q_object_from_protocol,
+        q_object_to_validator=q_for_validator,
+        net_msg_sorter=network_message_sorter,
+        reg_listening_port=55600,
+        reg_network_sandbox=reg_network_sandbox
+    )
+
+
 
     # *** run sorter in another thread ***
     reactor.callInThread(network_message_sorter.run_sorter)
@@ -444,7 +449,7 @@ def main():
         admin=admin,
         q_object_from_protocol=q_object_from_protocol,
         q_object_to_validator=q_for_validator,
-        propagator=propagator,
+        net_msg_sorter=propagator,
         reg_listening_port=55600,
         reg_network_sandbox=False
     )
