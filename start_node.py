@@ -21,17 +21,10 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
-# todo: move protocol from nonvalidated to validated dict in networkmessagesorter
-# todo: connector node validation is done in NetworkMessageSorter and add_protocol is added with NetworkMessagesorter
 
-# todo: have listening node send NodeValidator message to a connecting node, when protocol added in NetworkPropagator
+# todo: stop node from trying to propagate msg to node that was responsible for propagating to it
+# todo: update address list and omit including self address into known address list.
 # todo: refactor name from propagator to network sorter in protocol/ factory
-# todo: continue coding nodevalidatorreceiver and sender, to be used in validating nodes and sharing addresses.
-# todo: allow nodes to check each other's sha256 hash of software running. This allows nodes to validate that the other
-# todo: peers are running the same or compatible versions. During this time, nodes also share knowledge of other
-# todo: known nodes and sends the full connection details to each other, IF NEEDED.
-# todo: to accomplish this, a networkpropagator msg_receiver_creator and networkpropagator.msg_sender_creator should be
-# todo: created. the reason letter for this message is 'e'.
 
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 

@@ -108,10 +108,11 @@ class FileAction:
         addr_data = self.open_file_from_json(filename=addr_filename)
 
         for ip_address in address_list:
+            print("in File action ip address updates", ip_address, address_list)
             if ip_address not in addr_data:
                 addr_data.update({ip_address: 55602})
                 try:
-                    self.admin.known_addresses.update({ip_address: 55602})
+                    self.admin.known_addresses.update({ip_address[0]: 55602})
                 except AttributeError:
                     pass
 

@@ -13,15 +13,15 @@ class ConnectedNodeValidator:
 
         self.admin_inst = admin_inst
         self.peer_software_hash_list = peer_node_info_dict["1"]
-        self.peer_addr = peer_node_info_dict["2"]  # "ip address"
-        self.compatible_hashes = admin_inst.compatible_hash if admin_inst.compatible_hash else \
+        self.peer_addr = peer_node_info_dict["2"]  # list ["ip addr", port number]
+        self.compatible_hashes = admin_inst.compatible_hashes if admin_inst.compatible_hashes else \
             ConnectedNodeValidator.get_hash_of_important_files(self.admin_inst)
 
     def check_validity(self):
 
         if self._compare_software_hash_list() is True:
             #  update address_list if
-            self.admin_inst.fl.update_addresses(address_list=[self.peer_addr, ])
+            self.admin_inst.fl.update_addresses(address_list=[self.peer_addr[0], ])
             return True
 
         return False

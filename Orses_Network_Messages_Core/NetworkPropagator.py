@@ -74,17 +74,13 @@ class NetworkPropagator:
     def copy_or_created_banned_admin_list(self):
         pass
 
-
     def add_protocol(self, protocol):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 20000 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
 
-        if isinstance(protocol, DummyVeriNodeListener):
-            print(f"in NetworkPropagator.py Listener Protocol Created When Connected {protocol}")
 
-            # todo: listener protocol means a node connected to you, send a Node Validator message
 
 
     def remove_protocol(self, protocol):

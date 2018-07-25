@@ -58,13 +58,12 @@ class NetworkMessageSorter:
         :param protocol:
         :return:
         """
+        # todo: uncomment this to add protocol to blockchain propagator
         # # add to blockchain propagator connected dict
-        # self.blockchain_prop_inst.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
-        # self.blockchain_prop_inst.convo_dict[protocol.proto_id] = dict()
+        # self.blockchain_prop_inst.add_protocol(protocol=protocol)
 
         # add to network propagaor
-        self.network_prop_inst.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
-        self.network_prop_inst.convo_dict[protocol.proto_id] = dict()
+        self.network_prop_inst.add_protocol(protocol=protocol)
 
     def run_sorter(self):
         """
@@ -143,8 +142,13 @@ class NetworkMessageSorter:
                 propagator_inst=self.network_prop_inst,
                 msg_sorter_inst=self,
                 admin_inst=admin_inst,
-                message_list=[ConnectedNodeValidator.get_hash_of_important_files(admin_inst),
-                              list(admin_inst.known_addresses)]
+                message_list=[
+                    {"1": ConnectedNodeValidator.get_hash_of_important_files(admin_inst),
+                     "2": protocol.transport.getHost(),
+                     "3": len(admin_inst.known_addresses)
+                     },
+                    list(admin_inst.known_addresses)
+                ]
 
             )
 
@@ -169,7 +173,7 @@ class NetworkMessageSorter:
                 conn_node_validator=ConnectedNodeValidator
             )
 
-            self.convo_dict[protocol.proto_id] = {convo_id: receiver}
+            self.convo_dict[protocol.proto_id] = {convo_id[0]: receiver}
             receiver.listen(msg=msg)
 
 
@@ -178,7 +182,6 @@ class NetworkMessageSorter:
 class NodeValidatorSender:
     def __init__(self, protocol, convo_id, message_list, propagator_inst, msg_sorter_inst: NetworkMessageSorter,
                  admin_inst):
-        super().__init__(protocol, convo_id, propagator_inst, admin_inst)
         # {"1": software_hash_list, "2": ip address, "3": number of known address}
         self.msg_sorter_inst = msg_sorter_inst
         self.main_msg = message_list[0]
@@ -210,13 +213,17 @@ class NodeValidatorSender:
                 self.speaker(msg=rsp)
 
     def listen(self, msg):
+        print(f"in Networkmessagesorter.py, listen, networkmessagesender msg\n"
+              f"{msg}")
         if self.end_convo is False:
-            if msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
+            if isinstance(msg[-1], str) and msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
                 self.end_convo = True
                 self.end_convo_reason = msg[-1]
                 try:
                     del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
-
+                    if msg[-1] == self.last_msg:
+                        self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
+                        self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
                 except KeyError:
                     pass
                 return
@@ -228,24 +235,30 @@ class NodeValidatorSender:
                 self.speak(self.main_msg)
 
             elif msg == self.not_compatible_msg:
-                # todo: if peer node is not running a compatible software then it is not part of network
                 # todo: find a way to note nodes not running compatible software for now end convo
                 self.end_convo = True
                 self.end_convo_reason = msg[-1]
                 try:
                     del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
-                    self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
                 except KeyError:
                     pass
 
-            elif isinstance(msg[-1], dict):
+            elif isinstance(msg[-1], dict):  # peer node running compatible software, dict is to decide if to snd addr
+
                 msg_dict = msg[-1]
 
                 if isinstance(msg_dict["2"], list):  # addresses of peer node
-                    self.admin_inst.fl.update_addresses(address_list=msg_dict)
+                    self.admin_inst.fl.update_addresses(address_list=msg_dict["2"])
 
                 if msg_dict["1"] is True:  # other node wants tocal address list
                     self.speak(self.addr_list)
+                else:
+                    try:
+                        del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
+                        self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
+                        self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
+                    except KeyError:
+                        pass
 
     def speaker(self, msg):
 
@@ -312,7 +325,8 @@ class NodeValidatorReceiver:
         self.end_convo_reason = None
 
     def listen(self, msg):
-
+        print(f"in Networkmessagesorter.py, listen, networkmessagereceiver msg\n"
+              f"{msg}\n")
         if self.end_convo is False:
             if isinstance(msg[-1], str) and msg[-1] in {self.verified_msg, self.rejected_msg, self.last_msg}:
                 self.end_convo = True
@@ -363,7 +377,7 @@ class NodeValidatorReceiver:
 
                 self.speak(self.last_msg)
             else:
-                print("in NetworkPropagator, NodeValidatorReceiver, No option available")
+                print("in NetworkMessageSorter, NodeValidatorReceiver, No option available")
 
     def speak(self, rsp=None):
         if self.end_convo is False:
@@ -382,14 +396,36 @@ class NodeValidatorReceiver:
             elif self.received_tx_msg is False:
                 self.received_tx_msg = True
                 if rsp == self.not_compatible_msg or isinstance(rsp, dict):
+                    if rsp == self.not_compatible_msg:
+                        try:
+                            del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
+                        except KeyError:
+                            pass
+                        self.end_convo = True
+                        self.end_convo_reason = self.not_compatible_msg
+                    else:  # its a dict, and therefore compatible
+                        if self.need_to_receive_addr is False:
+                            try:
+                                del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
+                                self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
+                                self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
+                            except KeyError:
+                                pass
+                        else:
+                            pass
+
                     self.speaker(msg=rsp)
 
-            elif rsp == self.last_msg:
+            elif rsp == self.last_msg:  # peer running compatible software
                 self.end_convo = True
                 try:
                     del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
+                    self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
+                    self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
                 except KeyError:
                     pass
+                self.end_convo = True
+                self.end_convo_reason = self.last_msg
                 self.speaker(msg=rsp)
 
     def speaker(self, msg):
