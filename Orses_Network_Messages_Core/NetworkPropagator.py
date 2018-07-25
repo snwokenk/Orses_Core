@@ -3,7 +3,7 @@ This module will be used  propagate messages to other verification nodes or admi
 Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator, ConnectedNodeValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator
 
 from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListener
 
@@ -15,7 +15,6 @@ validator_dict['a'] = AssignmentStatementValidator.AssignmentStatementValidator
 validator_dict['b'] = TokenTransferValidator.TokenTransferValidator
 validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
-validator_dict['e'] = ConnectedNodeValidator.ConnectedNodeValidator
 
 
 class NetworkPropagator:
@@ -338,7 +337,7 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
         if i not in propagator_inst.message_from_other_veri_node_dict or \
                 (i in propagator_inst.message_from_other_veri_node_dict and
                          rsp[0] not in propagator_inst.message_from_other_veri_node_dict[i]):
-
+            print("in NetworkPropagator.py, RSP: ", rsp)
             while True:  # gets a convo id that is not in use
                 convo_id=propagator_inst.connected_protocols_dict[i][1]
                 if convo_id in propagator_inst.convo_dict[i] and propagator_inst.convo_dict[i][convo_id].end_convo is False:
@@ -363,7 +362,8 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
             propagator_inst.convo_dict[i].update({convo_id: prop_sender})
             prop_sender.speak()
         else:
-            print(f"In NetworkPropagator.py, protocol: {i} sent tx with preview of: {rsp[0]} ")
+            print(f"\nIn NetworkPropagator.py, protocol: {i} sent tx with preview of: {rsp[0]}\n"
+                  f"so Will Not Send To it\n ")
 
 
 # *** base message sender class ***

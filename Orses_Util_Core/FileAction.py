@@ -313,7 +313,7 @@ class FileAction:
         :return: list of paths of importan files. This list is used to
         """
         main_folder = FileAction.get_main_folder()
-        sys_dep_slash = "\\"  if platform.system() == "Windows" else "/"
+        sys_dep_slash = "\\" if platform.system() == "Windows" else "/"
         list_filenames = [
             "start_node.py",
             f"Orses_Validator_Core{sys_dep_slash}AssignmentStatementValidator.py",

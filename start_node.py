@@ -22,7 +22,6 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
                                                         "goto www.python.org to install/upgrade"
 
 
-# todo: stop node from trying to propagate msg to node that was responsible for propagating to it
 # todo: update address list and omit including self address into known address list.
 # todo: refactor name from propagator to network sorter in protocol/ factory
 
