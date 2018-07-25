@@ -50,9 +50,9 @@ class TokenReservationRevokeValidator:
         if self.wallet_pubkey == "":
             return None
 
-        elif (self.check_client_id_owner_of_wallet(),
-                self.check_signature_valid(),
-                self.check_reservation_meets_minimum_time()):
+        elif (self.check_client_id_owner_of_wallet() is True and
+                self.check_signature_valid() is True and
+                self.check_reservation_meets_minimum_time() is True):
             if self.unknown_wallet:
                 StoreData.StoreData.store_wallet_info_in_db(
                     wallet_id=self.wallet_id,
