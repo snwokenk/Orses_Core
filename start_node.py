@@ -21,6 +21,7 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: move protocol from nonvalidated to validated dict in networkmessagesorter
 # todo: connector node validation is done in NetworkMessageSorter and add_protocol is added with NetworkMessagesorter
 
 # todo: have listening node send NodeValidator message to a connecting node, when protocol added in NetworkPropagator
