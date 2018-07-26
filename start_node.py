@@ -34,7 +34,6 @@ assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 
 # todo: This class then be used in a Start_virtual_node script which will allow for testing of certian functionaility
 
 
-
 # todo: start competing/block creation process, finish up the blockchain process
 # todo: Build a way to finish up any conversations with peers before ending program
 

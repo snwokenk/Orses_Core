@@ -10,7 +10,7 @@ bk_connected wallet being used)
 """
 from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnector
 from Orses_Validator_Core.ConnectedNodeValidator import ConnectedNodeValidator
-import json
+import json, copy
 
 
 class NetworkMessageSorter:
@@ -135,6 +135,18 @@ class NetworkMessageSorter:
             return
         else:
             convo_id = -1
+            host_addr = protocol.transport.getHost()
+            peer_addr = protocol.transport.getPeer()
+            knw_addr = copy.deepcopy(admin_inst.known_addresses)
+            try:
+                knw_addr.pop(host_addr.host)
+            except KeyError:
+                pass
+            try:
+                knw_addr.pop(peer_addr.host)
+            except KeyError:
+                pass
+
 
             sender = NodeValidatorSender(
                 protocol=protocol,
@@ -144,10 +156,10 @@ class NetworkMessageSorter:
                 admin_inst=admin_inst,
                 message_list=[
                     {"1": ConnectedNodeValidator.get_hash_of_important_files(admin_inst),
-                     "2": protocol.transport.getHost(),
-                     "3": len(admin_inst.known_addresses)
+                     "2": [host_addr.host, host_addr.port],
+                     "3": len(knw_addr)
                      },
-                    list(admin_inst.known_addresses)
+                    list(knw_addr)
                 ]
 
             )
@@ -164,13 +176,26 @@ class NetworkMessageSorter:
             convo_id = msg[1]
             convo_id[0] = -1
 
+            host_addr = protocol.transport.getHost()
+            peer_addr = protocol.transport.getPeer()
+            knw_addr = copy.deepcopy(admin_inst.known_addresses)
+            try:
+                knw_addr.pop(host_addr.host)
+            except KeyError:
+                pass
+            try:
+                knw_addr.pop(peer_addr.host)
+            except KeyError:
+                pass
+
             receiver = NodeValidatorReceiver(
                 protocol=protocol,
                 convo_id=convo_id,
                 propagatorInst=self.network_prop_inst,
                 msg_sorter_inst=self,
                 admin_instance=admin_inst,
-                conn_node_validator=ConnectedNodeValidator
+                conn_node_validator=ConnectedNodeValidator,
+                known_addr=knw_addr
             )
 
             self.convo_dict[protocol.proto_id] = {convo_id[0]: receiver}
@@ -270,7 +295,7 @@ class NodeValidatorSender:
 
 class NodeValidatorReceiver:
     def __init__(self, protocol, convo_id, propagatorInst, msg_sorter_inst: NetworkMessageSorter, admin_instance,
-                 conn_node_validator):
+                 conn_node_validator, known_addr):
         """
         FIRST message should be a string with message[1:] == admin ID, this is then checked to verify that admin not
         blacklisted. A "snd" message ie self.send_tx_msg is sent.
@@ -301,7 +326,7 @@ class NodeValidatorReceiver:
         """
         # TODO: after storing new addresses, find a way to trigger connection in which node can be connected to at
         # TODO: least 4 nodes IF not already connected
-
+        self.known_addr = known_addr
         self.msg_sorter_inst = msg_sorter_inst
         self.connected_node_validator = conn_node_validator
         self.not_compatible_msg = "ntc"
@@ -355,14 +380,14 @@ class NodeValidatorReceiver:
 
                 if rsp is True:
                     known_addr_peer = msg[-1]["3"]
-                    known_addr_local = len(self.admin_instance.known_addresses)
+                    known_addr_local = len(self.known_addr)
                     if known_addr_peer > 3 and known_addr_local > 3:  # no need to send
                         self.speak(rsp=self.last_msg)
                     else:  # todo: minimize to only sending 7 addresses
                         rsp_dict = dict()
                         rsp_dict['1'] = self.need_to_receive_addr = known_addr_local <= 3
                         try:
-                            rsp_dict['2'] = list(self.admin_instance.known_addresses) if known_addr_local <= 3 else {}
+                            rsp_dict['2'] = list(self.known_addr) if known_addr_local <= 3 else {}
                         except TypeError:
                             rsp_dict['2'] = {}
 

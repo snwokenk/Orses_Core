@@ -159,7 +159,46 @@ class DummyClientNode(DummyNode):
     """
 
 
+class DummyAddress:
+    def __init__(self):
+        self._type = None
+        self._host = None
+        self._port = None
 
+    @property
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self, value):
+        self._type = value if value in {"TCP", "UDP"} else None
+
+    @property
+    def host(self):
+        return self._host
+
+    @host.setter
+    def host(self, value):
+        self._host = value if isinstance(value, str) else None
+
+    @property
+    def port(self):
+        return self._port
+
+    @port.setter
+    def port(self, value):
+        self._port = value if isinstance(value, int) else None
+
+    def set_addr(self, transport_type: str, host: str, port: int):
+
+        self.type = transport_type
+        self.host = host
+        self.port = port
+
+        return self.type is not None and self.host is not None and self.port is not None
+
+    def __repr__(self):
+        return f"[type={self.type}, host={self.host}, port={self.port}]"
 
 
 class DummyTransport:
@@ -173,8 +212,13 @@ class DummyTransport:
         self.dataReceived = peer_protocol.dataReceived  # calls the dataReceived method off peer protocol
         self.internet = dummy_internet_inst
         self.data_for_listening_dict = data_access_dict # [listener_host, listener_port, listener_protocol, connector_host, connector_port],
-        self.host = [data_access_dict[0], data_access_dict[1]] if is_listener else [data_access_dict[3], data_access_dict[4]]
-        self.peer = [data_access_dict[0], data_access_dict[1]] if not is_listener else [data_access_dict[3], data_access_dict[4]]
+        self.host_addr = DummyAddress()
+        self.peer_addr = DummyAddress()
+
+        self.temp_host = [data_access_dict[0], data_access_dict[1]] if is_listener else [data_access_dict[3], data_access_dict[4]]
+        self.temp_peer = [data_access_dict[0], data_access_dict[1]] if not is_listener else [data_access_dict[3], data_access_dict[4]]
+        self.host_addr.set_addr(transport_type="TCP", host=self.temp_host[0], port=self.temp_host[1])
+        self.peer_addr.set_addr(transport_type="TCP", host=self.temp_peer[0], port=self.temp_peer[1])
 
     def write(self, data: bytes):
         if callable(self.dataReceived):
@@ -190,10 +234,10 @@ class DummyTransport:
         self.data_for_listening_dict = None
 
     def getPeer(self):
-        return self.peer
+        return self.peer_addr
 
     def getHost(self):
-        return self.host
+        return self.host_addr
 
 
 class DummyReactor:
