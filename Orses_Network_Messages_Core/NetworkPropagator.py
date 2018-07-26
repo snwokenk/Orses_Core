@@ -240,7 +240,10 @@ class NetworkPropagator:
             # todo: use queue to notify send_stop_to_reactor() when done so reactor can be stopped
 
             for i in self.connected_protocols_dict:
-                self.connected_protocols_dict[i][0].transport.loseConnection()
+                try:
+                    self.connected_protocols_dict[i][0].transport.loseConnection()
+                except Exception as e:
+                    print("In NetworkPropagator.py, run_propagator_convo_manager, Exception occured")
 
             self.network_manager.close_all_ports()  # stop listening on ports
 

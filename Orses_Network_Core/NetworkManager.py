@@ -88,8 +88,11 @@ class NetworkManager:
         # for i in self.Connected_Port_Veri:
         #     i.disconnect()
 
-        self.Listening_Port_Reg.stopListening()
-        self.Listening_Port_Veri.stopListening()
+        try:
+            self.Listening_Port_Reg.stopListening()
+            self.Listening_Port_Veri.stopListening()
+        except Exception as e:
+            print("Exception in NetworkManager.py, close_all_ports()")
 
         print("stopped listening on ports")
     # def run_protocol(self, protocol, data, cmd="write"):

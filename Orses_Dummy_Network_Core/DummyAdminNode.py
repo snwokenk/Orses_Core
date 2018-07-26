@@ -46,7 +46,7 @@ class DummyAdminNode(DummyNode):
 
         if self.reactor.running:
             for i in args:
-                if isinstance(i, (multiprocessing.Queue, queue.Queue)):
+                if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
                     i.put("exit")
 
             self.reactor.stop()

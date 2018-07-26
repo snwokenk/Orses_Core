@@ -21,24 +21,18 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
+# todo: protocol_id can conflict between VeriNodeConnector and VeriNodeListener. Make protocol id to increment when
+# todo: either is created.
 
-# todo: update address list and omit including self address into known address list.
 # todo: refactor name from propagator to network sorter in protocol/ factory
 
 # todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
 
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
 
-# todo: try to create a mock twisted protocol class, This class will receive message using a pipe, this
-# todo: will be for testing internal testing of network propagation and validation.
-# todo: This class then be used in a Start_virtual_node script which will allow for testing of certian functionaility
-
 
 # todo: start competing/block creation process, finish up the blockchain process
 # todo: Build a way to finish up any conversations with peers before ending program
-
-# todo: protocol_id can conflict between VeriNodeConnector and VeriNodeListener. Make protocol id to increment when
-# todo: either  is created.
 
 # todo: work on validator for winning block
 
@@ -81,7 +75,7 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
 
                 if ans in {"exit", "quit"}:
                     for i in args:
-                        if isinstance(i, (multiprocessing.Queue, queue.Queue)):
+                        if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
                             i.put(ans)
                     break
                 elif ans == "print internet":
@@ -99,6 +93,7 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
     # ****** THIS WAITS FOR EXIT SIGNAL AND THE FIRES CALLBACK WHICH RUNS reactor.stop() in the main thread ***** #
     response_thread = threads.deferToThread(temp)  # deffering blocking function to thread
     response_thread.addCallback(lambda x: reactor.stop())  # lambda function is fired when blocking function returns (and return anything)
+    response_thread.addErrback(lambda x: print(x))
 
 
 def create_node_instances(dummy_internet, number_of_nodes_to_create: int, preferred_no_of_mining_nodes=0):

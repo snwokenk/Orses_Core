@@ -37,8 +37,10 @@ class TokenReservationRequestValidator:
               self.check_signature_valid() is True and
               self.check_inputs() is True and
               self.check_minimum_time() is True and
-              self.check_if_wallet_has_enough_token is True
+              self.check_if_wallet_has_enough_token() is True
               ):
+
+            print("In Validity, TknResReqValidator. Its valid")
             if self.unknown_wallet:
                 StoreData.StoreData.store_wallet_info_in_db(
                     wallet_id=self.wallet_id,
@@ -133,8 +135,11 @@ class TokenReservationRequestValidator:
         minimum time until ability to revoke = 648000 seconds (7.5 days)
         :return:
         """
+
         if not int(time.time()) < int(self.timestamp + 300):  # first verify request not stale
             return False
+
+        print(f"duration in TokenReservationRequestValidator {(self.resevation_expiration - self.timestamp) >= 2592000}")
         return (self.resevation_expiration - self.timestamp) >= 2592000  # 30 days in seconds
 
     def check_inputs(self):

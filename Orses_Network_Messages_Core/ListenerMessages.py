@@ -98,6 +98,8 @@ class ListenerForSendingTokens(ListenerMessages):
                     admin_instance=self.admin_instance
                 ).check_validity()
 
+                print("in ListenerMessages.py, rsp: ", rsp)
+
                 if rsp is None: # wallet_pubkey not in database
                     return self.need_pubkey
                 if rsp is True:
@@ -122,6 +124,8 @@ class ListenerForSendingTokens(ListenerMessages):
                         q_object=self.q_object,
                         admin_instance=self.admin_instance
                     ).check_validity()
+
+                    print("in ListenerMessages.py rsp2: ", rsp)
 
                     if rsp is True:
                         self.netmsginst.end_convo = True
