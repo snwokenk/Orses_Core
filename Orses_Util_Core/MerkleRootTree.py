@@ -5,6 +5,7 @@ if (len_list % 4 == 0 and len_list % 3 != 0) then each node will have a partner
 """
 import time
 from Crypto.Hash import SHA256
+from collections import Iterable
 
 
 def hashing(left: str, right: str):
@@ -36,7 +37,7 @@ class Node:
 
 class OrsesMerkleRootTree:
 
-    def __init__(self, items):
+    def __init__(self, items: Iterable):
 
         # the tree leafs
         self.items_to_include_in_tree = items
@@ -152,7 +153,6 @@ class OrsesMerkleRootTree:
                                                                                self.dict_of_other_nodes[hash_value])
 
                     # print("master: ", self.dict_of_other_nodes[hash_value], vars(self.dict_of_leaf_nodes[items[i-1]]))
-
 
                     self.dict_of_leaf_nodes[items[i]].set_partner_and_master(self.dict_of_leaf_nodes[items[i-1]],
                                                                              self.dict_of_other_nodes[hash_value])

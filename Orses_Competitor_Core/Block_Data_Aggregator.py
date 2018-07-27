@@ -1,5 +1,10 @@
 from Orses_Database_Core.RetrieveData import RetrieveData
-import time, random
+from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
+from Orses_Util_Core.MerkleRootTree import OrsesMerkleRootTree
+from collections import Iterable
+
+import time, random, statistics
+
 """
 https://en.bitcoin.it/wiki/Block_hashing_algorithm
 https://en.bitcoin.it/wiki/Block
@@ -63,6 +68,93 @@ https://en.bitcoin.it/wiki/Block
 
 def hex_to_int(hex_string):
     return int(hex_string, 16)
+
+
+class BaseBlockHeader:
+    def __init__(self):
+        self.block_no = None
+        self.mrh = None  # Merkle root
+        self.n = None  # nonce
+        self.x_n = None  # extra nonce
+        self.p_s = None  # primary signatory
+        self.p_h = None  # previous hashes of past 2 blocks
+        self.mpt = None  # maximum probability target
+        self.shv = None  # shuffled hex values
+        self.time = int(time.time())  # time in hex value
+
+    def __call__(self, *args, **kwargs):
+        pass
+
+    def get_block_header(self):
+        return self.__dict__
+
+    def set_block_no(self):
+        pass
+
+    def set_merkle_root(self, iterator_of_transactions: Iterable):
+
+        if isinstance(iterator_of_transactions, Iterable):
+            o = OrsesMerkleRootTree(items=iterator_of_transactions)
+            o.create_merkle_tree()
+            self.mrh = o.get_merkle_root()
+
+    def set_nonce(self, nonce: (int, float)):
+
+        self.n = nonce
+
+    def set_primary_signatory(self, wallet_id):
+        pass
+
+    def set_previous_2_hashes(self):
+        pass
+
+    def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
+        try:
+            average = statistics.mean(probability_of_5_runnerups)
+            stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
+        except statistics.StatisticsError:
+            pass
+        else:
+            pass
+
+    def set_shuffled_hex_values(self):
+        """
+        shuffles the hex values, Hex character with value 15 is used as prime character if block is signatory block
+        and if any additional characters are needed then the next characters with the highest values are chosen
+        :return:
+        """
+        if self.shv is None:
+            hex_char = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
+            random.shuffle(hex_char) # shuffles hex_char in place
+            hex_char = {x+1: y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
+
+            self.shv = hex_char
+
+
+class GenesisBlockHeader(BaseBlockHeader):
+
+    def set_block_no(self):
+        self.block_no = 0
+
+    def set_primary_signatory(self, wallet_id):
+        self.p_s = wallet_id
+
+    def set_shuffled_hex_values(self):
+        # for genesis block there is no shuffle
+        hex_char = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
+        hex_char = {x+1: y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
+
+        self.shv = hex_char
+
+    def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
+        try:
+            average = statistics.mean(probability_of_5_runnerups)
+            stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
+        except statistics.StatisticsError:
+            pass
+        else:
+            pass
+
 
 
 class BlockAggregator:

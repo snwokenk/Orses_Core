@@ -14,12 +14,31 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
 
-import sys, multiprocessing, queue, getopt, time
+from pkg_resources import DistributionNotFound, VersionConflict
+
+import sys, multiprocessing, queue, getopt, time, pkg_resources
 
 p_version = sys.version_info
 
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
+
+# check all dependencies from requirements.txt is installed
+try:
+    with open("requirements.txt", "r") as f:
+        dependencies = f.readlines()
+    pkg_resources.require(dependencies)
+except DistributionNotFound as e:
+    print(e)
+    print("open a command/terminal window and type 'pip install -r requirements.txt' ")
+    exit()
+except VersionConflict as ee:
+    print(ee)
+    print("open a command/terminal window and type 'pip install -r requirements.txt' ")
+    exit()
+
+else:
+    print("All Required Packages Installed")
 
 
 
