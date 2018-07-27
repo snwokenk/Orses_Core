@@ -1,22 +1,20 @@
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyProtocol, DummyFactory
+from Orses_Util_Core.Protocol_ID import ProtoId
 
 
 class DummyVeriNodeListener(DummyProtocol):
 
-    created = 100  # starts at 100 to avoid conflicting protocol id
-
     def __init__(self, addr, factory):
-        self.proto_id = DummyVeriNodeListener.created
-        DummyVeriNodeListener.created += 1
+        self.proto_id = ProtoId.protocol_id()  # protocol Id automatically increased for each instance
         super().__init__()
-        self.propagator = factory.propagator
+        self.network_sorter = factory.network_sorter
         self.factory = factory
         self.q_object = factory.q_object_from_protocol
         self.addr = addr
 
     def dataReceived(self, data):
         """
-        data received is sent to network_propagator, if it is a msg propagated to current node,
+        data received is sent to network_sorter, if it is a msg propagated to current node,
         then it is sent to validator (if validator does not have the required pubkey then a b'wpk" message is sent
 
          if a new message is being sent by other node, the the first three bytes will be a z, the reason message and -
@@ -45,22 +43,19 @@ class DummyVeriNodeListener(DummyProtocol):
 
         # adds protocol to network propagator.connected_protocols_dict
         print("connection made in listener: ", self.addr)
-        self.propagator.add_protocol(self)
+        self.network_sorter.add_protocol(self)
 
     def connectionLost(self, reason="ConnectionDone"):
 
         # removes self from connected protocol
-        self.propagator.remove_protocol(self)
-
-        # reduces number of created
-        DummyVeriNodeListener.created -= 1
+        self.network_sorter.remove_protocol(self)
 
 
 class DummyVeriNodeListenerFactory(DummyFactory):
-    def __init__(self, q_object_from_protocol, propagator):
+    def __init__(self, q_object_from_protocol, network_sorter):
         super().__init__()
         self.q_object_from_protocol = q_object_from_protocol
-        self.propagator = propagator
+        self.network_sorter = network_sorter
 
     def buildProtocol(self, addr):
         return DummyVeriNodeListener(addr, self)

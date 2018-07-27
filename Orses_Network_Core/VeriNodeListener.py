@@ -1,4 +1,5 @@
 from twisted.internet.protocol import Protocol, Factory, connectionDone
+from Orses_Util_Core.Protocol_ID import ProtoId
 
 """
 Used to listen for long live connections from other veri nodes. ideal connection should be 2 to 4 connections. 
@@ -6,20 +7,18 @@ Used to listen for long live connections from other veri nodes. ideal connection
 
 
 class VeriNodeListener(Protocol):
-    created = 100  # starts at 100 to avoid conflicting protocol id
 
     def __init__(self, addr, factory):
-        self.proto_id = VeriNodeListener.created
-        VeriNodeListener.created += 1
+        self.proto_id = ProtoId.protocol_id()  # protocol Id automatically increased for each instance
         super().__init__()
-        self.propagator = factory.propagator
+        self.network_sorter = factory.network_sorter
         self.factory = factory
         self.q_object = factory.q_object_from_protocol
         self.addr = addr
 
     def dataReceived(self, data):
         """
-        data received is sent to network_propagator, if it is a msg propagated to current node,
+        data received is sent to network_sorter, if it is a msg propagated to current node,
         then it is sent to validator (if validator does not have the required pubkey then a b'wpk" message is sent
 
          if a new message is being sent by other node, the the first three bytes will be a z, the reason message and -
@@ -28,7 +27,7 @@ class VeriNodeListener(Protocol):
         :return:
         """
 
-        # when data is received it is sent to Propagator process with self, process then checks
+        # when data is received it is sent to network_sorter process with self, process then checks
         # its connected_protocols_dict to find where self is a key. data == encoded json list. This list can be:
         # a: [propagator type, convo id, convo]
         # the propagator type can be either 'n', 'h', 's'. n is new convo, 'h' convo from hearer,
@@ -48,22 +47,20 @@ class VeriNodeListener(Protocol):
 
         # adds protocol to network propagator.connected_protocols_dict
         print("connection made: ", self.addr)
-        self.propagator.add_protocol(self)
+        self.network_sorter.add_protocol(self)
 
     def connectionLost(self, reason=connectionDone):
 
         # removes self from connected protocol
-        self.propagator.remove_protocol(self)
+        self.network_sorter.remove_protocol(self)
 
-        # reduces number of created
-        VeriNodeListener.created -= 1
 
 
 class VeriNodeListenerFactory(Factory):
-    def __init__(self, q_object_from_protocol, propagator):
+    def __init__(self, q_object_from_protocol, network_sorter):
         super().__init__()
         self.q_object_from_protocol = q_object_from_protocol
-        self.propagator = propagator
+        self.network_sorter = network_sorter
 
 
     def buildProtocol(self, addr):

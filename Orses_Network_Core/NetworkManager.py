@@ -32,23 +32,23 @@ class NetworkManager:
 
             self.veri_connecting_factory = DummyVeriNodeConnectorFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=net_msg_sorter
+                network_sorter=net_msg_sorter
             )
 
             self.veri_listening_factory = DummyVeriNodeListenerFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=net_msg_sorter
+                network_sorter=net_msg_sorter
             )
         else:
             # set listening port
 
             self.veri_connecting_factory = VeriNodeConnectorFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=net_msg_sorter
+                network_sorter=net_msg_sorter
             )
             self.veri_listening_factory = VeriNodeListenerFactory(
                 q_object_from_protocol=q_object_from_protocol,
-                propagator=net_msg_sorter
+                network_sorter=net_msg_sorter
             )
         self.regular_listening_factory = NetworkListenerFactory(spkn_msg_obj_creator=NetworkMessages, admin=admin,
                                                                 q_obj=q_object_to_validator)

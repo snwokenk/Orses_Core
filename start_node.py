@@ -21,8 +21,6 @@ p_version = sys.version_info
 assert (p_version.major >= 3 and p_version.minor >= 6), "must be running python 3.6.0 or greater\n" \
                                                         "goto www.python.org to install/upgrade"
 
-# todo: protocol_id can conflict between VeriNodeConnector and VeriNodeListener. Make protocol id to increment when
-# todo: either is created.
 
 # todo: refactor name from propagator to network sorter in protocol/ factory
 
