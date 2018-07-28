@@ -1,0 +1,130 @@
+Structure Of An Orses Block
+
+Genesis Block (Block 0)
+
+Block Header
+The Block header of the Genesis Block contains:
+1. Block Number
+2. SHA256 Merkle root hash of Token Association Transactions
+3. Nonce
+4. extraNonce
+5. Primary signatory
+   1. Wallet id of signatory  with smallest probability VALID hash
+1. [Prev block hash, block before prev block hash]
+2. Maximum probability target
+   1. Genesis Block = P8
+   2. Other Blocks are calculated
+1. Shuffled hex values
+   1. This is usually used in the competition after the next.
+   2. For Genesis Block Characters are hex 0 = decimal 1  through hex F = decimal 16
+   3. Blocks 1 and Block 2 will use this shuffled hex values
+   4. Block 3 uses Block 1’s hex value, block 4 uses block 2’s and so forth.
+1. Time
+   1. UTC timestamp
+
+Validity Protocol
+This key holds the validity protocol and it’s hash.
+This protocol defines what makes a valid block 1 and what makes a valid block 2 and beyond.
+This is only found in blocks in which the protocol is changed (soft or hard forks)
+
+
+Token Association Transactions (TATs)
+This section holds a dictionary or hashmap of transactions used to divide the initial 2.5 billion tokens created.
+Each key within the TATs dictionary is a hash of a transaction. This transaction is stored as the value. For exampe
+{
+“Sha256 hash”: {“wallet id”: float amount}
+}
+
+Genesis BCWs
+This section holds the token reservation request for all ‘founding” blockchain connected wallets. These BCWs will be able to start supporting the network and facilitating token transfers from block 1.
+
+
+
+Genesis Secondary Signatories
+
+
+List of 9 other runner ups with valid blocks.
+
+
+
+Genesis Public Key
+
+
+Public key used to sign block. This public key will be published before the launch of the genesis block.
+
+
+Genesis Signature
+
+
+This signature tells network participants that this is the officially endorsed genesis block of the Orses Network.
+
+
+BLOCK ONE(1)
+
+Block Header
+The block header of of Block 1 is similar to the genesis block except the merkle root is not of TATs, but of transactions and wallet hash states.
+
+
+Block 1 will have Three merkle roots:
+* Merkle Root Of Transactions
+* Merkle Root Of Wallet Hash States
+* Merkle Root Of Miscellaneous Messages
+
+
+The combined merkle root used to compete for the block hash is the created by hashing the merkle roots of transactions, wallet hash states, misc messages and genesis block signatories (only for block 1). This combined merkle root is then used in finding the block hash
+
+
+
+
+Transactions
+This section of the block holds all the transactions that are stored on the block. These transactions include:
+* Transfer Transactions
+* Token Reservation Request
+* Token Reservation Revoke
+* Reward Transaction of Block creator
+
+
+
+
+Wallet Hash States
+Wallet state hashes of Blockchain connected wallets.
+This section also contains BCW initiated transfer transactions for paying tokens owed to wallets still being managed by the blockchain
+
+
+Misc Messages
+This section holds any miscellaneous messages. These messages are structured as:
+1. Hash Of Message
+   1. SHA256 hash of message + client id
+1. Signature
+   1. Signature of message
+   2. Message is signed using private key of client id
+1. Public Key
+   1. Public Key Of Client
+1. Purpose(option)
+   1. This field tells the purpose of the message
+1. Message
+   1. Json encoded message
+   2. Messages are json encoded, this allows storage of different types of messages including strings, lists, dictionaries/hashmaps etc.
+   3. A note, string messages must also be json encoded
+Each message is stored under the client Id of the sender:
+{
+“Client id”:{
+        “Hash”:{
+                purpose(optional): “”
+                Signature: “”,
+                Public key: “”
+                Message: “”
+}
+}
+}
+
+
+Signatories of Genesis Block
+This is not a section but a requirement for a valid block 1. The wallet ids of the top 10 signatories are included in the “misc messages section”.
+
+
+
+Block TWO (2) And Beyond
+
+
+Block 2 and beyond are very similar to Block 1. The one difference is that the signatories entry into “misc messages” is not required. Also, in certain blocks in which a protocol rule changed is to be enacted, the validity protocol section is included. Every 60th block (block number is a multiple of 60), the maximum probability hash is stored in the Misc messages section

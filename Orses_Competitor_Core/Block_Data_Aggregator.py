@@ -73,6 +73,7 @@ def hex_to_int(hex_string):
 class BaseBlockHeader:
     def __init__(self):
         self.block_no = None
+        self.block_hash = None
         self.mrh = None  # Merkle root
         self.n = None  # nonce
         self.x_n = None  # extra nonce
@@ -85,18 +86,37 @@ class BaseBlockHeader:
     def __call__(self, *args, **kwargs):
         pass
 
-    def get_block_header(self):
+    def get_block_header(
+            self,
+            block_number,
+            merkle_root,
+            nonce,
+            x_nonce,
+            primary_signatory,
+            list_of_prev_2_hashes,
+            probability_of_5_runnerups
+    ):
+
+        self.set_block_no(block_number=block_number, )
+        self.set_merkle_root(merkle_root=merkle_root)
+        self.set_nonce(nonce=nonce)
+        self.set_extra_nonce(x_nonce=x_nonce)
+        self.set_primary_signatory(primary_signatory=primary_signatory)
+        self.set_previous_2_hashes(list_of_prev_2_hashes=list_of_prev_2_hashes)
+
+        # probability_of_5_runnerups = [denominator probability ie 1 in probability_of_5_runnerups is written as 16777216]
+        # so an example of  probability_of_5_runnerups can be [16777216, 20000000, 17500000,
+        self.set_maximum_probability_target(probability_of_5_runnerups=probability_of_5_runnerups)
+
         return self.__dict__
 
     def set_block_no(self, block_number):
         self.block_no = block_number
 
-    def set_merkle_root(self, iterator_of_transactions: Iterable):
+    def set_merkle_root(self, merkle_root: str):
 
-        if isinstance(iterator_of_transactions, Iterable):
-            o = OrsesMerkleRootTree(items=iterator_of_transactions)
-            o.create_merkle_tree()
-            self.mrh = o.get_merkle_root()
+        if isinstance(merkle_root, str):
+            self.mrh = merkle_root
 
     def set_nonce(self, nonce: (int, float)):
 
@@ -105,19 +125,36 @@ class BaseBlockHeader:
     def set_extra_nonce(self, x_nonce: (int, float)):
         self.x_n = x_nonce
 
-    def set_primary_signatory(self, wallet_id):
-        self.p_s = wallet_id
+    def set_primary_signatory(self, primary_signatory):
+        self.p_s = primary_signatory
 
     def set_previous_2_hashes(self, list_of_prev_2_hashes):
         self.p_h = list_of_prev_2_hashes
 
     def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
+
+        """
+        returns a string probability notation P{no of leading primes expected} + {no of chars allowed after leading primes}
+
+        an example if probability notation is 'P7+6'
+
+        for 'P7+6'
+        The the probability is (6**7) * (16/6) == 1 in 715,827,883
+
+        for "P8+4'
+        The the probability is (6**8) * (16/4) == 1 in 17,179,869,184
+
+        The theoretical max of notation (no_of_prime_chars_req) p64+0 and the max of the (no_of_sec_chars_accepted) 15
+
+        :param probability_of_5_runnerups: list of top 5 lowest probability, lowest prob == greatest number.
+        :return:
+        """
         try:
             average = statistics.mean(probability_of_5_runnerups)
             stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
             minProb = min(probability_of_5_runnerups)
         except statistics.StatisticsError:
-            pass
+            return None
         else:
 
             max_prob_targ = math.floor(average) - math.floor(stdv)
@@ -128,21 +165,20 @@ class BaseBlockHeader:
             mpt_log_base_16 = math.log(max_prob_targ, 16)
 
             # subtract decimal and save both
-            whole_number_log, decimal_log = (mpt_log_base_16 - math.floor(mpt_log_base_16),
-                                             abs(math.floor(mpt_log_base_16) - mpt_log_base_16))
+            decimal_log = mpt_log_base_16 - math.floor(mpt_log_base_16)
+
+            no_of_prime_chars_req = abs(mpt_log_base_16 - decimal_log)
 
             if decimal_log > 0:
-                pass
+                no_of_sec_chars_accepted = math.ceil(16/(16**decimal_log))
+            else:
+                no_of_sec_chars_accepted = 0
 
+            # turn to Orses notation
 
+            prob_notation = f"P{int(no_of_prime_chars_req)}+{no_of_sec_chars_accepted}"
 
-
-
-
-
-
-
-            pass
+            return prob_notation
 
     def set_shuffled_hex_values(self):
         """
@@ -173,9 +209,24 @@ class GenesisBlockHeader(BaseBlockHeader):
 
         self.shv = hex_char
 
-    def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
-        self.mpt = 'P8'  # for Genesis Block
+    def set_maximum_probability_target(self, probability_of_5_runnerups='P8+0'):
+        self.mpt = 'P8+0'  # for Genesis Block
 
+
+class GenesisBlock:
+    def __index__(self, tat):
+        self.tat = tat
+        self.gen_block_header = GenesisBlockHeader().get_block_header(
+            block_number=0,
+
+        )
+
+    def compute_merkle_root(self, iterator_of_transactions: Iterable):
+
+        if isinstance(iterator_of_transactions, Iterable):
+            o = OrsesMerkleRootTree(items=iterator_of_transactions)
+            o.create_merkle_tree()
+            self.mrh = o.get_merkle_root()
 
 
 class BlockAggregator:
@@ -189,8 +240,6 @@ class BlockAggregator:
                           "txs": {"ttx": set(), "trr": set(), "trx": set(), "nvc": set()},
                           "rwd": dict(),  # dict of reward transactions
                           "txs_no": 0,
-
-
 
                           }
         self.previous_block = RetrieveData.get_previous_block()
