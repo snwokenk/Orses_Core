@@ -41,7 +41,7 @@ else:
     print("All Required Packages Installed")
 
 
-
+# todo: finish block_data_aggregator set_maximum_probability_target
 # todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
 # todo: work on validator for winning block. A block is passed through this validator
 # todo: create a class or dictionary that holds potential winning blocks and is used by validator.

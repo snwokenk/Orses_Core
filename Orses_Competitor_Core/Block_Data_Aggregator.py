@@ -3,7 +3,7 @@ from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 from Orses_Util_Core.MerkleRootTree import OrsesMerkleRootTree
 from collections import Iterable
 
-import time, random, statistics
+import time, random, statistics, math
 
 """
 https://en.bitcoin.it/wiki/Block_hashing_algorithm
@@ -88,8 +88,8 @@ class BaseBlockHeader:
     def get_block_header(self):
         return self.__dict__
 
-    def set_block_no(self):
-        pass
+    def set_block_no(self, block_number):
+        self.block_no = block_number
 
     def set_merkle_root(self, iterator_of_transactions: Iterable):
 
@@ -102,19 +102,46 @@ class BaseBlockHeader:
 
         self.n = nonce
 
-    def set_primary_signatory(self, wallet_id):
-        pass
+    def set_extra_nonce(self, x_nonce: (int, float)):
+        self.x_n = x_nonce
 
-    def set_previous_2_hashes(self):
-        pass
+    def set_primary_signatory(self, wallet_id):
+        self.p_s = wallet_id
+
+    def set_previous_2_hashes(self, list_of_prev_2_hashes):
+        self.p_h = list_of_prev_2_hashes
 
     def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
         try:
             average = statistics.mean(probability_of_5_runnerups)
             stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
+            minProb = min(probability_of_5_runnerups)
         except statistics.StatisticsError:
             pass
         else:
+
+            max_prob_targ = math.floor(average) - math.floor(stdv)
+            if max_prob_targ < minProb:
+                max_prob_targ = minProb  # might be a large number rep probabilitty  4294967296 = 1/4294967296
+
+            # find log base 16 of max prob targ
+            mpt_log_base_16 = math.log(max_prob_targ, 16)
+
+            # subtract decimal and save both
+            whole_number_log, decimal_log = (mpt_log_base_16 - math.floor(mpt_log_base_16),
+                                             abs(math.floor(mpt_log_base_16) - mpt_log_base_16))
+
+            if decimal_log > 0:
+                pass
+
+
+
+
+
+
+
+
+
             pass
 
     def set_shuffled_hex_values(self):
@@ -133,7 +160,7 @@ class BaseBlockHeader:
 
 class GenesisBlockHeader(BaseBlockHeader):
 
-    def set_block_no(self):
+    def set_block_no(self, block_number):
         self.block_no = 0
 
     def set_primary_signatory(self, wallet_id):
@@ -147,13 +174,7 @@ class GenesisBlockHeader(BaseBlockHeader):
         self.shv = hex_char
 
     def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
-        try:
-            average = statistics.mean(probability_of_5_runnerups)
-            stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
-        except statistics.StatisticsError:
-            pass
-        else:
-            pass
+        self.mpt = 'P8'  # for Genesis Block
 
 
 
