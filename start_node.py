@@ -42,16 +42,13 @@ else:
 
 
 # todo: finish block_data_aggregator set_maximum_probability_target
-# todo: create a test genesis block, block 1 and block 2. in block add some wallets that can be used
+# todo: create a test genesis block, block 1 and block 2. in gen block add some wallets that can be used
 # todo: work on validator for winning block. A block is passed through this validator
 # todo: create a class or dictionary that holds potential winning blocks and is used by validator.
 # todo: The final winning block, resets this class or dictionary
 
 # todo: start competing/block creation process, finish up the blockchain process.
 # todo: Refactor Assignment statement, Token Transfer, Token Reservation Validators to check blockchain for proof of tokens
-
-
-
 
 
 # todo: Build a way to finish up any conversations with peers before ending program

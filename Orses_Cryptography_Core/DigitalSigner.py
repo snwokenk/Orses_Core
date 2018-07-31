@@ -1,6 +1,6 @@
 from Crypto.Signature import DSS
 from Crypto.Hash import SHA256
-from Crypto.PublicKey import RSA
+from Crypto.PublicKey import ECC
 
 from Orses_Cryptography_Core import PKIGeneration, Decryption
 from Orses_Util_Core import FileAction as FName
@@ -74,7 +74,7 @@ class DigitalSigner:
         static method used to sign with wallet privkey. used in conjunction with WalletService class
         :param wallet_privkey: private key of wallet, already imported key
         :param message: byte string,message to be signed, usually bytes of signature of client private key
-        :return: bytes, digital signature
+        :return: base85 string, digital signature
         """
         if not isinstance(message, (bytes, str)):
             return None
@@ -89,3 +89,43 @@ class DigitalSigner:
         digital_signature = base64.b85encode(digital_signature).decode()
 
         return digital_signature
+
+    @staticmethod
+    def sign_with_provided_privkey(dict_of_privkey_numbers, message):
+        """
+
+        :param dict_of_privkey_numbers: dictionary with numbers to recreate key
+        {'x': large int, 'y': large int, 'd': large int}
+
+        :param message: str or bytes
+        :return: signature
+        """
+
+        if not isinstance(message, (bytes, str)):
+            return None
+        elif isinstance(message, str):
+            message = message.encode()
+
+        try:
+            key = ECC.construct(
+                curve="P-256",
+                point_x=dict_of_privkey_numbers["x"],
+                point_y=dict_of_privkey_numbers["y"],
+                d=dict_of_privkey_numbers["d"]
+            )
+        except KeyError:
+            return ''
+
+        hash_of_message = SHA256.new(message)
+
+        signer = DSS.new(key, mode="fips-186-3")
+
+        digital_signature = signer.sign(hash_of_message)
+        digital_signature = base64.b85encode(digital_signature).decode()
+
+        return digital_signature
+
+
+
+
+

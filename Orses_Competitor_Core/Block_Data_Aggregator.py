@@ -1,6 +1,5 @@
 from Orses_Database_Core.RetrieveData import RetrieveData
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
-from Orses_Util_Core.MerkleRootTree import OrsesMerkleRootTree
 from collections import Iterable
 
 import time, random, statistics, math
@@ -86,36 +85,15 @@ class BaseBlockHeader:
     def __call__(self, *args, **kwargs):
         pass
 
-    def get_block_header(
-            self,
-            block_number,
-            merkle_root,
-            nonce,
-            x_nonce,
-            primary_signatory,
-            list_of_prev_2_hashes,
-            probability_of_5_runnerups
-    ):
-
-        self.set_block_no(block_number=block_number, )
-        self.set_merkle_root(merkle_root=merkle_root)
-        self.set_nonce(nonce=nonce)
-        self.set_extra_nonce(x_nonce=x_nonce)
-        self.set_primary_signatory(primary_signatory=primary_signatory)
-        self.set_previous_2_hashes(list_of_prev_2_hashes=list_of_prev_2_hashes)
-
-        # probability_of_5_runnerups = [denominator probability ie 1 in probability_of_5_runnerups is written as 16777216]
-        # so an example of  probability_of_5_runnerups can be [16777216, 20000000, 17500000,
-        self.set_maximum_probability_target(probability_of_5_runnerups=probability_of_5_runnerups)
-
+    def get_block_header(self):
         return self.__dict__
 
-    def set_block_no(self, block_number):
-        self.block_no = block_number
+    def set_block_no(self, block_number: int):
+        self.block_no = format(block_number, "x")
 
     def set_merkle_root(self, merkle_root: str):
 
-        if isinstance(merkle_root, str):
+        if isinstance(merkle_root, str) and self.mrh is None:
             self.mrh = merkle_root
 
     def set_nonce(self, nonce: (int, float)):
@@ -197,7 +175,7 @@ class BaseBlockHeader:
 class GenesisBlockHeader(BaseBlockHeader):
 
     def set_block_no(self, block_number):
-        self.block_no = 0
+        self.block_no = format(0, "x")
 
     def set_primary_signatory(self, wallet_id):
         self.p_s = wallet_id
@@ -209,24 +187,67 @@ class GenesisBlockHeader(BaseBlockHeader):
 
         self.shv = hex_char
 
-    def set_maximum_probability_target(self, probability_of_5_runnerups='P8+0'):
-        self.mpt = 'P8+0'  # for Genesis Block
+    def set_maximum_probability_target(self, prob_of_5_runnerups='P8+0'):
+        self.mpt = prob_of_5_runnerups  # for Genesis Block
 
 
 class GenesisBlock:
-    def __index__(self, tat):
-        self.tat = tat
-        self.gen_block_header = GenesisBlockHeader().get_block_header(
-            block_number=0,
+    def __init__(self):
+        self.bh = None  # block header
+        self.vph = None  # validity protocol
+        self.tats = None  # token association transaction
+        self.bcws = None  # genesis blockchain connected wallets
+        self.s_s = None  # secondary signatories
+        self.pubkey = None  # pubkey dict with x and y
+        self.sig = None  # b85 string
 
-        )
+    def set_before_compete(
+            self,
+            hash_of_protocol,
+            tats: dict,
+            dict_of_bcws,
+            # list_of_secondary_signatories,
+            pubkey_dict,
+            signature
 
-    def compute_merkle_root(self, iterator_of_transactions: Iterable):
+    ):
+        self.set_validity_protocol(hash_of_protocol=hash_of_protocol)
+        self.set_tats(tats=tats)
+        self.set_bcws(dict_of_bcws=dict_of_bcws)
+        # self.set_secondary_signatories(list_of_secondary_signatories=list_of_secondary_signatories)
+        self.set_gen_pub_key(pubkey_dict=pubkey_dict)
+        self.set_signature(signature=signature)
 
-        if isinstance(iterator_of_transactions, Iterable):
-            o = OrsesMerkleRootTree(items=iterator_of_transactions)
-            o.create_merkle_tree()
-            self.mrh = o.get_merkle_root()
+    def set_gen_block_header(self, block_header: GenesisBlockHeader):
+
+        self.bh = block_header
+
+    def set_validity_protocol(self, hash_of_protocol):
+
+        self.vph = hash_of_protocol
+
+    def set_tats(self, tats: dict):
+
+        self.tats = tats
+
+    def set_bcws(self, dict_of_bcws):
+
+        self.bcws = dict_of_bcws
+
+    def set_secondary_signatories(self, list_of_secondary_signatories):
+
+        self.s_s = list_of_secondary_signatories
+
+    def set_gen_pub_key(self, pubkey_dict):
+        self.pubkey = pubkey_dict
+
+    def set_signature(self, signature):
+
+        self.sig = signature
+
+    def get_block(self):
+
+        return self.__dict__
 
 
 class BlockAggregator:
