@@ -91,6 +91,14 @@ class BaseBlockHeader:
     def set_block_no(self, block_number: int):
         self.block_no = format(block_number, "x")
 
+    def set_block_hash(self, block_hash):
+        """
+        :param block_hash: the hash meeting or beating the required probability target set by the winner of
+                            the previous block
+        :return: none
+        """
+        self.block_hash = block_hash
+
     def set_merkle_root(self, merkle_root: str):
 
         if isinstance(merkle_root, str) and self.mrh is None:
@@ -201,22 +209,29 @@ class GenesisBlock:
         self.pubkey = None  # pubkey dict with x and y
         self.sig = None  # b85 string
 
+    def set_after_compete(
+            self,
+            block_header: GenesisBlockHeader,
+            list_of_secondary_signatories,
+            signature,
+
+    ):
+        self.set_gen_block_header(block_header=block_header)
+        self.set_secondary_signatories(list_of_secondary_signatories=list_of_secondary_signatories)
+        self.set_signature(signature=signature)
+
     def set_before_compete(
             self,
             hash_of_protocol,
             tats: dict,
             dict_of_bcws,
-            # list_of_secondary_signatories,
             pubkey_dict,
-            signature
 
     ):
         self.set_validity_protocol(hash_of_protocol=hash_of_protocol)
         self.set_tats(tats=tats)
         self.set_bcws(dict_of_bcws=dict_of_bcws)
-        # self.set_secondary_signatories(list_of_secondary_signatories=list_of_secondary_signatories)
         self.set_gen_pub_key(pubkey_dict=pubkey_dict)
-        self.set_signature(signature=signature)
 
     def set_gen_block_header(self, block_header: GenesisBlockHeader):
 

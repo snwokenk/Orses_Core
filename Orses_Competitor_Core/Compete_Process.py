@@ -1,4 +1,4 @@
-from Orses_Competitor_Core.Block_Data_Aggregator import GenesisBlock
+from Orses_Competitor_Core.Block_Data_Aggregator import GenesisBlock, GenesisBlockHeader
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
@@ -103,6 +103,7 @@ class GenesisBlockCreator:
     def __init__(self):
 
         self.block = GenesisBlock()
+        self.block_header_callable = GenesisBlockHeader
         self.tats = {
             "W3c8135240da9d25d3905aa7aca64c98ca6b1fede": 850_000_000,
             "W884c07be004ee2a8bc14fb89201bbc607e75258d": 425_000_000,
@@ -129,18 +130,22 @@ class GenesisBlockCreator:
                 "x": "on+no;S+oQ9XJ4o_+iJI+Ezi)ld5>}%>`YyAr?sc",
                 "y": "f-_gqvfMWUx1j@JDUVQ@EbNV&H$a<Ha!y&&qg3w?"
             },
-            signature=DigitalSigner.sign_with_provided_privkey(
-                dict_of_privkey_numbers={
-                    'x': 60785994004755780541968889462742035955235637618029604119657448498380482761088,
-                    'y': 100309319245511545150569175878829989424599308092677960010907323326738383429364,
-                    'd': 29950300400169917180358605208938775880760212514399944926857005417377480590100
-                },
-                message=json.dumps(self.tats).encode()
-            )
+            # signature=DigitalSigner.sign_with_provided_privkey(
+            #     dict_of_privkey_numbers={
+            #         'x': 60785994004755780541968889462742035955235637618029604119657448498380482761088,
+            #         'y': 100309319245511545150569175878829989424599308092677960010907323326738383429364,
+            #         'd': 29950300400169917180358605208938775880760212514399944926857005417377480590100
+            #     },
+            #     message=json.dumps(self.tats).encode()
+            # )
 
         )
 
     def set_after_competing(self):
+        """
+        after compete, create a GenesisBlockHeader instance, set the necessary attributes
+        :return:
+        """
         pass
 
     def compute_merkle_root(self):

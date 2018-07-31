@@ -42,6 +42,7 @@ def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_ha
     total_hashes = block_header["nonce"] - starting_nonce
     print("done", os.getpid())
     q.put(total_hashes)
+
     return dict_of_valid_nonce_hash
 
 
@@ -127,31 +128,5 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
 
     return block_header
 
-
 if __name__ == '__main__':
-
-
-    data = genesis_block["block_header"]
-
-    v = threaded_compete(single_prime_char='a', exp_leading=5, block_header=data, len_competition=90, addl_chars='edc')
-    print("v", v)
-    print("-")
-    # print(data)
-    data["nonce"] = format(v["nonce"][0], "x")
-    data["block_hash"] = v["nonce"][1]
-
-
-    print(data)
-
-
-
-
-
-
-
-
-
-
-
-
-
+    pass
