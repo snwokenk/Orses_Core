@@ -1,5 +1,5 @@
 from hashlib import sha256
-import time, multiprocessing, os,  copy
+import time, multiprocessing, os,  copy, queue
 from Orses_Competitor_Core.Compete_Process import genesis_block
 
 
@@ -127,6 +127,15 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
     block_header["nonce"] = v["nonce"][0]
 
     return block_header
+
+
+def compete_process(q_for_compete: (multiprocessing.queues.Queue, queue.Queue)):
+
+    while True:
+        rsp = q_for_compete.get()
+        if rsp in {"exit", "quit"}:
+            break
+
 
 if __name__ == '__main__':
     pass

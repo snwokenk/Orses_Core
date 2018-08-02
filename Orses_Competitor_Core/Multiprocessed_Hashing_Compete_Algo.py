@@ -130,7 +130,6 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
 
 if __name__ == '__main__':
 
-
     data = genesis_block["block_header"]
 
     v = threaded_compete(single_prime_char='a', exp_leading=5, block_header=data, len_competition=90, addl_chars='edc')
