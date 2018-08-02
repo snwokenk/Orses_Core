@@ -103,7 +103,7 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
                     print("listening nodes: ",dummy_internet.listening_nodes)
                     print("addr to node: ", dummy_internet.address_to_node_dict)
 
-            for i in range(number_of_nodes):
+            for i in range(number_of_nodes):  # number of nodes is 0, if running on real network
                 q_object_to_each_node.put(ans)
 
             return ans

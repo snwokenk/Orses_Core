@@ -106,7 +106,8 @@ class NetworkPropagator:
                 # rsp['reason(a, b,c,d)+8charhashprev', snd_wallet_pubkey, main_message_dict, if valid(True or False)]
                 # reason a=assignment statement, b=TokenTransfer, c=TokenReservationRequest, D=TokenReservationRevoke
                 rsp = self.q_object_validator.get()
-                print("in compete, convo initiator: ", rsp)
+                print("in compete, convo initiator: ")
+                [print(i) for i in rsp]
 
                 try:
                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
@@ -131,7 +132,8 @@ class NetworkPropagator:
 
                 else:
                     if self.q_object_compete:
-                        self.q_object_compete.put(rsp[2])
+
+                        self.q_object_compete.put(rsp[2]) if rsp[3] is True else None
 
         except (KeyboardInterrupt, SystemExit):
             pass

@@ -129,12 +129,33 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
     return block_header
 
 
-def compete_process(q_for_compete: (multiprocessing.queues.Queue, queue.Queue)):
+class Competitor:
+    def __init__(self, reward_wallet):
+        self.reward_wallet = reward_wallet
 
-    while True:
-        rsp = q_for_compete.get()
-        if rsp in {"exit", "quit"}:
-            break
+    def get_recent_block(self):
+        """
+        get recent block fromm CompetitorDataloading.py
+        This should have been updated and being updated by Blockchainpropagator
+        :return:
+        """
+
+    def compete(
+            self,
+            q_for_compete: (multiprocessing.queues.Queue, queue.Queue),
+            q_from_bk_propagator: (multiprocessing.queues.Queue, queue.Queue),
+            q_for_validator: (multiprocessing.queues.Queue, queue.Queue),
+    ):
+
+        recent_blk = q_from_bk_propagator.get()
+        rwd_wallet = self.reward_wallet
+
+        while True:
+            rsp = q_for_compete.get()
+
+            # rsp should be dictionary of transaction ie
+            if isinstance(rsp, str) and rsp in {"exit", "quit"}:
+                break
 
 
 if __name__ == '__main__':

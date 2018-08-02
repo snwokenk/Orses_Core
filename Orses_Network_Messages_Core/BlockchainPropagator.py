@@ -91,7 +91,7 @@ class BlockChainPropagator:
         while count < len(self.connected_protocols_dict):
             try:
                 rsp = self.q_for_bk_propagate.get(timeout=7)  # will timeout in 7 seconds
-            except Empty:
+            except Empty:  # queue exception
                 count += 1
                 continue
             else:
@@ -201,7 +201,7 @@ class BlockChainPropagator:
             return
 
         while True:
-            msg = self.q_for_bk_propagate.get() # [protocol_id, data_list],  data_list=['b', convo_id, etc]
+            msg = self.q_for_bk_propagate.get()  # [protocol_id, data_list],  data_list=['b', convo_id, etc]
             print("in convo manager: message", msg)
             break
 
@@ -238,7 +238,7 @@ class BlockChainPropagator:
 
         elif type_of_msg_to_initiate == RequestMostRecentBlockKnown:
             for i in self.connected_protocols_dict:
-                while True:
+                while True:  # assign next available convo id to message
                     convo_id = self.connected_protocols_dict[i][1]
                     if convo_id in self.convo_dict[i] and \
                                     self.convo_dict[i][convo_id].end_convo is False:
@@ -265,7 +265,7 @@ class BlockChainMessageSender:
         """
         self.last_msg = 'end'
         self.verified_msg = 'ver'
-        self.msg_type = 'b'
+        self.prop_type = 'b'
         self.messages_heard = set()
         self.end_convo = False
         self.protocol = protocol
@@ -316,11 +316,12 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
     def __init__(self, protocol, convo_id, blockchainPropagatorInstance, protocol_id):
         super().__init__(protocol, convo_id)
         self.blockchainPropagator = blockchainPropagatorInstance
+        self.prop_type = 'b'
         self.protocolId = protocol_id
 
     def speak(self):
 
-        msg = json.dumps([self.msg_type, self.convo_id, ["knw_blk"]]).encode()
+        msg = json.dumps([self.prop_type, self.convo_id, ["knw_blk"]]).encode()
         self.protocol.transport.write(msg)
 
     def listen(self, msg):
@@ -373,13 +374,13 @@ class RequestNewBlock(BlockChainMessageSender):
 
             if self.sent_first_msg is False and rsp is None:
                 self.sent_first_msg = True
-                msg = json.dumps([self.msg_type, self.convo_id, self.blocks_to_receive]).encode()
+                msg = json.dumps([self.prop_type, self.convo_id, self.blocks_to_receive]).encode()
                 self.protocol.transport.write(msg)
             elif rsp is True:
-                msg = json.dumps([self.msg_type, self.convo_id, self.verified_msg]).encode()
+                msg = json.dumps([self.prop_type, self.convo_id, self.verified_msg]).encode()
                 self.protocol.transport.write(msg)
             elif rsp is False or (self.sent_first_msg is True and rsp is None):
-                msg = json.dumps([self.msg_type, self.convo_id, self.end_convo]).encode()
+                msg = json.dumps([self.prop_type, self.convo_id, self.end_convo]).encode()
                 self.end_convo = True
                 self.protocol.transport.write(msg)
 
