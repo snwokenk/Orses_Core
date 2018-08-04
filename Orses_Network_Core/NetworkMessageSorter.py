@@ -58,9 +58,9 @@ class NetworkMessageSorter:
         :param protocol:
         :return:
         """
-        # todo: uncomment this to add protocol to blockchain propagator
-        # # add to blockchain propagator connected dict
-        # self.blockchain_prop_inst.add_protocol(protocol=protocol)
+
+        # add to blockchain propagator connected dict
+        self.blockchain_prop_inst.add_protocol(protocol=protocol)
 
         # add to network propagaor
         self.network_prop_inst.add_protocol(protocol=protocol)

@@ -6,7 +6,7 @@ from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
 
-import multiprocessing, queue, shutil, os
+import multiprocessing, queue, shutil, os, time
 
 
 class DummyAdminNode(DummyNode):
@@ -14,10 +14,13 @@ class DummyAdminNode(DummyNode):
     mimic an admin node
     """
 
+    nodeID = 0
+
     def __init__(self, admin,  dummy_internet, real_reactor_instance):
 
         super().__init__(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=real_reactor_instance)
-
+        self.node_id = DummyAdminNode.nodeID
+        DummyAdminNode.nodeID+=1
         self.new_admin = admin.isNewAdmin
         self.is_competitor = admin.isCompetitor
         self.copy_important_files()
@@ -66,6 +69,10 @@ class DummyAdminNode(DummyNode):
         :param q_object_to_each_node: multiprocessing.Queue object for sending exit signal to each node
         :return:
         """
+
+        # this will wait for 6 seconds allowing main node to setup
+        if self.node_id:
+            time.sleep(6 + self.node_id)
 
         # *** instantiate queue variables ***
         q_for_compete = multiprocessing.Queue() if self.is_competitor == 'y' else None

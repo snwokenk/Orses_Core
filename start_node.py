@@ -10,6 +10,7 @@ from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyInternet
 from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
+# using git: http://rogerdudler.github.io/git-guide/
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
@@ -39,7 +40,7 @@ except VersionConflict as ee:
 
 else:
     print("All Required Packages Installed")
-
+# todo: before doing compete algo, finish initial setup, by adding code to convo_manager of blockchainPropagator
 # todo: finish compete algo
 # todo: finish block_data_aggregator set_maximum_probability_target
 # todo: create a test genesis block, block 1 and block 2. in gen block add some wallets that can be used
