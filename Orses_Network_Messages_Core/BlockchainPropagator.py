@@ -37,13 +37,17 @@ current messages defined:
 import json, multiprocessing
 from queue import Empty
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
+from Orses_Validator_Core.NonNewBlockValidator import NonNewBlockValidator
 
 bk_validator_dict = dict()
+bk_validator_dict["req_block"] = NonNewBlockValidator  # validator for non new blocks
 
 
 blockchain_msg_reasons = {
     "knw_blk",  # request most recent block
+    "req_block",
     "new_block",  # a newly created block
+
 }
 
 
@@ -59,6 +63,7 @@ class BlockChainPropagator:
         self.q_object_compete = q_object_to_competing_process
         self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
+        self.q_object_to_receive_from_messages = multiprocessing.Queue()
         self.reactor_instance = reactor_instance
         self.convo_dict = dict()
         self.convo_id = 0
@@ -92,107 +97,133 @@ class BlockChainPropagator:
         # else [oldest block to get, newest block to get. to get most recent [oldest block to get, -1]
         lists_of_blocks_to_get = [-1, -1] if self.locally_known_block is None else [self.locally_known_block+1, -1]
 
-    def initial_setup(self, recursive_count=0):
+    def initial_setup(self):
         """
         will run first to update block info and any other data,
         then sends signals for other threads/processes to go into event loop
         :return: [bool: was_able_to_update, bool: sent_signal_to_other_threads]
         """
-        if recursive_count >= 3:
-            return [False, False]  # was_able_to_update, sent_signal_to_other_threads
+        def main_initial_setup(recursive_count=0, prop_inst=self):
+            if recursive_count >= 3:
+                return [False, False]  # was_able_to_update, sent_signal_to_other_threads
 
-        # first get most recent block [-1, -1] will get from genesis to recent
-        # else [oldest block to get, newest block to get. to get most recent [oldest block to get, -1]
-        lists_of_blocks_to_get = [-1, -1] if self.locally_known_block is None else [self.locally_known_block+1, -1]
+            # first get most recent block [-1, -1] will get from genesis to recent
+            # else [oldest block to get, newest block to get. to get most recent [oldest block to get, -1]
+            lists_of_blocks_to_get = [-1, -1] if prop_inst.locally_known_block is None else [prop_inst.locally_known_block + 1, -1]
 
-        # keep track of the protocols you sent requests to, (in case a new node connects and sends message
-        protocol_list = set(self.connected_protocols_dict)
+            # keep track of the protocols you sent requests to, (in case a new node connects and sends message
+            protocol_list = set(prop_inst.connected_protocols_dict)
 
-        print(f"protocol list in Initial_setup: {self.connected_protocols_dict} {self.admin_instance.admin_name}")
+            print(
+                f"protocol list in Initial_setup: {prop_inst.connected_protocols_dict} "
+                f"{prop_inst.admin_instance.admin_name}")
 
-        # find out which node has most recent block
-        self.initiate_msg_to_protocol(RequestMostRecentBlockKnown, protocol_list)
-        count = 0
-        while count < len(self.connected_protocols_dict):
-            try:
-                rsp = self.q_for_bk_propagate.get(timeout=15)  # will timeout in 7 seconds
-            except Empty:  # queue exception
-                print(f"Timed out in initial_setup, blockchain propagator, admin : {self.admin_instance.admin_name}")
-                count += 1
-                continue
-            else:
-                protocol_id = rsp[0]
-                msg = rsp
-                local_convo_id = msg[1][1][0]  # convo_id for incoming msg [local convo id, other convo id]
-                count += 1 if rsp[0] in protocol_list else 0
-
-                print(f"in initial setup, blockchainpropagaor: "
-                      f"protocol_id {protocol_id}\nlocal_convo)id {local_convo_id}\n msg {msg}\n"
-                      f"self.convo_dict: {self.convo_dict}")
-                self.reactor_instance.callFromThread(self.convo_dict[protocol_id][local_convo_id].listen, msg)
-
-        if (self.protocol_with_most_recent_block is not None and
-                self.locally_known_block < self.protocol_with_most_recent_block[-1]):
-            self.initiate_msg_to_protocol(RequestNewBlock, [self.protocol_with_most_recent_block[0]],
-                                          lists_of_blocks_to_get)  # ask for blocks from node
-
-            # set protocol id and local_convo_id
-            protocol_id = self.protocol_with_most_recent_block[0]
-            local_convo_id = self.protocol_with_most_recent_block[1]
-            was_able_to_update = [False, False]  # [was able to get highest block, have sent it to other threads]
-        else:
-            self.has_current_block = True
-            was_able_to_update = [True, False]  # [was able to get highest block, have sent it to other threads]
-
-        timeout_count = 0
-
-        # todo: in self.protocol_with_most_recent_block, have a way of storing the convo_id
-
-        while self.has_current_block is False:  # get blocks from node with most recent block
-            if timeout_count > 3:
-                break
-            try:
-                rsp = self.q_for_bk_propagate.get(timeout=4)
-            except Empty:
-                timeout_count += 1
-
-                if self.convo_dict[protocol_id][local_convo_id].end_convo is True:
-                    if self.locally_known_block >= self.protocol_with_most_recent_block[1]:
-                        was_able_to_update = [True, False]
-                        break
-                    else:
-                        recursive_count += 1
-                        was_able_to_update = self.initial_setup(recursive_count)
-                        break
-            else:
+            # find out which node has most recent block
+            prop_inst.initiate_msg_to_protocol(RequestMostRecentBlockKnown, protocol_list)
+            count = 0
+            while count < len(prop_inst.connected_protocols_dict):
                 try:
-                    data = json.loads(rsp[-1])
-                except ValueError:
-                    pass
+                    rsp = prop_inst.q_for_bk_propagate.get(timeout=10)  # will timeout in 7 seconds
+                except Empty:  # queue exception
+                    print(
+                        f"Timed out in initial_setup, blockchain propagator, admin : {prop_inst.admin_instance.admin_name}")
+                    count += 1
+                    continue
                 else:
+                    protocol_id = rsp[0]
+                    msg = rsp[1]
+                    local_convo_id = msg[1][0]  # convo_id for incoming msg [local convo id, other convo id]
+                    count += 1 if rsp[0] in protocol_list else 0
 
-                    # *** listen on convo with protocol with most recent block ***
-                    self.convo_dict[protocol_id][local_convo_id].listen(data)
-                    if self.convo_dict[protocol_id][local_convo_id].end_convo is True:
-                        if self.locally_known_block >= self.protocol_with_most_recent_block[-1]:
+                    print(f"\nin initial setup, blockchainpropagaor: "
+                          f"protocol_id {protocol_id}\nlocal_convo)id {local_convo_id}\n msg {msg}\n"
+                          f"self.convo_dict: {prop_inst.convo_dict}\n"
+                          f"admin node: {prop_inst.admin_instance.admin_name}")
+                    prop_inst.reactor_instance.callFromThread(prop_inst.convo_dict[protocol_id][local_convo_id].listen, msg)
+
+            # Must wait till prop_inst.protocol_with_most_recent_block is set, using Queue as signal
+            count1 = 0
+            while count1 < count:
+                try:
+                    prop_inst.q_object_to_receive_from_messages.get(timeout=7)
+                except Empty:
+                    break
+                else:
+                    count1+=1
+
+            print(f"\nin Initial setup,\n"
+                  f"protocol with most recent block {prop_inst.protocol_with_most_recent_block}\n"
+                  f"locally known block {prop_inst.locally_known_block}\n"
+                  f"admin")
+            if (prop_inst.protocol_with_most_recent_block is not None and
+                    prop_inst.locally_known_block < prop_inst.protocol_with_most_recent_block[-1]):
+                prop_inst.initiate_msg_to_protocol(RequestNewBlock, [prop_inst.protocol_with_most_recent_block[0]],
+                                                   lists_of_blocks_to_get)  # ask for blocks from node
+
+                print("I AM IN HERE 111")
+
+
+
+                # set protocol id and local_convo_id
+                protocol_id = prop_inst.protocol_with_most_recent_block[0]
+                local_convo_id = prop_inst.protocol_with_most_recent_block[1]
+                was_able_to_update = [False, False]  # [was able to get highest block, have sent it to other threads]
+            else:
+                prop_inst.has_current_block = True
+                was_able_to_update = [True, False]  # [was able to get highest block, have sent it to other threads]
+
+            timeout_count = 0
+
+            # todo: in self.protocol_with_most_recent_block, have a way of storing the convo_id
+
+            while prop_inst.has_current_block is False:  # get blocks from node with most recent block
+                if timeout_count > 3:
+                    break
+                try:
+                    rsp = prop_inst.q_for_bk_propagate.get(timeout=4)
+                except Empty:
+                    timeout_count += 1
+
+                    if prop_inst.convo_dict[protocol_id][local_convo_id].end_convo is True:
+                        if prop_inst.locally_known_block >= prop_inst.protocol_with_most_recent_block[1]:
                             was_able_to_update = [True, False]
                             break
                         else:
                             recursive_count += 1
-                            was_able_to_update = self.initial_setup(recursive_count)
+                            was_able_to_update = main_initial_setup(recursive_count)
                             break
+                else:
+                    try:
+                        data = json.loads(rsp[-1])
+                    except ValueError:
+                        pass
+                    else:
 
-        if was_able_to_update[0] and was_able_to_update[1] is False:
-            for i in range(5): # four other threads to start and 1 process to end, sends signal
-                self.q_object_between_initial_setup_propagators.put(True)
-            return [True, True]
-        elif was_able_to_update[0] and was_able_to_update[1] is True:
-            return [True, True]
+                        # *** listen on convo with protocol with most recent block ***
+                        prop_inst.convo_dict[protocol_id][local_convo_id].listen(data)
+                        if prop_inst.convo_dict[protocol_id][local_convo_id].end_convo is True:
+                            if prop_inst.locally_known_block >= prop_inst.protocol_with_most_recent_block[-1]:
+                                was_able_to_update = [True, False]
+                                break
+                            else:
+                                recursive_count += 1
+                                was_able_to_update = main_initial_setup(recursive_count)
+                                break
 
-        else:
-            for i in range(5): # four other threads to start plus 1 process (compete process), sends signal to stop
-                self.q_object_between_initial_setup_propagators.put(False)
-            return [False, False]
+            if was_able_to_update[0] and was_able_to_update[1] is False:
+                for i in range(5): # four other threads to start and 1 process to end, sends signal
+                    prop_inst.q_object_between_initial_setup_propagators.put(True)
+                return [True, True]
+            elif was_able_to_update[0] and was_able_to_update[1] is True:
+                return [True, True]
+
+            else:
+                for i in range(5): # four other threads to start plus 1 process (compete process), sends signal to stop
+                    prop_inst.q_object_between_initial_setup_propagators.put(False)
+                return [False, False]
+        self.reactor_instance.callInThread(
+            main_initial_setup
+        )
 
     def run_propagator_convo_initiator(self):
         """
@@ -259,7 +290,6 @@ class BlockChainPropagator:
                                 protocol_id=protocol_id,
                                 msg=msg,
                                 propagator_inst=self,
-                                admin_inst=self.admin_instance
 
                             )
                         else:
@@ -331,16 +361,17 @@ class BlockChainPropagator:
                 self.convo_dict[i][convo_id].speak()
 
 
-def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, admin_inst):
+def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator):
+
     convo_id = msg[1]
     reason_msg = msg[2]
 
     # instantiate a validator, if needed
     if isinstance(reason_msg, str) and reason_msg in blockchain_msg_reasons:
-        if reason_msg in {"knw_blk"}:
-            pass
-        else:
-            pass  # todo: instantiate validator using bk_validator_dict
+
+        if reason_msg not in {"knw_blk"}:  # if it is in, then no need for a validator
+            statement_validator = bk_validator_dict[reason_msg]
+
     else:  # send end message
         propagator_inst.reactor_instance.callInThread(
             notify_of_ended_message,
@@ -394,12 +425,35 @@ def notify_of_ended_message(protocol, convo_id: list, propagator_instance: Block
 
 
 def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator_inst, *args, **kwargs):
+    """
+    Used to return to proper Message receiver class for reason msg
+    :param reason_msg:
+    :param convo_id:
+    :param protocol:
+    :param protocol_id:
+    :param propagator_inst:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    admin_inst = propagator_inst.admin_instance
 
-    if reason_msg == "knw_blk":  # a request most recent block known message
+    # a request most recent block known message/
+    # receiver is to send most recent block known (int block number is sent NOT whole block)
+    if reason_msg == "knw_blk":
         msg_rcv = SendMostRecentBlockKnown(
             protocol=protocol,
             convo_id=convo_id,
             propagator_inst = propagator_inst
+        )
+    # request new blocks
+    # receiver is SendNewBlockRequested, this sends actual blocks requested
+    elif reason_msg == "req_block":  # todo: have a way of safely sending blocks without loss of data
+
+        msg_rcv = SendNewBlocksRequested(
+            protocol=protocol,
+            convo_id=convo_id,
+            blockchainPropagatorInstance=propagator_inst
         )
 
     else:
@@ -483,10 +537,11 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
     use this to first find out which node has the most recent block before calling RequestNewBlock
 
     """
-    def __init__(self, protocol, convo_id, blockchainPropagatorInstance, protocol_id):
+    def __init__(self, protocol, convo_id, blockchainPropagatorInstance, protocol_id, q_from_prop_to_msg=None):
         super().__init__(protocol, convo_id, blockchainPropagatorInstance)
         self.prop_type = 'b'
         self.protocolId = protocol_id
+        self.q_from_prop_to_msg = q_from_prop_to_msg
 
     def speak(self):
 
@@ -504,8 +559,12 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
                 self.propagator_inst.protocol_with_most_recent_block = [self.protocolId,
                                                                         self.local_convo_id, msg[-1]]
         elif self.propagator_inst.protocol_with_most_recent_block is None:
+            print(f"in {__file__}: in Listen of request most recent block, msg:\n{msg}")
             self.propagator_inst.protocol_with_most_recent_block = [self.protocolId,
                                                                     self.local_convo_id, msg[-1]]
+
+        if isinstance(self.q_from_prop_to_msg, multiprocessing.queues.Queue):
+            self.q_from_prop_to_msg.put(None)  # this is just meant to send a signal, actual value not used
 
 
 class SendMostRecentBlockKnown(BlockChainMessageReceiver):
@@ -591,10 +650,11 @@ class RequestNewBlock(BlockChainMessageSender):
 
 # send requested block
 class SendNewBlocksRequested(BlockChainMessageReceiver):
-    def __init__(self, protocol, convo_id, admin_instance):
-        super().__init__(protocol, convo_id)
+    def __init__(self, protocol, convo_id, blockchainPropagatorInstance: BlockChainPropagator):
+        super().__init__(protocol, convo_id, blockchainPropagatorInstance)
         self.blocks_to_send = None  # becomes an iterator when first message sent
-        self.last_known_block = BlockChainData.get_current_known_block(admin_instance=admin_instance)
+        self.admin_inst = blockchainPropagatorInstance.admin_instance
+        self.last_known_block = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)
         self.cur_block_no = None
 
     def listen(self, msg):

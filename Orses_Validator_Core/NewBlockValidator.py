@@ -45,23 +45,24 @@ rules for block validation:
 5.) it is not required to validate each individual bk_conn wallet's transactions
 
 """
-import os
+from Orses_Validator_Core.BaseBlockValidator import BaseBlockValidator
 # todo: create validation logic
 
 
-class NewBlockValidator:
-    def __init__(self, block_no, block, is_newly_created=False, q_object=None):
-        self.isNewlyCreated = is_newly_created
-        self.blockNo = block_no
-        self.block = block
-        self.prev_blockNo = block_no - 1
-        self.prev_block = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
-                                       f"{self.prev_blockNo}")
-        self.q_object = q_object
+class NewBlockValidator(BaseBlockValidator):
+    def __init__(self, block_no, block, admin_inst,is_newly_created=False, q_object=None):
+        super().__init__(
+            block_no=block_no,
+            block=block,
+            admin_inst=admin_inst,
+            is_newly_created=is_newly_created,
+            q_object=q_object
+        )
 
     def validate(self):
 
         return True  # for now just return true
+
 
 if __name__ == '__main__':
     pass
