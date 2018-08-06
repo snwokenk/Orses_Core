@@ -41,7 +41,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: intial setup hangs probably because of queue object blocking main thread
+# todo: in initial setup, while requests for new blocks, convo_id referring to old convo of Requestmostrecentblock
 # todo: before doing compete algo, finish initial setup, by adding code to convo_manager of blockchainPropagator
 # todo: finish compete algo
 # todo: finish block_data_aggregator set_maximum_probability_target

@@ -196,6 +196,7 @@ class NetworkPropagator:
                                     convo_id=msg[1],
                                     propagator_instance=self
                                 )
+                                del self.convo_dict[protocol_id][local_convo_id]
 
                             else:
                                 # convo is still on, call listen() in another thread
@@ -216,13 +217,16 @@ class NetworkPropagator:
 
                         else:
                             # end convo in other node, since it can't be found locally
-                            self.reactor_instance.callInThread(
-                                notify_of_ended_message,
-                                protocol=self.connected_protocols_dict[protocol_id][0],
-                                convo_id=msg[1],
-                                propagator_instance=self
-                            )
-                            print("did not find message in protocol's convo dictionary", msg)
+                            if msg != "end":
+                                self.reactor_instance.callInThread(
+                                    notify_of_ended_message,
+                                    protocol=self.connected_protocols_dict[protocol_id][0],
+                                    convo_id=msg[1],
+                                    propagator_instance=self
+                                )
+                                print("did not find message in protocol's convo dictionary", msg)
+                            else:
+                                print(f"in {__file__}, message == end")
 
                 except KeyboardInterrupt:
                     print("ending convo manager")
