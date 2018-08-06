@@ -176,8 +176,7 @@ class NetworkPropagator:
                         # protocol id
                         protocol_id = rsp[0]
 
-                        # data is python list = ['n', convo_id_list, msg], already json decoded in NetworkMessageSorter
-
+                        # msg is python list = ['n', convo_id_list, msg], already json decoded in NetworkMessageSorter
                         msg = rsp[1]
 
                         # convo_id_list == [local convo id, other convo id]
@@ -231,7 +230,8 @@ class NetworkPropagator:
 
                 except Exception as e:  # log error and continue, avoid stopping reactor process cuz of error
                     # todo: implement error logging, when message received causes error. for now print error and msg
-                    print("Message: ", rsp, ": exception: ", e)
+                    print(f"\n-----\nError in {__file__}\nMessage causing Error: {rsp}\n"
+                          f"Exception raised: {e}")
                     continue
 
         except (SystemExit, KeyboardInterrupt):
@@ -271,8 +271,6 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     convo_id = msg[1]
     print(f"in NetworkPropagtor.py, message receiver creator, msg {msg}")
 
-    # todo: limit protocol to only sending connectorvalidator messages if not yet validated
-
     # a: assignment statement validator, b:token transfer validator, c:token reservation request validator,
     # d:token reservation request validator, e: ConnectedNodeValidator
     if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd'}:
@@ -287,6 +285,7 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
         )
         return
 
+    # todo: move this while loop into a function, which returns a convo id
     while True:  # gives new convo a convo_id that is not taken
         convo_id[0] = propagator_inst.connected_protocols_dict[protocol_id][1]
         if convo_id[0] in propagator_inst.convo_dict[protocol_id] and \

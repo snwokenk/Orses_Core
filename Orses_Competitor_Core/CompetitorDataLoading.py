@@ -41,11 +41,16 @@ class BlockChainData:
             return None
         else:
             print("File Found in CompetitorDataLoading.py")
+            # file2 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
+            #                      f"{block_number}")
+
+            file2 = os.path.join(admin_instance.fl.get_block_data_folder_path(), str(block_number))
             try:
-                with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
-                                       f"{block_number}"), "r") as inBlock:
+                with open(file2, "r") as inBlock:
                     block_info = json.load(inBlock)
-            except FileNotFoundError:
+            except FileNotFoundError as e:
+                print(f"\n-----\nError in {__file__}\nTrying to oepn file: {block_number}\n"
+                      f"Exception raised: {e}")
                 return None
             else:
                 return [block_number, block_info]

@@ -79,10 +79,12 @@ class NetworkMessageSorter:
             except ValueError:
                 print("in NetworkMessageSorter, json message error")
                 continue
-            except AttributeError:  # not able to decode() probably a string
+            except AttributeError as e:  # not able to decode() probably a string
                 if isinstance(msg, str) and msg in {"quit", "exit"}:
                     break
                 else:
+                    print(f"\n-----\nError in {__file__}\nMessage causing Error: {msg}\n"
+                          f"Exception raised: {e}")
                     continue
             if msg[0] in self.non_validated_connected_protocols_dict:  # if in it, then peer node not yet validated
                 protocol_id = msg[0]
@@ -121,7 +123,9 @@ class NetworkMessageSorter:
                         self.q_for_bk_propagate.put(msg)  # goes to BlockchainPropagator.py, run_propagator_convo_manager
                     else:
                         print("in NetworkMessageSorter.py, msg could not be sent to any process", msg)
-                except IndexError:
+                except IndexError as e:
+                    print(f"\n-----\nError in {__file__}\nMessage causing Error: {msg}\n"
+                          f"Exception raised: {e}")
                     continue
             else:
                 print(f"in NetworkMessageSorter.py, protocol id not in validated Or Non Validated")

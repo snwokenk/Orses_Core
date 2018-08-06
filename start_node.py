@@ -40,6 +40,8 @@ except VersionConflict as ee:
 
 else:
     print("All Required Packages Installed")
+
+# todo: intial setup hangs probably because of queue object blocking main thread
 # todo: before doing compete algo, finish initial setup, by adding code to convo_manager of blockchainPropagator
 # todo: finish compete algo
 # todo: finish block_data_aggregator set_maximum_probability_target
@@ -48,6 +50,7 @@ else:
 # todo: create a class or dictionary that holds potential winning blocks and is used by validator.
 # todo: The final winning block, resets this class or dictionary
 
+# todo: implement error logging, when message received causes error. for now print error and msg
 # todo: start competing/block creation process, finish up the blockchain process.
 # todo: Refactor Assignment statement, Token Transfer, Token Reservation Validators to check blockchain for proof of tokens
 

@@ -38,6 +38,14 @@ import json, multiprocessing
 from queue import Empty
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
+bk_validator_dict = dict()
+
+
+blockchain_msg_reasons = {
+    "knw_blk",  # request most recent block
+    "new_block",  # a newly created block
+}
+
 
 class BlockChainPropagator:
     def __init__(self, q_object_connected_to_block_validator, q_object_to_competing_process,
@@ -107,7 +115,7 @@ class BlockChainPropagator:
         count = 0
         while count < len(self.connected_protocols_dict):
             try:
-                rsp = self.q_for_bk_propagate.get(timeout=7)  # will timeout in 7 seconds
+                rsp = self.q_for_bk_propagate.get(timeout=15)  # will timeout in 7 seconds
             except Empty:  # queue exception
                 print(f"Timed out in initial_setup, blockchain propagator, admin : {self.admin_instance.admin_name}")
                 count += 1
@@ -222,15 +230,60 @@ class BlockChainPropagator:
         if initial_setup_done is False:
             print("ending block manager, Setup Not Able")
             return
+        reactor = self.reactor_instance
+        try:
+            while True:
+                rsp = self.q_for_bk_propagate.get()  # [protocol_id, data_list],  data_list=['b', convo_id, etc]
+                print("in convo manager: message", rsp)
 
-        while True:
-            msg = self.q_for_bk_propagate.get()  # [protocol_id, data_list],  data_list=['b', convo_id, etc]
-            print("in convo manager: message", msg)
-            break
+                try:
+                    if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
+                        raise KeyboardInterrupt
+
+                    elif isinstance(rsp, list) and len(rsp) == 2:
+
+                        # protocol id
+                        protocol_id = rsp[0]
+
+                        # msg is python list = ['b', convo_id_list, msg], already json decoded in NetworkMessageSorter
+                        msg = rsp[1]
+
+                        # convo_id_list == [local convo id, other convo id]
+                        local_convo_id = msg[1][0]
+
+                        if local_convo_id is not None and local_convo_id in self.convo_dict[protocol_id]:
+                            pass
+                        elif local_convo_id is None:
+                            self.reactor_instance.callInThread(
+                                msg_receiver_creator,
+                                protocol_id=protocol_id,
+                                msg=msg,
+                                propagator_inst=self,
+                                admin_inst=self.admin_instance
+
+                            )
+                        else:
+                            pass
+
+                except KeyboardInterrupt:
+                    print("ending convo manager in BlockchainPropagator")
+                    break
+
+                except Exception as e:  # log error and continue, avoid stopping reactor process cuz of error
+                    # todo: implement error logging, when message received causes error. for now print error and msg
+                    print(f"\n-----\nError in {__file__}\nMessage causing Error: {rsp}\n"
+                          f"Exception raised: {e}")
+                    continue
+        except (SystemExit, KeyboardInterrupt):
+            reactor.stop()
+
+        finally:
+            # shutdown instructions go here
+            pass
 
         print("In BlockchainPropagator.py convo manager ended")
 
-    def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids,*args):
+    def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids, *args):
         """
         used to send a message o either all the connected protocols or specific protocol(s)
         :param type_of_msg_to_initiate:
@@ -276,6 +329,83 @@ class BlockChainPropagator:
                     blockchainPropagatorInstance=self
                 )
                 self.convo_dict[i][convo_id].speak()
+
+
+def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, admin_inst):
+    convo_id = msg[1]
+    reason_msg = msg[2]
+
+    # instantiate a validator, if needed
+    if isinstance(reason_msg, str) and reason_msg in blockchain_msg_reasons:
+        if reason_msg in {"knw_blk"}:
+            pass
+        else:
+            pass  # todo: instantiate validator using bk_validator_dict
+    else:  # send end message
+        propagator_inst.reactor_instance.callInThread(
+            notify_of_ended_message,
+            protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+            convo_id=convo_id,
+            propagator_instance=propagator_inst
+        )
+        return
+
+    # todo: move this while loop into a function, which returns a convo id
+    while True:  # gives new convo a convo_id that is not taken
+        convo_id[0] = propagator_inst.connected_protocols_dict[protocol_id][1]
+        if convo_id[0] in propagator_inst.convo_dict[protocol_id] and \
+                propagator_inst.convo_dict[protocol_id][convo_id].end_convo is False:
+            propagator_inst.connected_protocols_dict[protocol_id][1] += 1
+            continue
+        elif convo_id[0] >= 20000:
+            propagator_inst.connected_protocols_dict[protocol_id][1] = 0
+            continue
+        propagator_inst.connected_protocols_dict[protocol_id][1] += 1
+        break
+
+    prop_receiver = get_message_receiver(
+        reason_msg=reason_msg,
+        convo_id=convo_id,
+        protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+        protocol_id=protocol_id,
+        propagator_inst=propagator_inst
+    )
+
+    propagator_inst.convo_dict[protocol_id].update({convo_id[0]: prop_receiver})
+    prop_receiver.listen(msg=msg)
+
+    if reason_msg == "new_block":
+        pass  # store hash in message_from_other_veri_node_dict to keep track of where it was received
+
+
+def notify_of_ended_message(protocol, convo_id: list, propagator_instance: BlockChainPropagator):
+    """
+    used to notify other node of ended message, if it tries to communicate with ended message
+    :param protocol: connected protocol of other node
+    :param convo_id: convo id list [local convo id, other convo id] this is switched
+    :param propagator_instance: instance of NetworkPropagator class
+    :return:
+    """
+    convo_id[0], convo_id[1] = convo_id[1], convo_id[0]  # switch convo id to [other convo id, local convo id]
+    msg = json.dumps(["n", convo_id, 'end']).encode()
+
+    # call this from the reactor thread o be thread safe
+    propagator_instance.reactor_instance.callFromThread(protocol.transport.write, msg)
+
+
+def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator_inst, *args, **kwargs):
+
+    if reason_msg == "knw_blk":  # a request most recent block known message
+        msg_rcv = SendMostRecentBlockKnown(
+            protocol=protocol,
+            convo_id=convo_id,
+            propagator_inst = propagator_inst
+        )
+
+    else:
+        msg_rcv = None
+
+    return msg_rcv
 
 
 # *** base message sender class ***
@@ -360,7 +490,7 @@ class RequestMostRecentBlockKnown(BlockChainMessageSender):
 
     def speak(self):
 
-        msg = json.dumps([self.prop_type, self.convo_id, ["knw_blk"]]).encode()
+        msg = "knw_blk"
         self.speaker(msg=msg)
 
     def listen(self, msg):
@@ -388,12 +518,15 @@ class SendMostRecentBlockKnown(BlockChainMessageReceiver):
     def speak(self):
         self.end_convo = True
         curr_block = self.last_known_block
-        if isinstance(curr_block, list):
-            curr_block_no = curr_block[0]
-            msg = json.dumps([self.prop_type, self.convo_id, curr_block_no]).encode()
+        print(f"in {__file__}: current block is {curr_block}")
+        if isinstance(curr_block, int):
+            # msg = json.dumps([self.prop_type, self.convo_id, curr_block_no]).encode()
+            msg = curr_block
         else:
-            msg = json.dumps([self.prop_type, self.convo_id, 0]).encode()
-        self.protocol.transport.write(msg)
+            # msg = json.dumps([self.prop_type, self.convo_id, 0]).encode()
+            msg = 0
+        self.speaker(msg=msg)
+        # self.protocol.transport.write(msg)
 
 
 # request for new block
@@ -403,9 +536,8 @@ class RequestNewBlock(BlockChainMessageSender):
         # index 0, first block to send, index 1, last block to receive, if index 1 is -1 then send till the most
         # recent block, if index 0 is 0 and index 1 are -1 then send the whole blockchain (speaker has option of send
         # only a part of request
-        super().__init__(protocol, convo_id)
+        super().__init__(protocol, convo_id, blockchainPropagatorInstance)
         self.blocks_to_receive = ["req_block", blocks_to_receive]
-        self.blockchainPropagator = blockchainPropagatorInstance
 
     def speak(self, rsp=None):
 
@@ -434,12 +566,12 @@ class RequestNewBlock(BlockChainMessageSender):
                     self.end_convo = True  # end convo
                     rsp = self.save_block(msg[1], msg[2]) if len(msg) == 4 else False  # save last block
                     if rsp is True:
-                        self.blockchainPropagator.locally_known_block = msg[1]
+                        self.propagator_inst.locally_known_block = msg[1]
                 else:
                     rsp = self.save_block(msg[1], msg[2]) if len(msg) == 4 else False
                     # written twice because self.speak() actually sends data to peer. want to update before that
                     if rsp is True:
-                        self.blockchainPropagator.locally_known_block = msg[1]
+                        self.propagator_inst.locally_known_block = msg[1]
                     self.speak(rsp=rsp)
 
             else:
