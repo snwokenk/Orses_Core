@@ -357,7 +357,23 @@ class BlockChainPropagator:
                 self.convo_dict[i][convo_id].speak()
 
 
+def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator):
+
+    reason_msg = msg[0]
+
+    if reason_msg in blockchain_msg_reasons:
+        pass
+
+
+
 def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator):
+    """
+    msg = ['b', convo_id_list, main_msg]
+    :param protocol_id:
+    :param msg:
+    :param propagator_inst:
+    :return:
+    """
 
     convo_id = msg[1]
     reason_msg = msg[2]
