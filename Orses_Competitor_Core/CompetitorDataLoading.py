@@ -20,9 +20,9 @@ class BlockChainData:
             print("In BlockChainData.py, __init__: Blockchain_Data folder already exists")
 
 
-
     def load_data(self):
         pass
+
 
     @staticmethod
     def get_current_known_block(admin_instance):
@@ -56,9 +56,12 @@ class BlockChainData:
                 return [block_number, block_info]
 
     @staticmethod
-    def get_block(block_no):
-        file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
-                             f"{block_no}")
+    def get_block(block_no, admin_instance):
+
+        # file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
+        #                      f"{block_no}")
+
+        file1 = os.path.join(admin_instance.fl.get_block_data_folder_path(), str(block_no))
 
         try:
             with open(file1, "r") as jfile:
@@ -70,21 +73,21 @@ class BlockChainData:
 
 
     @staticmethod
-    def save_current_block(block_no, block):
+    def save_current_block(block_no, block, admin_instance):
 
         # validate_block then save preferable use reactor.
         pass
 
     @staticmethod
-    def save_a_propagated_block(block_no, block):
+    def save_a_propagated_block(block_no, block, admin_instance):
 
         # verify that we don't already have block:
-        if BlockChainData.get_block(block_no) is None:
+        if BlockChainData.get_block(block_no, admin_instance=admin_instance) is None:
             isValidated = NewBlockValidator(block_no,block, False)
 
             if isValidated is True:
-                file1 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data",
-                                     f"{block_no}")
+                file1 = os.path.join(admin_instance.fl.get_block_data_folder_path(), str(block_no))
+
                 with open(file1, "w") as jfile:
                     json.dump(block, jfile)
                 return True

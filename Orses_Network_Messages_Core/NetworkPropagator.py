@@ -290,17 +290,9 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
         return
 
     # todo: move this while loop into a function, which returns a convo id
-    while True:  # gives new convo a convo_id that is not taken
-        convo_id[0] = propagator_inst.connected_protocols_dict[protocol_id][1]
-        if convo_id[0] in propagator_inst.convo_dict[protocol_id] and \
-                propagator_inst.convo_dict[protocol_id][convo_id].end_convo is False:
-            propagator_inst.connected_protocols_dict[protocol_id][1] += 1
-            continue
-        elif convo_id[0] >= 20000:
-            propagator_inst.connected_protocols_dict[protocol_id][1] = 0
-            continue
-        propagator_inst.connected_protocols_dict[protocol_id][1] += 1
-        break
+
+    # get untaken convo_id for new message
+    convo_id[0] = get_convo_id(protocol_id=protocol_id, propagator_inst=propagator_inst)
 
     prop_receiver = StatementReceiver(
         protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
@@ -319,7 +311,7 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     # )
 
     # updates convo_dict of protocol with local convo id
-    propagator_inst.convo_dict[protocol_id].update({convo_id[0]: prop_receiver})
+    propagator_inst.convo_dict[protocol_id][convo_id[0]] = prop_receiver
     prop_receiver.listen(msg=msg)
     if protocol_id in propagator_inst.message_from_other_veri_node_dict:
 
@@ -346,16 +338,7 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
                 (i in propagator_inst.message_from_other_veri_node_dict and
                          rsp[0] not in propagator_inst.message_from_other_veri_node_dict[i]):
             print("in NetworkPropagator.py, RSP: ", rsp)
-            while True:  # gets a convo id that is not in use
-                convo_id=propagator_inst.connected_protocols_dict[i][1]
-                if convo_id in propagator_inst.convo_dict[i] and propagator_inst.convo_dict[i][convo_id].end_convo is False:
-                    propagator_inst.connected_protocols_dict[i][1] += 1
-                    continue
-                elif convo_id >= 20000:
-                    propagator_inst.connected_protocols_dict[i][1] = 0
-                    continue
-                propagator_inst.connected_protocols_dict[i][1] += 1
-                break
+            convo_id = get_convo_id(protocol_id=i, propagator_inst=propagator_inst)
 
             prop_sender = StatementSender(
                 protocol=propagator_inst.connected_protocols_dict[i][0],
@@ -367,11 +350,26 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
             )
 
             # update protocol's convo dictionary with new convo
-            propagator_inst.convo_dict[i].update({convo_id: prop_sender})
+            propagator_inst.convo_dict[i][convo_id] = prop_sender
+
             prop_sender.speak()
         else:
             print(f"\nIn NetworkPropagator.py, protocol: {i} sent tx with preview of: {rsp[0]}\n"
                   f"so Will Not Send To it\n ")
+
+
+def get_convo_id(protocol_id, propagator_inst: NetworkPropagator):
+
+    while True:  # gets a convo id that is not in use
+        convo_id = propagator_inst.connected_protocols_dict[protocol_id][1]
+        if convo_id in propagator_inst.convo_dict[protocol_id] and propagator_inst.convo_dict[protocol_id][convo_id].end_convo is False:
+            propagator_inst.connected_protocols_dict[protocol_id][1] += 1
+            continue
+        elif convo_id >= 20000:
+            propagator_inst.connected_protocols_dict[protocol_id][1] = 0
+            continue
+        propagator_inst.connected_protocols_dict[protocol_id][1] += 1
+        return convo_id
 
 
 # *** base message sender class ***
