@@ -45,7 +45,9 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: work on block creator, allowing to create a test genesis block, block 1 and block 2,
+
+# todo: work on block creator, allowing to create a test genesis block, merkle root should include BCWs, pubkey of sig
+# todo: work on test compete algo and use to create block 1 and 2 for testing
 # todo: use these test blocks to work on block valdators(txs with ties to prev block should be added)
 
 # todo: even though multiprocessing is being used to to use twisted's Process Protocol
@@ -549,7 +551,7 @@ def main():
 
 
 if __name__ == '__main__':
-    sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=1)
+    sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=0)
 
     # long_opt = ["sandbox"]
     # short_opt = "s"

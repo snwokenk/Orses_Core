@@ -89,8 +89,22 @@ class BlockChainData:
             if isValidated is True:
                 file1 = os.path.join(admin_instance.fl.get_block_data_folder_path(), str(block_no))
 
-                with open(file1, "w") as jfile:
-                    json.dump(block, jfile)
+                admin_instance.fl.save_json_into_file(
+                    filename=file1,
+                    python_json_serializable_object=block
+                )
+
+                # update last_known_block if propagated block is newer than last known block
+                file2 = os.path.join(admin_instance.fl.get_block_data_folder_path(), "last_block_number")
+                last_known_block_no = admin_instance.fl.open_file_from_json(
+                    filename=file2
+                )
+
+                if int(last_known_block_no) < block_no:
+                    admin_instance.fl.save_json_into_file(
+                        filename=file2,
+                        python_json_serializable_object=block_no
+                    )
 
         return True
 

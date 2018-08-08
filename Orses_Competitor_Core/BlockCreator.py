@@ -87,4 +87,6 @@ class GenesisBlockCreator:
 if __name__ == '__main__':
     gen_block = GenesisBlockCreator()
     gen_block.set_before_competing()
-    print(gen_block.block.__dict__)
+    block_0 = gen_block.block.__dict__
+
+    [print(f"{i}: {block_0[i]}") for i in block_0]

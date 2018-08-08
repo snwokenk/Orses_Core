@@ -2,7 +2,9 @@ from hashlib import sha256
 import time, multiprocessing, os,  copy, queue
 from multiprocessing.queues import Queue
 from Orses_Competitor_Core.Compete_Process import genesis_block
-
+"""
+This file can be used to generate a genesis block for test, beta or live network
+"""
 
 def competitive_hasher(enc_d):
     return sha256(sha256(enc_d).digest()).hexdigest()
