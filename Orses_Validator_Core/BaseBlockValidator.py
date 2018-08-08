@@ -8,7 +8,7 @@ class BaseBlockValidator:
         self.blockNo = block_no
         self.block = block
         self.prev_blockNo = block_no - 1
-        self.prev_block = os.path.join(self.admin_inst.fl.get_block_data_folder_path(), self.prev_blockNo)
+        self.prev_block = os.path.join(self.admin_inst.fl.get_block_data_folder_path(), str(self.prev_blockNo))
         self.q_object = q_object
 
     def validate(self):

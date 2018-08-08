@@ -79,9 +79,6 @@ class NetworkPropagator:
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
 
-
-
-
     def remove_protocol(self, protocol):
 
         del self.connected_protocols_dict[protocol.proto_id]

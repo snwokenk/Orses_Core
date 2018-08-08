@@ -40,7 +40,7 @@ except VersionConflict as ee:
 
 else:
     print("All Required Packages Installed")
-
+# todo: delete the many print statements in BlockchainPropagator.py
 # todo: in initial setup, while requests for new blocks, convo_id referring to old convo of Requestmostrecentblock
 # todo: before doing compete algo, finish initial setup, by adding code to convo_manager of blockchainPropagator
 # todo: finish compete algo
