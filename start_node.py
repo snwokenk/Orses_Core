@@ -3,6 +3,8 @@ from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
 from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagator
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
+from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
+
 from twisted.internet.error import CannotListenError
 
 # for sandbox internet
@@ -11,6 +13,7 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 # using git: http://rogerdudler.github.io/git-guide/
+# https://stackoverflow.com/questions/19924104/python-multiprocessing-handling-child-errors-in-parent
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
@@ -18,6 +21,7 @@ from twisted.internet import reactor, defer, threads
 from pkg_resources import DistributionNotFound, VersionConflict
 
 import sys, multiprocessing, queue, getopt, time, pkg_resources
+from multiprocessing.queues import Queue
 
 p_version = sys.version_info
 
@@ -44,9 +48,11 @@ else:
 # todo: work on block creator, allowing to create a test genesis block, block 1 and block 2,
 # todo: use these test blocks to work on block valdators(txs with ties to prev block should be added)
 
+# todo: even though multiprocessing is being used to to use twisted's Process Protocol
+# todo: https://twistedmatrix.com/documents/current/core/howto/process.html
+
 
 # todo: delete the many print statements in BlockchainPropagator.py
-# todo: in initial setup, while requests for new blocks, convo_id referring to old convo of Requestmostrecentblock
 # todo: before doing compete algo, finish initial setup, by adding code to convo_manager of blockchainPropagator
 # todo: finish compete algo
 # todo: finish block_data_aggregator set_maximum_probability_target
@@ -152,7 +158,7 @@ def create_node_instances(dummy_internet, number_of_nodes_to_create: int, prefer
     return nodes_dict
 
 
-def sandbox_main(number_of_nodes, reg_network_sandbox=False):
+def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_mining_nodes=0):
     """
 
     :param reg_network_sandbox: if false regular network will not be sandbox. This allows to send data to main node
@@ -215,7 +221,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     main_node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
 
     # *** instantiate queue variables ***
-    q_for_compete = multiprocessing.Queue() if compete == 'y' else None
+    q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and compete == 'y') else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
     q_for_bk_propagate = multiprocessing.Queue()
@@ -225,8 +231,20 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     q_object_to_each_node = multiprocessing.Queue()  # for exit signal
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
-    if compete == 'y':
-        pass
+    if admin.isCompetitor is True and compete == 'y':
+        competitor = Competitor(reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d", admin_inst=admin)
+        p = multiprocessing.Process(
+            target=competitor.compete,
+            kwargs={
+                "q_for_compete": q_for_compete,
+                "q_for_validator": q_for_validator,
+                "q_from_bk_propagator": q_for_bk_propagate
+            }
+
+        )
+        p.daemon = True
+        p.start()
+
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(
@@ -332,17 +350,27 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False):
     node_dict = create_node_instances(
         dummy_internet=dummy_internet,
         number_of_nodes_to_create=number_of_nodes,
-        preferred_no_of_mining_nodes=0
+        preferred_no_of_mining_nodes=preferred_no_of_mining_nodes
     )
 
+    # separate processes are created for competing nodes in the Main thread, these processes will wait for most
+    # recent block to be sent before starting to actually compete.
+    #Todo: make the queue objects leading to each nodes competing process to be q objects of the node not main node
     for temp_node in node_dict["competing"]:
+
+        node_compete_process = temp_node.run_compete_process(
+            q_for_compete=temp_node.q_for_compete,
+            q_for_validator=temp_node.q_for_validator,
+            q_for_bk_propagate=temp_node.q_for_bk_propagate
+        )
 
         reactor.callInThread(
 
             temp_node.run_node,
             real_reactor_instance=reactor,
             q_object_to_each_node=q_object_to_each_node,
-            reg_network_sandbox=True
+            reg_network_sandbox=True,
+            compete_process=node_compete_process
 
         )
 
@@ -521,7 +549,7 @@ def main():
 
 
 if __name__ == '__main__':
-    sandbox_main(number_of_nodes=1, reg_network_sandbox=False)
+    sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=1)
 
     # long_opt = ["sandbox"]
     # short_opt = "s"

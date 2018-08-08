@@ -1,5 +1,6 @@
 from hashlib import sha256
 import time, multiprocessing, os,  copy, queue
+from multiprocessing.queues import Queue
 from Orses_Competitor_Core.Compete_Process import genesis_block
 
 
@@ -130,7 +131,8 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
 
 
 class Competitor:
-    def __init__(self, reward_wallet):
+    def __init__(self, reward_wallet, admin_inst):
+        self.admin_inst = admin_inst
         self.reward_wallet = reward_wallet
 
     def get_recent_block(self):
@@ -147,7 +149,9 @@ class Competitor:
             q_for_validator: (multiprocessing.queues.Queue, queue.Queue),
     ):
 
-        recent_blk = q_from_bk_propagator.get()
+        print(f"in Orses_compete_alog, Started Compete Process For admin: {self.admin_inst.admin_name}")
+        recent_blk = q_for_compete.get()
+        print(f"in Orses_compete_Algo, recent block:\n{recent_blk} admin: {self.admin_inst.admin_name}")
         rwd_wallet = self.reward_wallet
 
         while True:

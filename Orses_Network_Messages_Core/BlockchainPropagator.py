@@ -99,13 +99,15 @@ class BlockChainPropagator:
 
             # check to see if connected to any node, if not check if it is ok to not be connected to a node and return
             if not protocol_list and no_connected_peers_ok is True:  # no connected protocols
-                for i in range(5):  # four other threads to start and 1 process to end, sends signal
-                    prop_inst.q_object_between_initial_setup_propagators.put(True)
+                send_response_to_other_threads(
+                    has_setup=True,
+                    prop_inst=prop_inst,
+                    recent_block=BlockChainData.get_current_known_block(prop_inst.admin_instance)[1]
+                )
                 return
             elif not protocol_list and no_connected_peers_ok is False:
                 print(f"in {__file__}: No connection, admin {self.admin_instance.admin_name}")
-                for i in range(5):  # four other threads to start and 1 process to end, sends signal
-                    prop_inst.q_object_between_initial_setup_propagators.put(False)
+                send_response_to_other_threads(has_setup=False, prop_inst=prop_inst)
                 return
 
             if recursive_count >= 3:
@@ -166,8 +168,11 @@ class BlockChainPropagator:
                     blocks_to_receive=list_of_blocks_to_get,
                     expected_recent_block=protocol_with_most_recent_block[2]
                 )
-            elif prop_inst.locally_known_block >= protocol_with_most_recent_block[0]:
-                send_response_to_other_threads(has_setup=True, prop_inst=prop_inst)
+            elif prop_inst.locally_known_block >= protocol_with_most_recent_block[2]:
+                send_response_to_other_threads(
+                    has_setup=True,
+                    prop_inst=prop_inst,
+                    recent_block=BlockChainData.get_current_known_block(prop_inst.admin_instance)[1])
             else:
                 send_response_to_other_threads(has_setup=False, prop_inst=prop_inst)
 
@@ -181,7 +186,9 @@ class BlockChainPropagator:
                 lambda is_setup:
                 send_response_to_other_threads(
                     has_setup=is_setup,
-                    prop_inst=prop_inst
+                    prop_inst=prop_inst,
+                    recent_block=BlockChainData.get_current_known_block(prop_inst.admin_instance)[1] if is_setup is True else None
+
                 )
             )
             response_thread.addErrback(lambda err: print("Error happened in second initial defferea", err))
@@ -253,9 +260,14 @@ class BlockChainPropagator:
 
             return prop_inst.protocol_with_most_recent_block
 
-        def send_response_to_other_threads(has_setup: bool, prop_inst: BlockChainPropagator):
+        def send_response_to_other_threads(has_setup: bool, prop_inst: BlockChainPropagator, recent_block=None):
             for i in range(5):  # four other threads to start and 1 process to end, sends signal
                 prop_inst.q_object_between_initial_setup_propagators.put(has_setup)
+
+            if (prop_inst.admin_instance.isCompetitor is True and
+                    isinstance(prop_inst.q_object_compete, multiprocessing.queues.Queue) and
+                    recent_block):
+                prop_inst.q_object_compete.put(recent_block)
 
         # START INITiAL SETUP
         self.reactor_instance.callInThread(

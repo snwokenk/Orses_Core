@@ -5,6 +5,7 @@ from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
 from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
+from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
 
 import multiprocessing, queue, shutil, os, time
 
@@ -24,6 +25,9 @@ class DummyAdminNode(DummyNode):
         self.new_admin = admin.isNewAdmin
         self.is_competitor = admin.isCompetitor
         self.copy_important_files()
+        self.q_for_compete = multiprocessing.Queue() if self.is_competitor is True else None
+        self.q_for_validator = multiprocessing.Queue()
+        self.q_for_bk_propagate = multiprocessing.Queue()
 
     def copy_important_files(self):
         path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Default_Addresses_Sandbox")
@@ -61,7 +65,25 @@ class DummyAdminNode(DummyNode):
         # response_thread = threads.deferToThread(temp)  # deffering blocking function to thread
         # response_thread.addCallback(lambda x: print(f"{self.admin.admin_name} is Stopped"))
 
-    def run_node(self, real_reactor_instance, q_object_to_each_node: multiprocessing.Queue, reg_network_sandbox=True):
+    def run_compete_process(self, q_for_compete, q_for_validator, q_for_bk_propagate):
+
+        if self.admin.isCompetitor is True:
+            competitor = Competitor(reward_wallet="Wf693c7655fa6c49b3b28e2ac3394944c43d369cc", admin_inst=self.admin)
+            p = multiprocessing.Process(
+                target=competitor.compete,
+                kwargs={
+                    "q_for_compete": q_for_compete,
+                    "q_for_validator": q_for_validator,
+                    "q_from_bk_propagator": q_for_bk_propagate
+                }
+
+            )
+            p.daemon = True
+            p.start()
+
+            return p
+
+    def run_node(self, real_reactor_instance, q_object_to_each_node: multiprocessing.Queue, reg_network_sandbox=True, compete_process=None):
         """
         Run node
         :param reg_network_sandbox: if regular client network should be run in sandbox also
@@ -75,17 +97,24 @@ class DummyAdminNode(DummyNode):
             time.sleep(6 + self.node_id)
 
         # *** instantiate queue variables ***
-        q_for_compete = multiprocessing.Queue() if self.is_competitor == 'y' else None
-        q_for_validator = multiprocessing.Queue()
+        q_for_compete = self.q_for_compete
+        q_for_validator = self.q_for_validator
         q_for_propagate = multiprocessing.Queue()
-        q_for_bk_propagate = multiprocessing.Queue()
+        q_for_bk_propagate = self.q_for_bk_propagate
         q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
         q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
         q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
 
-        # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
-        if self.is_competitor == 'y':
-            pass
+        # start compete(mining) process, if admin.isCompetitor is True. No need to check compete for virtual node
+        print(f"in DummyAdminNode, is admin competitor {self.admin.isCompetitor}")
+
+        if self.admin.isCompetitor is True:
+            try:
+                is_alive = compete_process.is_alive()
+            except AttributeError:
+                is_alive = False
+            print(f"Compete Prcess Should Have Started In Main Thread (coded on start_node.py), "
+                  f"Process_is_alive {is_alive}")
 
         # *** start blockchain propagator in different thread ***
         blockchain_propagator = BlockChainPropagator(
