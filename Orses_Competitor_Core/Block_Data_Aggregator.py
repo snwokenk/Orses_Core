@@ -182,11 +182,19 @@ class BaseBlockHeader:
 
 class GenesisBlockHeader(BaseBlockHeader):
 
-    def set_block_no(self, block_number):
+    def set_header_before_comepete(self, primary_sig_wallet_id, merkle_root):
+        self.set_block_no()
+        self.set_primary_signatory(primary_sig_wallet_id=primary_sig_wallet_id)
+        self.set_shuffled_hex_values()
+        self.set_maximum_probability_target()
+        self.set_merkle_root(merkle_root=merkle_root)
+
+
+    def set_block_no(self, block_number=0):
         self.block_no = format(0, "x")
 
-    def set_primary_signatory(self, wallet_id):
-        self.p_s = wallet_id
+    def set_primary_signatory(self, primary_sig_wallet_id):
+        self.p_s = primary_sig_wallet_id
 
     def set_shuffled_hex_values(self):
         # for genesis block there is no shuffle

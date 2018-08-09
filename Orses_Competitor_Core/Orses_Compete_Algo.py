@@ -1,9 +1,10 @@
 from hashlib import sha256
 import time, multiprocessing, os,  copy, queue
 from multiprocessing.queues import Queue
-from Orses_Competitor_Core.Compete_Process import genesis_block
+from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator
 """
 This file can be used to generate a genesis block for test, beta or live network
+And also contains compete algorithm
 """
 
 def competitive_hasher(enc_d):
@@ -132,6 +133,26 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
     return block_header
 
 
+def generate_genesis_block():
+    gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
+    gen_block_creator_inst.set_before_competing()
+
+    merkle_root = gen_block_creator_inst.merkle_root
+
+    gen_block_obj = gen_block_creator_inst.get_block()
+
+    block_header = gen_block_creator_inst.block_header_callable()
+    block_header.set_header_before_comepete(
+        primary_sig_wallet_id=gen_block_creator_inst.primary_sig_wallet_id,
+        merkle_root=merkle_root
+    )
+
+    print(f"in Orses_compete_algo: merkle root:  {merkle_root}")
+    print(f"in Orses_compete_algo: block: {gen_block_obj.get_block()}")
+
+    print(f"in Orses_compete_algo: block_header: {block_header.__dict__}")
+
+
 class Competitor:
     def __init__(self, reward_wallet, admin_inst):
         self.admin_inst = admin_inst
@@ -165,4 +186,4 @@ class Competitor:
 
 
 if __name__ == '__main__':
-    pass
+    generate_genesis_block()

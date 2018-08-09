@@ -12,8 +12,8 @@ import json
 
 class GenesisBlockCreator:
 
-    def __init__(self):
-
+    def __init__(self, primary_sig_wallet_id):
+        self.primary_sig_wallet_id = primary_sig_wallet_id
         self.block = GenesisBlock()
         self.block_header_callable = GenesisBlockHeader
         self.tats = {
@@ -27,21 +27,29 @@ class GenesisBlockCreator:
 
         }
 
-        self.merkle_root = self.compute_merkle_root()  # self.tats becomes {hash_of_tat: tat dict}
         self.dict_of_bcw = {
             "W3c8135240da9d25d3905aa7aca64c98ca6b1fede": 800_000,
             "W884c07be004ee2a8bc14fb89201bbc607e75258d": 250_000
         }
+
+        self.pubkey = {
+            "x": "on+no;S+oQ9XJ4o_+iJI+Ezi)ld5>}%>`YyAr?sc",
+            "y": "f-_gqvfMWUx1j@JDUVQ@EbNV&H$a<Ha!y&&qg3w?"
+        }
+
+        # self.tats becomes {hash_of_tat: tat dict}
+        # *** should be last entry in __init__
+        self.merkle_root = self.compute_merkle_root()
+
+    def get_block(self):
+        return self.block
 
     def set_before_competing(self):
         self.block.set_before_compete(
             hash_of_protocol=self.get_validity_protocol(),
             tats=self.tats,
             dict_of_bcws=self.dict_of_bcw,
-            pubkey_dict={
-                "x": "on+no;S+oQ9XJ4o_+iJI+Ezi)ld5>}%>`YyAr?sc",
-                "y": "f-_gqvfMWUx1j@JDUVQ@EbNV&H$a<Ha!y&&qg3w?"
-            },
+            pubkey_dict=self.pubkey,
             # signature=DigitalSigner.sign_with_provided_privkey(
             #     dict_of_privkey_numbers={
             #         'x': 60785994004755780541968889462742035955235637618029604119657448498380482761088,
@@ -53,7 +61,7 @@ class GenesisBlockCreator:
 
         )
 
-    def set_after_competing(self):
+    def set_after_competing(self, ):
         """
         after compete, create a GenesisBlockHeader instance, set the necessary attributes
         :return:
@@ -61,19 +69,42 @@ class GenesisBlockCreator:
         pass
 
     def compute_merkle_root(self):
-        list_of_tat_hashes = list()
+        list_of_hashes_for_merkle = list()
         tat_with_hash = dict()
+        bcw_entry_with_hash = dict()
 
+        # include hashes of token association transactions
         for tat in self.tats:
-            data = json.dumps(tat).encode()
+            temp_dict = {tat: self.tats[tat]}
+            data = json.dumps(temp_dict).encode()
             hash_id = Hasher.sha_hasher(data=data)
-            list_of_tat_hashes.append(hash_id)
-            tat_with_hash[hash_id] = {tat: self.tats[tat]}
+            list_of_hashes_for_merkle.append(hash_id)
+            tat_with_hash[hash_id] = temp_dict
 
         self.tats = tat_with_hash
 
-        if list_of_tat_hashes:
-            o = OrsesMerkleRootTree(items=sorted(list_of_tat_hashes))
+        # include hash of BCW
+        for bcw_entry in self.dict_of_bcw:
+            temp_dict = {bcw_entry: self.dict_of_bcw[bcw_entry]}
+            data = json.dumps(temp_dict).encode()
+            hash_id = Hasher.sha_hasher(data=data)
+            list_of_hashes_for_merkle.append(hash_id)
+            bcw_entry_with_hash[hash_id] = temp_dict
+
+        # include hash of pubkey
+        data = json.dumps(self.pubkey).encode()
+        hash_id = Hasher.sha_hasher(data=data)
+        list_of_hashes_for_merkle.append(hash_id)
+
+        # include hash of primary wallet
+        data = json.dumps(self.primary_sig_wallet_id).encode()
+        hash_id = Hasher.sha_hasher(data=data)
+        list_of_hashes_for_merkle.append(hash_id)
+
+        print(list_of_hashes_for_merkle)
+
+        if list_of_hashes_for_merkle:
+            o = OrsesMerkleRootTree(items=sorted(list_of_hashes_for_merkle))
             o.create_merkle_tree()
             return o.get_merkle_root()
 
@@ -90,3 +121,5 @@ if __name__ == '__main__':
     block_0 = gen_block.block.__dict__
 
     [print(f"{i}: {block_0[i]}") for i in block_0]
+
+    print(gen_block.merkle_root)
