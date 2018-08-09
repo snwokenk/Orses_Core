@@ -69,6 +69,12 @@ class GenesisBlockCreator:
         pass
 
     def compute_merkle_root(self):
+        """
+        uses the hashes of TAT, BCW and pubkey to produce a single merkle root hash
+
+        A combined hash is used for competing, which is merkle root + hash of primary signatory's wallet
+        :return:
+        """
         list_of_hashes_for_merkle = list()
         tat_with_hash = dict()
         bcw_entry_with_hash = dict()
@@ -96,10 +102,10 @@ class GenesisBlockCreator:
         hash_id = Hasher.sha_hasher(data=data)
         list_of_hashes_for_merkle.append(hash_id)
 
-        # include hash of primary wallet
-        data = json.dumps(self.primary_sig_wallet_id).encode()
-        hash_id = Hasher.sha_hasher(data=data)
-        list_of_hashes_for_merkle.append(hash_id)
+        # # include hash of primary wallet
+        # data = json.dumps(self.primary_sig_wallet_id).encode()
+        # hash_id = Hasher.sha_hasher(data=data)
+        # list_of_hashes_for_merkle.append(hash_id)
 
         print(list_of_hashes_for_merkle)
 
@@ -116,10 +122,11 @@ class GenesisBlockCreator:
 
 
 if __name__ == '__main__':
-    gen_block = GenesisBlockCreator()
-    gen_block.set_before_competing()
-    block_0 = gen_block.block.__dict__
-
-    [print(f"{i}: {block_0[i]}") for i in block_0]
-
-    print(gen_block.merkle_root)
+    pass
+    # gen_block = GenesisBlockCreator()
+    # gen_block.set_before_competing()
+    # block_0 = gen_block.block.__dict__
+    #
+    # [print(f"{i}: {block_0[i]}") for i in block_0]
+    #
+    # print(gen_block.merkle_root)

@@ -1,6 +1,7 @@
 from hashlib import sha256
 import time, multiprocessing, os,  copy
 from Orses_Competitor_Core.Compete_Process import genesis_block
+from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator
 
 
 def competitive_hasher(enc_d):
@@ -45,6 +46,83 @@ def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_ha
     return dict_of_valid_nonce_hash
 
 
+def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash, starting_nonce, q,
+                     len_competition=60):
+    prime_char = single_prime_char.lower() * exp_leading
+    nonce = starting_nonce
+    primary_signatory = block_header.p_s
+    merkle_root = block_header.mrh
+
+    end_time = time.time() + len_competition
+    combined_merkle = f'{merkle_root}+{primary_signatory}'
+    while time.time() < end_time:
+        get_qualified_hashes(
+            prime_char=prime_char,
+            hash_hex=competitive_hasher(f'{combined_merkle}{nonce}'.encode()),
+            dict_of_valid_hash=dict_of_valid_nonce_hash,
+            len_prime_char=exp_leading,
+            nonce=nonce
+        )
+        nonce += 1
+        # print(block_header["nonce"])
+
+    total_hashes = nonce - starting_nonce
+    print("done", os.getpid())
+    q.put(total_hashes)
+    return dict_of_valid_nonce_hash
+
+
+def threaded_compete_improved(single_prime_char, addl_chars, exp_leading, block_header, len_competition=60):
+    """
+
+    :param single_prime_char: the prime character
+    :param addl_chars: additional characters that can be used after the exp_leading
+    :param exp_leading: the expected number of times the single_prime_char appears
+    :param block_header: instance of GenesisBlockHeader
+    :param len_competition: int number of seconds for competition
+    :return:
+    """
+    # check number of cpu cores
+    num_cpu = multiprocessing.cpu_count()
+
+    # create 2 threads per cpu
+    # todo: allow individual to set number of threads using intensity
+    num_cpu = num_cpu * 2 if num_cpu >= 2 else num_cpu
+
+    Process = multiprocessing.Process
+
+    # instantiate a manager class, for use in creating data structures that can be shared
+    manager = multiprocessing.Manager()
+
+    # create a q object, this will block in main thread and receive the total number of hashes
+    q = multiprocessing.Queue()
+    total_hashes = 0
+
+    process_list = []
+    dict_of_valid_nonce_hash = manager.dict()
+    starting_nonce = 0
+    for _ in range(num_cpu):
+        process_list.append(Process(target=compete_improved, args=(single_prime_char,exp_leading, block_header,
+                                                          dict_of_valid_nonce_hash, starting_nonce, q,
+                                                          len_competition),))
+        starting_nonce += 20_000_000
+    for process in process_list:
+        process.daemon = True
+        process.start()
+    total_hashes += q.get()  # first hash process to be finished
+    for i in range(num_cpu-1):
+        print(i)
+        total_hashes += q.get()  # remaining hashes
+
+    dict_of_valid_nonce_hash = dict(dict_of_valid_nonce_hash)
+    print("hash Per Second: ", total_hashes/len_competition)
+    print("total hashes: ", total_hashes)
+    print("number of valid hashes: ", len(dict_of_valid_nonce_hash))
+    # print(dict_of_valid_nonce_hash)
+
+    return choose_top_scoring_hash(single_prime_char, addl_chars, dict_of_valid_nonce_hash, exp_leading)
+
+
 def threaded_compete(single_prime_char, addl_chars, exp_leading, block_header, len_competition=60):
     num_cpu = multiprocessing.cpu_count()
     num_cpu = num_cpu * 2 if num_cpu >= 2 else num_cpu
@@ -60,7 +138,7 @@ def threaded_compete(single_prime_char, addl_chars, exp_leading, block_header, l
         process_list.append(Process(target=compete, args=(single_prime_char,exp_leading, copy.deepcopy(block_header),
                                                           dict_of_valid_nonce_hash, starting_nonce, q,
                                                           len_competition),))
-        starting_nonce += 10_000_000
+        starting_nonce += 20_000_000
     for process in process_list:
         process.daemon= True
         process.start()
@@ -102,7 +180,7 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
                 # add the value, if j is prime char and previous char was not prime , then f value is added score
                 leading_prime = False
                 # temp_score = 16 ** ini_pr_ch if not score else score
-                temp_extra += 15 - addl_chars.find(j) # addl_chars string sorted from hi value char(15) to lowest.
+                temp_extra += 15 - addl_chars.find(j)  # addl_chars string sorted from hi value char(15) to lowest.
             else:
                 temp_score = 16 ** ini_pr_ch
                 temp_score += temp_extra
@@ -117,7 +195,7 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
 
 # run this function to start competing, to run, feed it the prime character, addl_chars, block header_dict,
 # expected leading prime chars and len of competition
-def start_competing(prime_char, addl_chars, block_header, exp_leading, len_competition):
+def start_competing(addl_chars, block_header, exp_leading, len_competition, prime_char="f"):
 
     v = threaded_compete(single_prime_char=prime_char,
                          exp_leading=exp_leading, block_header=block_header, len_competition=len_competition,
@@ -129,18 +207,44 @@ def start_competing(prime_char, addl_chars, block_header, exp_leading, len_compe
 
 
 if __name__ == '__main__':
+    gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
+    gen_block_creator_inst.set_before_competing()
 
-    data = genesis_block["block_header"]
+    merkle_root = gen_block_creator_inst.merkle_root
 
-    v = threaded_compete(single_prime_char='a', exp_leading=5, block_header=data, len_competition=90, addl_chars='edc')
-    print("v", v)
-    print("-")
+    gen_block_obj = gen_block_creator_inst.get_block()
+
+    block_header = gen_block_creator_inst.block_header_callable()
+    block_header.set_header_before_comepete(
+        primary_sig_wallet_id=gen_block_creator_inst.primary_sig_wallet_id,
+        merkle_root=merkle_root
+    )
+
+    winning_hash = threaded_compete_improved(
+        single_prime_char='f',
+        exp_leading=5,
+        block_header=block_header,
+        len_competition=15,
+        addl_chars=""
+    )
+
+    print(f"The winning hash is {winning_hash}")
+
+    block_header.block_hash = winning_hash["nonce"][1]
+    block_header.n = format(winning_hash["nonce"][0], "x")
+    print(block_header.get_block_header())
+
+    # data = genesis_block["block_header"]
+    #
+    # v = threaded_compete(single_prime_char='a', exp_leading=5, block_header=data, len_competition=90, addl_chars='edc')
+    # print("v", v)
+    # print("-")
+    # # print(data)
+    # data["nonce"] = format(v["nonce"][0], "x")
+    # data["block_hash"] = v["nonce"][1]
+    #
+    #
     # print(data)
-    data["nonce"] = format(v["nonce"][0], "x")
-    data["block_hash"] = v["nonce"][1]
-
-
-    print(data)
 
 
 

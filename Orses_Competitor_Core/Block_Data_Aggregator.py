@@ -71,8 +71,8 @@ def hex_to_int(hex_string):
 
 class BaseBlockHeader:
     def __init__(self):
-        self.block_no = None
-        self.block_hash = None
+        self.block_no = None  # hex number without the 0x
+        self.block_hash = None  # valid hash of block
         self.mrh = None  # Merkle root
         self.n = None  # nonce
         self.x_n = None  # extra nonce
@@ -196,14 +196,18 @@ class GenesisBlockHeader(BaseBlockHeader):
     def set_primary_signatory(self, primary_sig_wallet_id):
         self.p_s = primary_sig_wallet_id
 
-    def set_shuffled_hex_values(self):
-        # for genesis block there is no shuffle
-        hex_char = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
-        hex_char = {x+1: y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
+    # def set_shuffled_hex_values(self):
+    #     """
+    #     the shuffled hex value
+    #     :return:
+    #     """
+    #     # for genesis block there is no shuffle
+    #     hex_char = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
+    #     hex_char = {x+1: y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
+    #
+    #     self.shv = hex_char
 
-        self.shv = hex_char
-
-    def set_maximum_probability_target(self, prob_of_5_runnerups='P8+0'):
+    def set_maximum_probability_target(self, prob_of_5_runnerups='P6+0'):
         self.mpt = prob_of_5_runnerups  # for Genesis Block
 
 

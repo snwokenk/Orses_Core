@@ -26,58 +26,81 @@ def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, dict_of_valid_ha
         dict_of_valid_hash[hash_hex] = nonce
 
 
-def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash, starting_nonce, q,
-            len_competition=60):
+def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash, starting_nonce, q,
+                     len_competition=60):
     prime_char = single_prime_char.lower() * exp_leading
-    block_header["nonce"] = starting_nonce
-    # dict_of_valid_nonce_hash = dict()
+    nonce = starting_nonce
+    primary_signatory = block_header.p_s
+    merkle_root = block_header.mrh
+
     end_time = time.time() + len_competition
-    combined_merkle = f'{block_header["merkle_root"]}+{block_header["primary_signatory"]}'
+    combined_merkle = f'{merkle_root}+{primary_signatory}'
     while time.time() < end_time:
         get_qualified_hashes(
             prime_char=prime_char,
-            hash_hex=competitive_hasher(f'{combined_merkle}{block_header["nonce"]}'.encode()),
+            hash_hex=competitive_hasher(f'{combined_merkle}{nonce}'.encode()),
             dict_of_valid_hash=dict_of_valid_nonce_hash,
             len_prime_char=exp_leading,
-            nonce=block_header["nonce"]
+            nonce=nonce
         )
-        block_header["nonce"] += 1
+        nonce += 1
         # print(block_header["nonce"])
-    total_hashes = block_header["nonce"] - starting_nonce
+
+    total_hashes = nonce - starting_nonce
     print("done", os.getpid())
     q.put(total_hashes)
-
     return dict_of_valid_nonce_hash
 
 
-def threaded_compete(single_prime_char, addl_chars, exp_leading, block_header, len_competition=60):
+def threaded_compete_improved(single_prime_char, addl_chars, exp_leading, block_header, len_competition=60):
+    """
+
+    :param single_prime_char: the prime character
+    :param addl_chars: additional characters that can be used after the exp_leading
+    :param exp_leading: the expected number of times the single_prime_char appears
+    :param block_header: instance of GenesisBlockHeader
+    :param len_competition: int number of seconds for competition
+    :return:
+    """
+    # check number of cpu cores
     num_cpu = multiprocessing.cpu_count()
+
+    # create 2 threads per cpu
+    # todo: allow individual to set number of threads using intensity
     num_cpu = num_cpu * 2 if num_cpu >= 2 else num_cpu
+
     Process = multiprocessing.Process
+
+    # instantiate a manager class, for use in creating data structures that can be shared
     manager = multiprocessing.Manager()
+
+    # create a q object, this will block in main thread and receive the total number of hashes
     q = multiprocessing.Queue()
     total_hashes = 0
 
     process_list = []
     dict_of_valid_nonce_hash = manager.dict()
     starting_nonce = 0
-    for i in range(num_cpu):
-        process_list.append(Process(target=compete, args=(single_prime_char,exp_leading, copy.deepcopy(block_header),
-                                                          dict_of_valid_nonce_hash, starting_nonce, q,
-                                                          len_competition),))
-        starting_nonce += 10_000_000
+    for _ in range(num_cpu):
+        process_list.append(Process(target=compete_improved, args=(single_prime_char,exp_leading, block_header,
+                                                                   dict_of_valid_nonce_hash, starting_nonce, q,
+                                                                   len_competition),))
+        starting_nonce += 20_000_000
     for process in process_list:
-        process.daemon= True
+        process.daemon = True
         process.start()
     total_hashes += q.get()  # first hash process to be finished
     for i in range(num_cpu-1):
         print(i)
         total_hashes += q.get()  # remaining hashes
 
-    print("hash Per Second", total_hashes/len_competition)
+    dict_of_valid_nonce_hash = dict(dict_of_valid_nonce_hash)
+    print("hash Per Second: ", total_hashes/len_competition)
+    print("total hashes: ", total_hashes)
+    print("number of valid hashes: ", len(dict_of_valid_nonce_hash))
     # print(dict_of_valid_nonce_hash)
 
-    return choose_top_scoring_hash(single_prime_char, addl_chars, dict(dict_of_valid_nonce_hash), exp_leading)
+    return choose_top_scoring_hash(single_prime_char, addl_chars, dict_of_valid_nonce_hash, exp_leading)
 
 
 def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_leading):
@@ -124,13 +147,10 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
 # expected leading prime chars and len of competition
 def start_competing(prime_char, addl_chars, block_header, exp_leading, len_competition):
 
-    v = threaded_compete(single_prime_char=prime_char,
-                         exp_leading=exp_leading, block_header=block_header, len_competition=len_competition,
-                         addl_chars=addl_chars)
-
-    block_header["nonce"] = v["nonce"][0]
-
-    return block_header
+    winning_hash_dict = threaded_compete_improved(single_prime_char=prime_char,
+                                                  exp_leading=exp_leading, block_header=block_header, len_competition=len_competition,
+                                                  addl_chars=addl_chars)
+    return winning_hash_dict
 
 
 def generate_genesis_block():
@@ -150,7 +170,9 @@ def generate_genesis_block():
     print(f"in Orses_compete_algo: merkle root:  {merkle_root}")
     print(f"in Orses_compete_algo: block: {gen_block_obj.get_block()}")
 
-    print(f"in Orses_compete_algo: block_header: {block_header.__dict__}")
+    print(f"in Orses_compete_algo: block_header: {block_header.get_block_header()}")
+
+    # todo: before finishing up this, refactor compete process to be able to work with current block structure
 
 
 class Competitor:
