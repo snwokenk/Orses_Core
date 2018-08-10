@@ -1,8 +1,9 @@
 from hashlib import sha256
-import time, multiprocessing, os,  copy, queue
+import time, multiprocessing, os,  copy, queue, json
 from multiprocessing.queues import Queue
 from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
+from Orses_Util_Core.FileAction import FileAction
 """
 This file can be used to generate a genesis block for test, beta or live network
 And also contains compete algorithm
@@ -187,7 +188,7 @@ def start_competing(block_header, exp_leading=6, len_competition=30, single_prim
     return block_header
 
 
-def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char="f"):
+def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char="f", should_save=False):
     gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
     gen_block_creator_inst.set_before_competing()
 
@@ -229,7 +230,20 @@ def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_pr
 
     )
 
-    return gen_block_obj.get_block()
+    gen_block = gen_block_obj.get_block()
+
+    filename = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data", "0")
+
+    if should_save:
+        with open(filename, "w") as outfile:
+            json.dump(outfile, gen_block)
+        FileAction.save_json_into_file(
+            filename="0",
+            python_json_serializable_object=gen_block,
+            in_folder="Blockchain_Data"
+        )
+
+    return gen_block
 
 
 class Competitor:
@@ -251,6 +265,7 @@ class Competitor:
             q_for_validator: (multiprocessing.queues.Queue, queue.Queue),
     ):
 
+
         print(f"in Orses_compete_alog, Started Compete Process For admin: {self.admin_inst.admin_name}")
         recent_blk = q_for_compete.get()
         print(f"in Orses_compete_Algo, recent block:\n{recent_blk} admin: {self.admin_inst.admin_name}")
@@ -265,7 +280,9 @@ class Competitor:
 
 
 if __name__ == '__main__':
-    genesis_block = generate_genesis_block()
+
+    genesis_block = generate_genesis_block(should_save=False)
+
 
     print("\n\n")
     for x, y in genesis_block.items():
