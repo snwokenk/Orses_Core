@@ -166,12 +166,24 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
 
 # run this function to start competing, to run, feed it the prime character, addl_chars, block header_dict,
 # expected leading prime chars and len of competition
-def start_competing(prime_char, addl_chars, block_header, exp_leading, len_competition):
+def start_competing(block_header, exp_leading=6, len_competition=30, single_prime_char="f", addl_chars=""):
 
-    winning_hash_dict = threaded_compete_improved(single_prime_char=prime_char,
-                                                  exp_leading=exp_leading, block_header=block_header, len_competition=len_competition,
-                                                  addl_chars=addl_chars)
-    return winning_hash_dict
+    winning_hash = threaded_compete_improved(
+        single_prime_char=single_prime_char,
+        exp_leading=exp_leading,
+        block_header=block_header,
+        len_competition=len_competition,
+        addl_chars=addl_chars
+    )
+
+    print(f"The winning hash and nonce is {winning_hash}")
+
+    block_header.block_hash = winning_hash["nonce"][1]
+    block_header.n = format(winning_hash["nonce"][0][0], "x")
+    block_header.x_n = winning_hash["nonce"][0][1]
+    print(block_header.get_block_header())
+
+    return block_header
 
 
 def generate_genesis_block():
@@ -193,7 +205,14 @@ def generate_genesis_block():
 
     print(f"in Orses_compete_algo: block_header: {block_header.get_block_header()}")
 
-    # todo: before finishing up this, refactor compete process to be able to work with current block structure
+    final_block_header = start_competing(
+        block_header=block_header
+    )
+
+    gen_block_obj.set_after_compete(
+        block_header=final_block_header,
+
+    )
 
 
 class Competitor:
