@@ -77,7 +77,7 @@ class BaseBlockHeader:
         self.n = None  # nonce
         self.x_n = None  # extra nonce
         self.p_s = None  # primary signatory
-        self.p_h = None  # previous hashes of past 2 blocks
+
         self.mpt = None  # maximum probability target
         self.shv = None  # shuffled hex values
         self.time = int(time.time())  # time in hex value
@@ -113,9 +113,6 @@ class BaseBlockHeader:
 
     def set_primary_signatory(self, primary_signatory):
         self.p_s = primary_signatory
-
-    def set_previous_2_hashes(self, list_of_prev_2_hashes):
-        self.p_h = list_of_prev_2_hashes
 
     def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
 
@@ -180,6 +177,16 @@ class BaseBlockHeader:
             self.shv = hex_char
 
 
+class RegularBlockHeader(BaseBlockHeader):
+
+    def __init__(self):
+        super().__init__()
+        self.p_h = None  # previous hashes of past 2 blocks
+
+    def set_previous_2_hashes(self, list_of_prev_2_hashes):
+        self.p_h = list_of_prev_2_hashes
+
+
 class GenesisBlockHeader(BaseBlockHeader):
 
     def set_header_before_comepete(self, primary_sig_wallet_id, merkle_root):
@@ -188,7 +195,6 @@ class GenesisBlockHeader(BaseBlockHeader):
         self.set_shuffled_hex_values()
         self.set_maximum_probability_target()
         self.set_merkle_root(merkle_root=merkle_root)
-
 
     def set_block_no(self, block_number=0):
         self.block_no = format(0, "x")

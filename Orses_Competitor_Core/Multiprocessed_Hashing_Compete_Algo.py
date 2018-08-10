@@ -8,7 +8,7 @@ def competitive_hasher(enc_d):
     return sha256(sha256(enc_d).digest()).hexdigest()
 
 
-def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, dict_of_valid_hash, nonce):
+def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, dict_of_valid_hash, nonce, extra_nonce):
     """
     used to get hash meetimg maximum probability using prime char and addl character
     :param prime_char: a string of repeating hex character string of 0-9 or A-F
@@ -20,7 +20,8 @@ def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, dict_of_valid_ha
     :return:
     """
     if prime_char == hash_hex[:len_prime_char]:
-        dict_of_valid_hash[hash_hex] = nonce
+
+        dict_of_valid_hash[hash_hex] = [nonce, extra_nonce]
 
 
 def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash, starting_nonce, q,
@@ -46,27 +47,37 @@ def compete(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_ha
     return dict_of_valid_nonce_hash
 
 
-def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash, starting_nonce, q,
-                     len_competition=60):
+def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash,  q,
+                     extra_nonce_index, max_nonce_value, end_time):
     prime_char = single_prime_char.lower() * exp_leading
-    nonce = starting_nonce
+    nonce = 0
+    x_nonce = 0
     primary_signatory = block_header.p_s
     merkle_root = block_header.mrh
-
-    end_time = time.time() + len_competition
-    combined_merkle = f'{merkle_root}+{primary_signatory}'
+    print("starting nonce", nonce)
+    extra_nonce = f"{extra_nonce_index}_{x_nonce}"
+    combined_merkle = f'{extra_nonce}{merkle_root}+{primary_signatory}'
     while time.time() < end_time:
+
+        # check if nonce greater than max number (which is highest number of unsigned 64 bit integer or ((2**64) - 1)
+        if nonce > max_nonce_value:
+            nonce = 0
+            x_nonce += 1
+            extra_nonce = f"{extra_nonce_index}_{x_nonce}"
+            # if extra nonce is needed then add in combined merkle
+            combined_merkle = f'{extra_nonce}{merkle_root}+{primary_signatory}'
+
         get_qualified_hashes(
             prime_char=prime_char,
             hash_hex=competitive_hasher(f'{combined_merkle}{nonce}'.encode()),
             dict_of_valid_hash=dict_of_valid_nonce_hash,
             len_prime_char=exp_leading,
-            nonce=nonce
+            nonce=nonce,
+            extra_nonce=extra_nonce
         )
         nonce += 1
-        # print(block_header["nonce"])
 
-    total_hashes = nonce - starting_nonce
+    total_hashes = nonce if x_nonce is None else nonce + (max_nonce_value * x_nonce)
     print("done", os.getpid())
     q.put(total_hashes)
     return dict_of_valid_nonce_hash
@@ -101,11 +112,20 @@ def threaded_compete_improved(single_prime_char, addl_chars, exp_leading, block_
     process_list = []
     dict_of_valid_nonce_hash = manager.dict()
     starting_nonce = 0
-    for _ in range(num_cpu):
+
+    # this is the difference between each thread/process's starting nonce
+    starting_nonce_multiples = 20_000_000
+
+    max_nonce_value = 18_446_744_073_709_551_615  # max  number of 64 bit number of unsigned long long
+    end_time = time.time() + len_competition + 0.1  # add one tenth second for delay
+    for extra_nonce_index in range(num_cpu):
+
         process_list.append(Process(target=compete_improved, args=(single_prime_char,exp_leading, block_header,
-                                                          dict_of_valid_nonce_hash, starting_nonce, q,
-                                                          len_competition),))
-        starting_nonce += 20_000_000
+                                                                   dict_of_valid_nonce_hash, q,
+                                                                   extra_nonce_index, max_nonce_value,
+                                                                   end_time,)))
+        starting_nonce += starting_nonce_multiples
+
     for process in process_list:
         process.daemon = True
         process.start()
@@ -166,13 +186,13 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
     score = 0
     leading_dict = None
     print("type", type(dict_of_valid_hashes), dict_of_valid_hashes)
-    for i in dict_of_valid_hashes:
-        print(i)
+    for hash in dict_of_valid_hashes:
+        print(hash)
         temp_score = 0
         temp_extra = 0
         ini_pr_ch = initial_prime_char
         leading_prime = True
-        for j in i[exp_leading:]:
+        for j in hash[exp_leading:]:
             if j == prime_char and leading_prime:
                 # if j is prime and previous value was prime then j value is added n in 16^n.
                 ini_pr_ch += 1
@@ -185,10 +205,10 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
                 temp_score = 16 ** ini_pr_ch
                 temp_score += temp_extra
                 break
-        print("temp_score", temp_score, "score", score, "\n---")
+        # print("temp_score", temp_score, "score", score, "\n---")
         if temp_score > score:
             score = temp_score
-            leading_dict = {"nonce": [dict_of_valid_hashes[i], i], "score": "16/{}/{}".format(ini_pr_ch, temp_extra)}
+            leading_dict = {"nonce": [dict_of_valid_hashes[hash], hash], "score": "16/{}/{}".format(ini_pr_ch, temp_extra)}
 
     return leading_dict
 
@@ -210,14 +230,14 @@ if __name__ == '__main__':
     gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
     gen_block_creator_inst.set_before_competing()
 
-    merkle_root = gen_block_creator_inst.merkle_root
+    gen_merkle_root = gen_block_creator_inst.merkle_root
 
     gen_block_obj = gen_block_creator_inst.get_block()
 
     block_header = gen_block_creator_inst.block_header_callable()
     block_header.set_header_before_comepete(
         primary_sig_wallet_id=gen_block_creator_inst.primary_sig_wallet_id,
-        merkle_root=merkle_root
+        merkle_root=gen_merkle_root
     )
 
     winning_hash = threaded_compete_improved(
@@ -231,7 +251,8 @@ if __name__ == '__main__':
     print(f"The winning hash is {winning_hash}")
 
     block_header.block_hash = winning_hash["nonce"][1]
-    block_header.n = format(winning_hash["nonce"][0], "x")
+    block_header.n = format(winning_hash["nonce"][0][0], "x")
+    block_header.x_n = winning_hash["nonce"][0][1]
     print(block_header.get_block_header())
 
     # data = genesis_block["block_header"]

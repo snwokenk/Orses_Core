@@ -44,7 +44,7 @@ except VersionConflict as ee:
 
 else:
     print("All Required Packages Installed")
-
+# todo: in compete_algo_improved add extra nonce
 # todo: finish up generate_genesis_block function in Orses compete algo
 # todo: work on block creator, allowing to create a test genesis block, merkle root should include BCWs, pubkey of sig
 # todo: work on test compete algo and use to create block 1 and 2 for testing
