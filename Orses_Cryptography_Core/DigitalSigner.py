@@ -106,6 +106,7 @@ class DigitalSigner:
         elif isinstance(message, str):
             message = message.encode()
 
+        key = None
         try:
             key = ECC.construct(
                 curve="P-256",
@@ -113,8 +114,29 @@ class DigitalSigner:
                 point_y=dict_of_privkey_numbers["y"],
                 d=dict_of_privkey_numbers["d"]
             )
-        except KeyError:
-            return ''
+        except KeyError as e:  # does not have all required ECC attributes x, y and d for private key con
+            print(f"in digitalsigner.py: exception occured:\n{e}")
+
+        except AttributeError as e:  # x, y, d might are not ints.
+
+            if isinstance(dict_of_privkey_numbers["x"], str):
+                try:
+                    key = ECC.construct(
+                        curve="P-256",
+                        point_x=PKI.convert_dict_keys_to_int(dict_of_privkey_numbers["x"]),
+                        point_y=PKI.convert_dict_keys_to_int(dict_of_privkey_numbers["y"]),
+                        d=PKI.convert_dict_keys_to_int(dict_of_privkey_numbers["d"])
+                    )
+                except Exception as e:
+                    print(f"in digitalsigner.py: exception occured:\n{e}")
+            else:
+                print(f"in digitalsigner.py: exception occured:\n{e}")
+
+        except ValueError as e:  # the numbers provided do not represent a valid point on ECC curve
+            print(f"in digitalsigner.py: exception occured:\n{e}")
+
+        if key is None:
+            return None
 
         hash_of_message = SHA256.new(message)
 

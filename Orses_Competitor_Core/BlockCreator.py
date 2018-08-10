@@ -1,7 +1,6 @@
 from Orses_Competitor_Core.Block_Data_Aggregator import GenesisBlock, GenesisBlockHeader
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
-from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Crypto.Hash import SHA256
 from collections import Iterable
 from Orses_Util_Core.MerkleRootTree import OrsesMerkleRootTree
@@ -102,10 +101,7 @@ class GenesisBlockCreator:
         hash_id = Hasher.sha_hasher(data=data)
         list_of_hashes_for_merkle.append(hash_id)
 
-        # # include hash of primary wallet
-        # data = json.dumps(self.primary_sig_wallet_id).encode()
-        # hash_id = Hasher.sha_hasher(data=data)
-        # list_of_hashes_for_merkle.append(hash_id)
+
 
         print(list_of_hashes_for_merkle)
 

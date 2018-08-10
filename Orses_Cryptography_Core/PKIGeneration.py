@@ -22,6 +22,8 @@ class PKI:
         self.privkey_file = Filenames_VariableNames.priv_key_filename.format(username)
         self.pubkey_file = Filenames_VariableNames.pub_key_filename.format(username)
 
+
+
     def generate_pub_priv_key(self, save_in_folder=None, overwrite=False):
 
         if overwrite is False and self.load_pub_key():
@@ -152,6 +154,32 @@ class PKI:
 
         # if d is none returns pubkey
         return ECC.construct(curve="P-256", point_x=x, point_y=y, d=d)
+
+    @staticmethod
+    def convert_dict_keys_to_int(dict_with_x_y_d: dict):
+
+        new_key_dict = dict()
+        try:
+            for key_attr in dict_with_x_y_d:
+                new_key_dict[key_attr] = int.from_bytes(base64.b85decode(dict_with_x_y_d[key_attr].encode()), "big")
+        except AttributeError:  # key_attr must be a str
+            return None
+
+        else:
+            return new_key_dict
+
+    @staticmethod
+    def convert_dict_keys_to_str(self, dict_with_x_y_d: dict):
+
+        new_key_dict = dict()
+        try:
+            for key_attr in dict_with_x_y_d:
+                new_key_dict[key_attr] = int(key_attr).to_bytes(length=32, byteorder="big")
+        except AttributeError:  # key_attr must be an int
+            return None
+
+        else:
+            return new_key_dict
 
 
 

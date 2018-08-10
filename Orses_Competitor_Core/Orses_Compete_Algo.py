@@ -2,6 +2,7 @@ from hashlib import sha256
 import time, multiprocessing, os,  copy, queue
 from multiprocessing.queues import Queue
 from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator
+from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 """
 This file can be used to generate a genesis block for test, beta or live network
 And also contains compete algorithm
@@ -186,7 +187,7 @@ def start_competing(block_header, exp_leading=6, len_competition=30, single_prim
     return block_header
 
 
-def generate_genesis_block():
+def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char="f"):
     gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
     gen_block_creator_inst.set_before_competing()
 
@@ -206,13 +207,29 @@ def generate_genesis_block():
     print(f"in Orses_compete_algo: block_header: {block_header.get_block_header()}")
 
     final_block_header = start_competing(
-        block_header=block_header
+        block_header=block_header,
+        len_competition=len_of_competition,
+        exp_leading=exp_leading_prime,
+        single_prime_char=single_prime_char
     )
 
     gen_block_obj.set_after_compete(
-        block_header=final_block_header,
+        block_header=final_block_header.get_block_header(),
+        signature=DigitalSigner.sign_with_provided_privkey(
+            dict_of_privkey_numbers={
+                'x': 60785994004755780541968889462742035955235637618029604119657448498380482761088,
+                'y': 100309319245511545150569175878829989424599308092677960010907323326738383429364,
+                'd': 29950300400169917180358605208938775880760212514399944926857005417377480590100
+            },
+            message=final_block_header.block_hash
+        ),
+        list_of_secondary_signatories=["Wf2f140a956cec5cd6a1a6f7763378b239a007ac0",
+                                       "Wc8f7cc3576244c915e50e4410b988dfb6946f036"]
+
 
     )
+
+    return gen_block_obj.get_block()
 
 
 class Competitor:
@@ -248,4 +265,8 @@ class Competitor:
 
 
 if __name__ == '__main__':
-    generate_genesis_block()
+    genesis_block = generate_genesis_block()
+
+    print("\n\n")
+    for x, y in genesis_block.items():
+        print(x, ": ", y)
