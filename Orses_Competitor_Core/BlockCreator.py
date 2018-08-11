@@ -1,4 +1,4 @@
-from Orses_Competitor_Core.Block_Data_Aggregator import GenesisBlock, GenesisBlockHeader
+from Orses_Competitor_Core.Block_Data_Aggregator import GenesisBlock, GenesisBlockHeader, BlockOne, BlockOneHeader
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
 from Crypto.Hash import SHA256
@@ -15,6 +15,7 @@ class BaseBlockCreator:
         self.block = None
         self.block_header_callable = None
         self.merkle_root = None
+        self.primary_sig_wallet_id = primary_sig_wallet_id
 
     def get_block(self):
         return self.block
@@ -31,7 +32,20 @@ class NonGenesisBlockCreator(BaseBlockCreator):
         self.misc_msgs = dict()
 
     def compute_merkle(self):
-        pass
+        pass  # Override
+
+
+class BlockOneCreator(NonGenesisBlockCreator):
+    def __init__(self, primary_sig_wallet_id):
+        super().__init__(primary_sig_wallet_id)
+        self.block = BlockOne()
+        self.block_header_callable = BlockOneHeader
+
+    def set_before_competing(self, misc_msgs, transaction_dict):
+        self.block.set_before_competing(
+            misc_msgs=misc_msgs,
+            transaction_dict=transaction_dict
+        )
 
 
 class GenesisBlockCreator:

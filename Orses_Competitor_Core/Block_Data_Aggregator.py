@@ -68,6 +68,8 @@ https://en.bitcoin.it/wiki/Block
 def hex_to_int(hex_string):
     return int(hex_string, 16)
 
+# ****  Class Representing Block Headers  **** #
+
 
 class BaseBlockHeader:
     def __init__(self):
@@ -117,6 +119,43 @@ class BaseBlockHeader:
     def set_maximum_probability_target(self, probability_of_5_runnerups: Iterable):
 
         """
+
+
+        ******** READ FOR EXPLANATION *******
+        In Plain English a prob notation of an example P7+3:
+
+        for the P7:
+        means the prime character which is chosen randomly must appear 7 times in front of hash. if it was p8+3 it
+        would mean the prime character must appear 8 times and if it was p9+3 then it must appear 9 times. ie going with
+        the original example of p7+3 and assuming the prime character if 'f'
+        the first 7 characters of a 64 character sha256 hash would look like:
+        fffffff--
+
+        for the +3:
+        This means that after the initial required number of prime characters the characters after can include
+        the prime and 2 additional characters. if the example was p7+4 the prime char and 3 additional if the example
+        was p7+5 then prime char and 4 additional chars
+
+        using the original example of p7+3 with prime as f and assuming 2 additional char are 'e' and 'd'.
+        then valid hashes must start with:
+        fffffffd
+        fffffffe
+        ffffffff
+
+        Also as long as the character sequences arent broken, the probabilty score of each hash is added:
+
+        for example: assuming p7+3
+        hash of : fffffffeeeee OR fffffffffedeff will be calculated as sum of 16**7 power for the first 7 char and then
+                  (16/3)**5 (valid characters come up consecutively 5 times.
+
+        For the finding the probability valid characters must appear CONSECUTIVELY so a hash of fffffffdeaf will only
+        use fffffffde portion for probability calculations and ignore anything that comes after the 'a'
+
+
+        IN explaining this: IT is not common to see +1. to demonstrant p7+1 == p8+0
+
+        ********
+
         returns a string probability notation P{no of leading primes expected} + {no of chars allowed after leading primes}
 
         an example if probability notation is 'P7+6'
@@ -129,39 +168,66 @@ class BaseBlockHeader:
 
         The theoretical max of notation (no_of_prime_chars_req) p64+0 and the max of the (no_of_sec_chars_accepted) 15
 
-        :param probability_of_5_runnerups: list of top 5 lowest probability, lowest prob == greatest number.
+        :param probability_of_5_runnerups: list of top 5 lowest probability, lowest prob == greatest number. each item
+                                            is in a prob_notation ie 'p7+0' or 'p8+3' etc
         :return:
         """
+
+        def determine_probability_from_notation(prob_notation: str):
+
+            # remember P(whatever) + 1 is the same as P{whatever+1} + 0
+            # ie P7+1 == p8+0
+
+            temp_list = prob_notation.split(sep='+')
+            first_variable = int(temp_list[0][1:])
+            second_variable = int(temp_list[1])
+
+            prime_prob = 16 ** first_variable
+            addl_prop = (16 / second_variable) if 0 < second_variable < 16 else 0
+
+            return prime_prob * addl_prop if addl_prop > 0 else prime_prob
+
         try:
-            average = statistics.mean(probability_of_5_runnerups)
-            stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
-            minProb = min(probability_of_5_runnerups)
-        except statistics.StatisticsError:
-            return None
+            temp_list = [determine_probability_from_notation(prob_notation) for prob_notation in probability_of_5_runnerups]
+
+        except AttributeError as e:
+            print(f"error in {__file__}, might be prob_notation not str: {e}")
+        except ValueError as e:
+            print(f"error in {__file__}, might be prob_notation not in P(int)+(int) ie P7+3: {e}")
         else:
 
-            max_prob_targ = math.floor(average) - math.floor(stdv)
-            if max_prob_targ < minProb:
-                max_prob_targ = minProb  # might be a large number rep probabilitty  4294967296 = 1/4294967296
+            probability_of_5_runnerups = temp_list
 
-            # find log base 16 of max prob targ
-            mpt_log_base_16 = math.log(max_prob_targ, 16)
-
-            # subtract decimal and save both
-            decimal_log = mpt_log_base_16 - math.floor(mpt_log_base_16)
-
-            no_of_prime_chars_req = abs(mpt_log_base_16 - decimal_log)
-
-            if decimal_log > 0:
-                no_of_sec_chars_accepted = math.ceil(16/(16**decimal_log))
+            try:
+                average = statistics.mean(probability_of_5_runnerups)
+                stdv = statistics.pstdev(probability_of_5_runnerups, mu=average)
+                minProb = min(probability_of_5_runnerups)
+            except statistics.StatisticsError:
+                return None
             else:
-                no_of_sec_chars_accepted = 0
 
-            # turn to Orses notation
+                max_prob_targ = math.floor(average) - math.floor(stdv)
+                if max_prob_targ < minProb:
+                    max_prob_targ = minProb  # might be a large number rep probabilitty  4294967296 = 1/4294967296
 
-            prob_notation = f"P{int(no_of_prime_chars_req)}+{no_of_sec_chars_accepted}"
+                # find log base 16 of max prob targ
+                mpt_log_base_16 = math.log(max_prob_targ, 16)
 
-            return prob_notation
+                # subtract decimal and save both
+                decimal_log = mpt_log_base_16 - math.floor(mpt_log_base_16)
+
+                no_of_prime_chars_req = abs(mpt_log_base_16 - decimal_log)
+
+                if decimal_log > 0:
+                    no_of_sec_chars_accepted = math.ceil(16/(16**decimal_log))
+                else:
+                    no_of_sec_chars_accepted = 0
+
+                # turn to Orses notation
+
+                prob_notation = f"P{int(no_of_prime_chars_req)}+{no_of_sec_chars_accepted}"
+
+                return prob_notation
 
     def set_shuffled_hex_values(self):
         """
@@ -207,30 +273,30 @@ class GenesisBlockHeader(BaseBlockHeader):
     def set_primary_signatory(self, primary_sig_wallet_id):
         self.p_s = primary_sig_wallet_id
 
-    # def set_shuffled_hex_values(self):
-    #     """
-    #     the shuffled hex value
-    #     :return:
-    #     """
-    #     # for genesis block there is no shuffle
-    #     hex_char = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"]
-    #     hex_char = {x+1: y for x, y in enumerate(hex_char)}  # assign value to shuffled hex character
-    #
-    #     self.shv = hex_char
-
     def set_maximum_probability_target(self, prob_of_5_runnerups='P6+0'):
         self.mpt = prob_of_5_runnerups  # for Genesis Block
 
 
-class GenesisBlock:
+# **** Class Representing Blocks **** #
+
+
+class BaseBlock:
     def __init__(self):
         self.bh = None  # block header
-        self.vph = None  # validity protocol
-        self.tats = None  # token association transaction
-        self.bcws = None  # genesis blockchain connected wallets
         self.s_s = None  # secondary signatories
-        self.pubkey = None  # pubkey dict with x and y
+
+    def get_block(self):
+        return self.__dict__
+
+
+class GenesisBlock(BaseBlock):
+    def __init__(self):
+        super().__init__()
+        self.tats = None  # token association transaction
         self.sig = None  # b85 string
+        self.vph = None  # validity protocol
+        self.pubkey = None  # pubkey dict with x and y
+        self.bcws = None  # genesis blockchain connected wallets
 
     def set_after_compete(
             self,
@@ -283,9 +349,32 @@ class GenesisBlock:
 
         self.sig = signature
 
-    def get_block(self):
 
-        return self.__dict__
+class NonGenesisBlock(BaseBlock):
+
+    def __init__(self):
+        super().__init__()
+        self.tx = dict()
+        self.misc_msgs = dict()
+
+    def set_block_header(self, block_header):
+        self.bh = block_header
+
+    def set_txs(self, transaction_dict: dict):
+        self.tx = transaction_dict
+
+    def set_misc_msgs(self, misc_msgs: dict):
+        self.misc_msgs =  misc_msgs
+
+    def set_before_competing(self, transaction_dict, misc_msgs):
+        self.set_txs(transaction_dict=transaction_dict)
+        self.set_misc_msgs(misc_msgs=misc_msgs)
+
+
+class BlockOne(NonGenesisBlock):
+
+    def set_signatories_of_gen_block(self, signatories_list: list):
+        self.misc_msgs["gen_s_s"] = signatories_list
 
 
 if __name__ == '__main__':

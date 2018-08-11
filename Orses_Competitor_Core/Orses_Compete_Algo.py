@@ -1,13 +1,19 @@
 from hashlib import sha256
-import time, multiprocessing, os,  copy, queue, json
+import time, multiprocessing, os,  copy, queue, json, math
 from multiprocessing.queues import Queue
-from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator
+from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator, BlockOneCreator
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Orses_Util_Core.FileAction import FileAction
+from Orses_Cryptography_Core.Hasher import Hasher
 """
 This file can be used to generate a genesis block for test, beta or live network
 And also contains compete algorithm
 """
+
+
+def round_down_4_places(dec_num):
+
+    return math.floor(dec_num*10000)/10000
 
 
 def competitive_hasher(enc_d):
@@ -188,7 +194,68 @@ def start_competing(block_header, exp_leading=6, len_competition=30, single_prim
     return block_header
 
 
-def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char="f", should_save=False):
+def generate_block_one(transactions: dict, misc_msgs: dict, primary_sig_reward=15.8549,len_competiion=60, exp_leading_prime=7, signle_prime_char='f',
+                       should_save=False):
+    """
+
+    misc message structure:
+
+    {
+        “Client id”:{
+            “Hash”:{
+                purpose(optional): “”
+                Signature: “”,
+                Public key: “”,
+                Message: “”,
+                Time: int
+            }
+        }
+    }
+
+
+    :param reward: amount to reward primary signatories
+    :param len_competiion:
+    :param exp_leading_prime:
+    :param signle_prime_char:
+    :param should_save:
+    :return:
+    """
+
+
+    # set foundation reward
+    foundation_reward = round_down_4_places(primary_sig_reward*0.15)  # round
+
+    # bonus for including foundation reward
+    primary_sig_reward_bonus = round_down_4_places(foundation_reward/2)
+
+    # add bonus to main reward and round down to nearest 4 decimals ie 1.0000
+    primary_sig_reward = round_down_4_places(primary_sig_reward+primary_sig_reward_bonus)
+
+    # instantiate block one creator
+    block_one_creator_inst = BlockOneCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
+
+    primary_rwd_tx = {block_one_creator_inst.primary_sig_wallet_id: primary_sig_reward}
+    foundation_rwd_tx = {"fnd_rwd": foundation_reward}
+    rwd_txs = {
+        Hasher.sha_hasher(json.dumps(primary_rwd_tx)): primary_rwd_tx,
+        Hasher.sha_hasher(json.dumps(foundation_rwd_tx)): foundation_rwd_tx,
+
+    }
+
+    transactions["rwd_txs"] = rwd_txs
+
+    # set misc messages with top 10 signatories
+    # todo: set misc messages in compete
+
+    block_one_creator_inst.set_before_competing(
+        transaction_dict=transactions,
+        misc_msgs={
+            ""
+        }
+    )
+
+
+def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char='f', should_save=False):
     gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
     gen_block_creator_inst.set_before_competing()
 
@@ -250,6 +317,7 @@ class Competitor:
     def __init__(self, reward_wallet, admin_inst):
         self.admin_inst = admin_inst
         self.reward_wallet = reward_wallet
+        self.block_creator = None
 
     def get_recent_block(self):
         """
@@ -270,6 +338,7 @@ class Competitor:
         recent_blk = q_for_compete.get()
         print(f"in Orses_compete_Algo, recent block:\n{recent_blk} admin: {self.admin_inst.admin_name}")
         rwd_wallet = self.reward_wallet
+
 
         while True:
             rsp = q_for_compete.get()
