@@ -9,6 +9,31 @@ from Orses_Util_Core.MerkleRootTree import OrsesMerkleRootTree
 import json
 
 
+class BaseBlockCreator:
+
+    def __init__(self, primary_sig_wallet_id):
+        self.block = None
+        self.block_header_callable = None
+        self.merkle_root = None
+
+    def get_block(self):
+        return self.block
+
+    def compute_merkle(self):
+        pass  # override
+
+
+class NonGenesisBlockCreator(BaseBlockCreator):
+
+    def __init__(self, primary_sig_wallet_id):
+        super().__init__(primary_sig_wallet_id=primary_sig_wallet_id)
+        self.tx = dict()
+        self.misc_msgs = dict()
+
+    def compute_merkle(self):
+        pass
+
+
 class GenesisBlockCreator:
 
     def __init__(self, primary_sig_wallet_id):

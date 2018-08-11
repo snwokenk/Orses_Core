@@ -187,6 +187,11 @@ class RegularBlockHeader(BaseBlockHeader):
         self.p_h = list_of_prev_2_hashes
 
 
+class BlockOneHeader(BaseBlockHeader):
+    def __init__(self):
+        super().__init__()
+
+
 class GenesisBlockHeader(BaseBlockHeader):
 
     def set_header_before_comepete(self, primary_sig_wallet_id, merkle_root):

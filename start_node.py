@@ -14,6 +14,7 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 # using git: http://rogerdudler.github.io/git-guide/
 # https://stackoverflow.com/questions/19924104/python-multiprocessing-handling-child-errors-in-parent
+# https://docs.quantifiedcode.com/python-anti-patterns/index.html
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
@@ -355,7 +356,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_min
 
     # separate processes are created for competing nodes in the Main thread, these processes will wait for most
     # recent block to be sent before starting to actually compete.
-    #Todo: make the queue objects leading to each nodes competing process to be q objects of the node not main node
+
     for temp_node in node_dict["competing"]:
 
         node_compete_process = temp_node.run_compete_process(

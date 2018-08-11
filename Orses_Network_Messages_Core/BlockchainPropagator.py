@@ -156,10 +156,9 @@ class BlockChainPropagator:
             :param protocol_with_most_recent_block:
             :return:
             """
-            print(f"second_initial_setup, protocol with most recent is {protocol_with_most_recent_block}")
 
             if isinstance(protocol_with_most_recent_block, list) and len(protocol_with_most_recent_block) == 3 and \
-                    prop_inst.locally_known_block < protocol_with_most_recent_block[0]:
+                    prop_inst.locally_known_block < protocol_with_most_recent_block[2]:
                 print("reached here, in second inital, create req_block")
                 msg_sender_creator_for_one(
                     protocol_id=protocol_with_most_recent_block[0],  # [protocol id, convo_id, block_no known]
@@ -368,52 +367,6 @@ class BlockChainPropagator:
 
         print("In BlockchainPropagator.py convo manager ended")
 
-    def initiate_msg_to_protocol(self, type_of_msg_to_initiate, list_of_protocol_ids, *args):
-        """
-        used to send a message o either all the connected protocols or specific protocol(s)
-        :param type_of_msg_to_initiate:
-        :param list_of_protocol_ids:
-        :param args:
-        :return:
-        """
-
-        if type_of_msg_to_initiate == RequestNewBlock:
-            for i in list_of_protocol_ids:
-
-                while True:  # check if convo_id is taken, if it is check if convo has ended. If not try another
-                    convo_id = self.connected_protocols_dict[i][1]
-                    if convo_id in self.convo_dict[i] and \
-                            self.convo_dict[i][convo_id].end_convo is False:
-                        self.connected_protocols_dict[i][1] += 1
-                        continue
-                    self.connected_protocols_dict[i][1] += 1
-                    break
-
-                self.convo_dict[i][convo_id] = RequestNewBlock(
-                    blocks_to_receive=args[0],
-                    protocol=self.connected_protocols_dict[i][0],
-                    convo_id=convo_id,
-                    blockchainPropagatorInstance=self
-                )
-                self.convo_dict[i][convo_id].speak()
-
-        elif type_of_msg_to_initiate == RequestMostRecentBlockKnown:
-            for i in self.connected_protocols_dict:
-                while True:  # assign next available convo id to message
-                    convo_id = self.connected_protocols_dict[i][1]
-                    if convo_id in self.convo_dict[i] and \
-                                    self.convo_dict[i][convo_id].end_convo is False:
-                        self.connected_protocols_dict[i][1] += 1
-                        continue
-                    self.connected_protocols_dict[i][1] += 1
-                    break
-                self.convo_dict[i][convo_id] = RequestMostRecentBlockKnown(
-                    protocol= self.connected_protocols_dict[i][0],
-                    convo_id=convo_id,
-                    protocol_id=i,
-                    blockchainPropagatorInstance=self
-                )
-                self.convo_dict[i][convo_id].speak()
 
 
 def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, **kwargs):
@@ -764,7 +717,8 @@ class RequestNewBlock(BlockChainMessageSender):
                     self.end_convo = True  # end convo
 
                     # when convo is checked make sure
-                    if self.last_block_received >= self.expected_recent_block:
+                    if (isinstance(self.last_block_received, int) and isinstance(self.expected_recent_block, int)) and \
+                            self.last_block_received >= self.expected_recent_block:
                         self.propagator_inst.has_current_block = True
                     else:
                         self.propagator_inst.has_current_block = None
