@@ -15,6 +15,7 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 # using git: http://rogerdudler.github.io/git-guide/
 # https://stackoverflow.com/questions/19924104/python-multiprocessing-handling-child-errors-in-parent
 # https://docs.quantifiedcode.com/python-anti-patterns/index.html
+# https://opensource.guide/starting-a-project/
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
@@ -46,8 +47,9 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: work on test compete algo and use to create block 1 and 2 for testing
-# todo: use these test blocks to work on block valdators(txs with ties to prev block should be added)
+# todo: in compete() of Competitor class, figure out how to add store txs, wallet state hashes and misc msgs before
+# todo: block is created. This process should allow creation of empty dicts at start of a round and populate them
+# todo: during a round. The dict can be divided into fees, time etc
 
 # todo: even though multiprocessing is being used to to use twisted's Process Protocol
 # todo: https://twistedmatrix.com/documents/current/core/howto/process.html

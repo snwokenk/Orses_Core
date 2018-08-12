@@ -258,6 +258,7 @@ class BlockOneHeader(BaseBlockHeader):
         super().__init__()
 
 
+
 class GenesisBlockHeader(BaseBlockHeader):
 
     def set_header_before_comepete(self, primary_sig_wallet_id, merkle_root):
@@ -376,6 +377,11 @@ class BlockOne(NonGenesisBlock):
     def set_signatories_of_gen_block(self, signatories_list: list):
         self.misc_msgs["gen_s_s"] = signatories_list
 
+
+
+
+class RegularBlock(NonGenesisBlock):
+    pass
 
 if __name__ == '__main__':
     pass

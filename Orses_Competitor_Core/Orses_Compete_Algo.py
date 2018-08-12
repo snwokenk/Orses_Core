@@ -1,7 +1,7 @@
 from hashlib import sha256
 import time, multiprocessing, os,  copy, queue, json, math
 from multiprocessing.queues import Queue
-from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator, BlockOneCreator
+from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator, BlockOneCreator, RegularBlockCreator
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
@@ -194,6 +194,11 @@ def start_competing(block_header, exp_leading=6, len_competition=30, single_prim
     return block_header
 
 
+def generate_regular_block(transactions: dict, misc_msgs: dict, len_competiion: int, exp_leading_prime: int,
+                           signle_prime_char: str, should_save=False):
+    pass
+
+
 def generate_block_one(transactions: dict, misc_msgs: dict, primary_sig_reward=15.8549,len_competiion=60, exp_leading_prime=7, signle_prime_char='f',
                        should_save=False):
     """
@@ -326,6 +331,15 @@ class Competitor:
         :return:
         """
 
+    def create_empty_tx_dict(self):
+
+        transactions = dict()
+        transactions["ttx"] = dict()
+        transactions["rsv_req"] = dict()
+        transactions["rvk_req"] = dict()
+
+        return transactions
+
     def compete(
             self,
             q_for_compete: (multiprocessing.queues.Queue, queue.Queue),
@@ -333,12 +347,20 @@ class Competitor:
             q_for_validator: (multiprocessing.queues.Queue, queue.Queue),
     ):
 
-
         print(f"in Orses_compete_alog, Started Compete Process For admin: {self.admin_inst.admin_name}")
         recent_blk = q_for_compete.get()
         print(f"in Orses_compete_Algo, recent block:\n{recent_blk} admin: {self.admin_inst.admin_name}")
         rwd_wallet = self.reward_wallet
 
+        if "bh" in recent_blk and recent_blk["bh"]:
+            recent_block_no = int(recent_blk['bh']["block_no"])
+        else:
+            return
+
+        block_generator_callable = generate_regular_block if recent_block_no > 0 else generate_regular_block
+
+        tx_dict = self.create_empty_tx_dict()
+        misc_msgs = dict()
 
         while True:
             rsp = q_for_compete.get()
@@ -346,6 +368,8 @@ class Competitor:
             # rsp should be dictionary of transaction ie
             if isinstance(rsp, str) and rsp in {"exit", "quit"}:
                 break
+
+            print(f"in Orses_compete, msg sent: {rsp}")
 
 
 if __name__ == '__main__':
