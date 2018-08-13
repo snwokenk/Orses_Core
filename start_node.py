@@ -46,7 +46,8 @@ except VersionConflict as ee:
 
 else:
     print("All Required Packages Installed")
-
+# todo: rewrite what is sent to initiator an competitor process, rather than list, a dict should be sent
+# todo: this dict should have, main message
 # todo: in compete() of Competitor class, figure out how to add store txs, wallet state hashes and misc msgs before
 # todo: block is created. This process should allow creation of empty dicts at start of a round and populate them
 # todo: during a round. The dict can be divided into fees, time etc

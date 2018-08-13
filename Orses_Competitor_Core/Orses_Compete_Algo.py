@@ -352,6 +352,11 @@ class Competitor:
         print(f"in Orses_compete_Algo, recent block:\n{recent_blk} admin: {self.admin_inst.admin_name}")
         rwd_wallet = self.reward_wallet
 
+        reason_dict = dict()
+        reason_dict['b'] = "ttx"
+        reason_dict['c'] = "rsv_req"
+        reason_dict['d'] = "rvk_req"
+
         if "bh" in recent_blk and recent_blk["bh"]:
             recent_block_no = int(recent_blk['bh']["block_no"])
         else:
@@ -360,16 +365,37 @@ class Competitor:
         block_generator_callable = generate_regular_block if recent_block_no > 0 else generate_regular_block
 
         tx_dict = self.create_empty_tx_dict()
+        wsh_dict = dict()  # wallet state hash dictionary
         misc_msgs = dict()
 
         while True:
-            rsp = q_for_compete.get()
+            rsp = q_for_compete.get()  # [reason letter, main tx dict OR main block dict]
+
+            print(f"in Orses_compete, msg sent: {rsp}")
 
             # rsp should be dictionary of transaction ie
             if isinstance(rsp, str) and rsp in {"exit", "quit"}:
                 break
 
-            print(f"in Orses_compete, msg sent: {rsp}")
+            if rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block
+                pass
+            elif rsp[0] == "m":  # misc messages
+                misc_msgs[rsp[1]['msg_hash']] = rsp[1]['msg']
+
+            try:
+                tx_dict_key = reason_dict[rsp[0]]  #  either 'ttx', 'rsv_req' or 'rvk_req'
+                main_msg = rsp[1][tx_dict_key]
+                sig = rsp[1]['sig']
+                tx_dict[tx_dict_key][rsp[1]["tx_hash"]] = [main_msg, sig]
+            except KeyError as e:
+                print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
+                continue
+
+            print(tx_dict)
+
+
+
+
 
 
 if __name__ == '__main__':
