@@ -5,6 +5,8 @@ from Orses_Competitor_Core.BlockCreator import GenesisBlockCreator, BlockOneCrea
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
+from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
+
 """
 This file can be used to generate a genesis block for test, beta or live network
 And also contains compete algorithm
@@ -227,6 +229,7 @@ def generate_block_one(transactions: dict, misc_msgs: dict, primary_sig_reward=1
     """
 
 
+
     # set foundation reward
     foundation_reward = round_down_4_places(primary_sig_reward*0.15)  # round
 
@@ -323,13 +326,70 @@ class Competitor:
         self.admin_inst = admin_inst
         self.reward_wallet = reward_wallet
         self.block_creator = None
+        self.hex_value_to_time = self.set_hex_value_to_seconds()
 
-    def get_recent_block(self):
+    def set_hex_value_to_seconds(self):
+        return {
+            '0': 30,
+            '1': 30,
+            '2': 30,
+            '3': 30,
+            '4': 45,
+            '5': 45,
+            '6': 45,
+            '7': 45,
+            '8': 60,
+            '9': 60,
+            'a': 60,
+            'b': 60,
+            'c': 90,
+            'd': 90,
+            "e": 90,
+            'f': 90
+        }
+
+    def determine_time(self, block_before_recent_block_no: int, block_before_recent_block_header):
+        # to determine the time of current competition, must
+
+        if block_before_recent_block_no > 0:
+
+            try:
+                hex_value = block_before_recent_block_header["block_hash"][-1]
+            except TypeError:
+                print(f"in determine_time(), block_before_recent is not a dict but of type "
+                      f"{type(block_before_recent_block_header)}")
+            except KeyError as e:
+                print(f"block_before_recent is not a dict but of type "
+                      f"{type(block_before_recent_block_header)}")
+
+            else:
+                return self.hex_value_to_time[hex_value]
+
+        else:  # recent block is genesis block
+            return 60
+
+        return None
+
+
+    def determine_competition_len(self, block_before_recent_block_no: int, block_before_recent_block_header: dict):
+        time_len = self.determine_time(
+            block_before_recent_block_no=block_before_recent_block_no,
+            block_before_recent_block_header=block_before_recent_block_header
+        )
+        return  time_len
+
+
+
+    def get_block_before_recent_block(self, block_before_recent_block_no):
         """
         get recent block fromm CompetitorDataloading.py
         This should have been updated and being updated by Blockchainpropagator
         :return:
         """
+        return BlockChainData.get_block(
+            admin_instance=self.admin_inst,
+            block_no=block_before_recent_block_no
+        )
 
     def create_empty_tx_dict(self):
 
@@ -339,6 +399,37 @@ class Competitor:
         transactions["rvk_req"] = dict()
 
         return transactions
+
+    def handle_new_block(self, rsp, q_object_from_compete_process_to_mining):
+        recent_blk = rsp[1]
+        block_header = recent_blk["bh"]
+
+        block_before_recent_block_no = int(block_header["block_no"]) - 1
+        block_before_recent = self.get_block_before_recent_block(
+            block_before_recent_block_no=block_before_recent_block_no
+        )
+        block_before_recent_block_header = block_before_recent["bh"]
+        last_block_time = block_header["time"]
+        start_time = last_block_time + 7 # 7 second proxy window
+
+        end_time = start_time  + self.determine_competition_len(
+            block_before_recent_block_no=block_before_recent_block_no,
+            block_before_recent_block_header=block_before_recent_block_header
+        )
+
+        single_prime_char = block_header["shv"]['16']  # char at shuffled he
+
+
+
+        # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
+        # todo: for now q object will wait for 7 seconds
+        # todo: get transactions, misc messages, wallet hash state dicts
+        # todo: receive any extra messages and add to appropriated dict before start time
+        # todo: while generating block, allow for receiving of transactions/msgs for next competition
+
+
+        generate_regular_block()
+
 
     def compete(
             self,
@@ -377,21 +468,33 @@ class Competitor:
             if isinstance(rsp, str) and rsp in {"exit", "quit"}:
                 break
 
-            if rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block
+            elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block
+                # todo: add self.handle_new_block()
                 pass
+
             elif rsp[0] == "m":  # misc messages
-                misc_msgs[rsp[1]['msg_hash']] = rsp[1]['msg']
+                misc_msgs[rsp[1]['msg_hash']] = [rsp[1]['msg'], rsp[1]['sig'], rsp[1]['pubkey'], rsp[1]["time"],
+                                                 rsp[1]['purp'], rsp[1]["fee"]]
 
-            try:
-                tx_dict_key = reason_dict[rsp[0]]  #  either 'ttx', 'rsv_req' or 'rvk_req'
-                main_msg = rsp[1][tx_dict_key]
-                sig = rsp[1]['sig']
-                tx_dict[tx_dict_key][rsp[1]["tx_hash"]] = [main_msg, sig]
-            except KeyError as e:
-                print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
-                continue
+            elif rsp[0] == "wh":  # wallet hash states
+                pass
 
-            print(tx_dict)
+
+            elif rsp[0] == "a":  # assignment statements are not included directly
+                pass  # if a proxy and asgn_stmt involves a represented BCW
+
+            else:
+
+                try:
+                    tx_dict_key = reason_dict[rsp[0]]  #  either 'ttx', 'rsv_req' or 'rvk_req'
+                    main_msg = rsp[1][tx_dict_key]
+                    sig = rsp[1]['sig']
+                    tx_dict[tx_dict_key][rsp[1]["tx_hash"]] = [main_msg, sig]
+                except KeyError as e:
+                    print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
+                    continue
+
+                print(tx_dict)
 
 
 
