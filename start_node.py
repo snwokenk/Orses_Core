@@ -47,9 +47,15 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: when adding transactions etc to new block, verify it hasn't been added to prev block(not in merkle root)
+
 # todo: in compete() of Competitor class, figure out how to add store txs, wallet state hashes and misc msgs before
 # todo: block is created. This process should allow creation of empty dicts at start of a round and populate them
 # todo: during a round. The dict can be divided into fees, time etc
+
+
+# todo: token amounts should be represented in the smallest unit of Orses tokens or 'ntakiris'
+# todo: with 1 orses token == 10,000,000,000 (10 billion) ntakiris
 
 # todo: even though multiprocessing is being used to to use twisted's Process Protocol
 # todo: https://twistedmatrix.com/documents/current/core/howto/process.html
@@ -232,12 +238,20 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_min
     q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
     q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
     q_object_to_each_node = multiprocessing.Queue()  # for exit signal
+    q_object_from_compete_process_to_mining = multiprocessing.Queue()  # q between compete_process and handle_new_block
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and compete == 'y':
+
         competitor = Competitor(reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d", admin_inst=admin)
+        reactor.callInThread(
+            competitor.compete,
+            q_for_compete,
+            q_object_from_compete_process_to_mining
+
+        )
         p = multiprocessing.Process(
-            target=competitor.compete,
+            target=competitor.handle_new_block(),
             kwargs={
                 "q_for_compete": q_for_compete,
                 "q_for_validator": q_for_validator,

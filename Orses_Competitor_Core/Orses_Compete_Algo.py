@@ -19,6 +19,7 @@ def round_down_4_places(dec_num):
     return math.floor(dec_num*10000)/10000
 
 
+
 def competitive_hasher(enc_d):
     return sha256(sha256(enc_d).digest()).hexdigest()
 
@@ -199,12 +200,23 @@ def start_competing(block_header, exp_leading=6, len_competition=30, single_prim
 
 def generate_regular_block(transactions: dict, misc_msgs: dict, wsh: dict, len_competiion: int, exp_leading_prime: int,
                            single_prime_char: str, should_save=False):
-    pass
+
+    return {}
 
 
-def generate_block_one(transactions: dict, misc_msgs: dict, primary_sig_reward=15.8549,len_competiion=60, exp_leading_prime=7, signle_prime_char='f',
+def generate_block_one(transactions: dict, misc_msgs: dict, fees: float, primary_sig_reward=951293759460,len_competiion=60, exp_leading_prime=7, signle_prime_char='f',
                        should_save=False):
     """
+
+    1 Orses Token = 10,000,000,000 ntakiri
+    default primary sig reward is 2.5 billion * 0.02 == 50 million Orses Token
+    assuming number of minutes  in a year (365 * 1440) ~ 525600
+    and number of seconds is 525600 * 60  == 31536000
+
+    reward per second is (50,000,000 * 10,000,000,000)/31536000 = 15854895991 ntakiri   # rounded down
+
+    block one will have a set length of 60 seconds (because it has no block before recent) so
+    block one reward is = 951293759460 Orses ntakiri or 95.129375946 Orses' token
 
     misc message structure:
 
@@ -232,13 +244,13 @@ def generate_block_one(transactions: dict, misc_msgs: dict, primary_sig_reward=1
 
 
     # set foundation reward
-    foundation_reward = round_down_4_places(primary_sig_reward*0.15)  # round
+    foundation_reward = primary_sig_reward*0.15  # round
 
     # bonus for including foundation reward
-    primary_sig_reward_bonus = round_down_4_places(foundation_reward/2)
+    primary_sig_reward_bonus = math.floor(foundation_reward/2)
 
     # add bonus to main reward and round down to nearest 4 decimals ie 1.0000
-    primary_sig_reward = round_down_4_places(primary_sig_reward+primary_sig_reward_bonus)
+    primary_sig_reward = primary_sig_reward+primary_sig_reward_bonus
 
     # instantiate block one creator
     block_one_creator_inst = BlockOneCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
@@ -342,6 +354,18 @@ class TxMiscWsh:
     def get_tx_misc_msg_wsh_dicts(self):
         return self.tx, self.misc_msgs, self.wsh
 
+    def add_to_misc_msg(self, msg_hash, msg):
+        self.misc_msgs[msg_hash] = msg
+
+    def add_to_txs(self, type_of_tx, tx_hash, tx):
+        if type_of_tx in {"ttx", "rsv_req", "rvk_req"}:
+            self.txs[type_of_tx][tx_hash] = tx
+        else:
+            print(f"in Orses_Compete_Algo.py: in add_to_txs, type_of_tx NOT VALID")
+
+    def add_to_wsh(self, wsh_hash, wsh_dict):
+        self.wsh[wsh_hash] = wsh_dict
+
 
 class Competitor:
     def __init__(self, reward_wallet, admin_inst):
@@ -392,15 +416,12 @@ class Competitor:
 
         return None
 
-
     def determine_competition_len(self, block_before_recent_block_no: int, block_before_recent_block_header: dict):
         time_len = self.determine_time(
             block_before_recent_block_no=block_before_recent_block_no,
             block_before_recent_block_header=block_before_recent_block_header
         )
-        return  time_len
-
-
+        return time_len
 
     def get_block_before_recent_block(self, block_before_recent_block_no):
         """
@@ -451,7 +472,9 @@ class Competitor:
         #
         pass
 
-    def handle_new_block(self, rsp, q_object_from_compete_process_to_mining, q_for_compete, tx_misc_wsh: TxMiscWsh, pause_time=7):
+    def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
+                         generating_block: multiprocessing.synchronize.Event,
+                         received_new_block: multiprocessing.synchronize.Event, pause_time=7):
 
         # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
         # todo: for now q object will wait for 7 seconds
@@ -459,8 +482,12 @@ class Competitor:
         # todo: receive any extra messages and add to appropriated dict before start time
         # todo: while generating block, allow for receiving of transactions/msgs for next competition
 
-        block_being_generated = False
-        start_time, len_of_competition, single_prime_char, exp_leading_prime = self.get_new_block_arguments(rsp=rsp, pause_time=pause_time)
+        start_time, len_of_competition, single_prime_char, exp_leading_prime = None, None, None, None
+        tx_misc_wsh = None
+
+        # None == has not generated block or Just finished generating
+        # False == received a recent block and is waiting for start time, during will received random signed bytes
+        # True means
 
         while True:
             try:
@@ -469,14 +496,45 @@ class Competitor:
                 pass
             else:
 
-                if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
+                if isinstance(rsp, str) and rsp in {'exit', 'quit'}:  # exit signal to stop program
                     break
-                elif isinstance(rsp, list):
-                    pass
-                if time.time() > start_time and not block_being_generated:
+                elif isinstance(rsp, list) and len(rsp) >= 2:
 
-                    # todo: this should be in a separate process (not thread)
-                    generate_regular_block(
+                    if rsp[0] == "bcb":  # new block! new arguments  ['bcb', block, class_holding tx_misc, wsh]
+                        start_time, len_of_competition, single_prime_char, exp_leading_prime = \
+                            self.get_new_block_arguments(rsp=rsp, pause_time=pause_time)
+
+                        tx_misc_wsh = rsp[2]
+
+                    elif rsp[0] == 'm':  # rsp == ['m', msg hash, misc_msg_list]
+                        try:
+                            tx_misc_wsh.add_to_misc_msg(
+                                msg_hash=rsp[1],
+                                msg=rsp[2]
+                            )
+                        except AttributeError as e: # tx_misc_wsh is still None
+                            print(f"tx_misc_wsh is still none: {e}")
+
+                    elif rsp[0] =="wsh":
+                        pass
+
+                    else:  # rsp SHOULD represent a transaction rsp == [tx_type, tx_hash, [main_msg, sig]]
+
+                        tx_misc_wsh.add_to_txs(
+                            type_of_tx=rsp[0],
+                            tx_hash=rsp[1],
+                            tx=rsp[2]
+                        )
+
+                # todo: implement this later:
+                # todo: if 5 random bytes already received changed to and (time.time() >= start_time or random_received => 5)
+                if generating_block.is_set() is False and time.time() >= start_time:
+
+                    # generating block is and instance of muliprocessing.Event()
+                    generating_block.set()
+
+                    # ***** this is a blocking code  **** #
+                    just_created_block = generate_regular_block(
                         exp_leading_prime=exp_leading_prime,
                         len_competiion=len_of_competition,
                         single_prime_char=single_prime_char,
@@ -485,14 +543,26 @@ class Competitor:
                         wsh=tx_misc_wsh.wsh
 
                     )
-                    block_being_generated = True
+
+                    # once done clear event object (becomes false) to notify compete_process
+                    generating_block.clear()
+                    received_new_block.clear()
+
+                    # todo: when new block is created, send block to blockchainPropagatorInitiator process
+                    # todo: this is done by sending using validator to blockchain queue ie q_for_block_validator
+
+
+                    print(f"just created block: ")
+                    q_for_block_validator.put(["nb", just_created_block])
+
 
 
     def compete(
             self,
             q_for_compete: (multiprocessing.queues.Queue, queue.Queue),
-            q_from_bk_propagator: (multiprocessing.queues.Queue, queue.Queue),
-            q_for_validator: (multiprocessing.queues.Queue, queue.Queue),
+            q_object_from_compete_process_to_mining: (multiprocessing.queues.Queue, queue.Queue),
+            generating_block: multiprocessing.synchronize.Event,
+            received_new_block: multiprocessing.synchronize.Event,
     ):
 
         print(f"in Orses_compete_alog, Started Compete Process For admin: {self.admin_inst.admin_name}")
@@ -510,14 +580,12 @@ class Competitor:
         else:
             return
 
-        # block_generator_callable = generate_regular_block if recent_block_no > 0 else generate_regular_block
-        # todo turn tx_dict, wsh_dict and misc_msgs to instance variables of a class, this would allow sharing
-        # todo: between threads and updating of dicts even when queue object of thread is waiting
+        # these dicts will be used to
         tx_dict = self.create_empty_tx_dict()
         wsh_dict = dict()  # wallet state hash dictionary
         misc_msgs = dict()
 
-        q_object_from_compete_process_to_mining = multiprocessing.Queue()
+        # q_object_from_compete_process_to_mining = multiprocessing.Queue()
 
         while True:
             rsp = q_for_compete.get()  # [reason letter, main tx dict OR main block dict]
@@ -528,51 +596,75 @@ class Competitor:
             if isinstance(rsp, str) and rsp in {"exit", "quit"}:
                 break
 
-            elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block,
+            elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block]
+                received_block_no = int(rsp[1]['bh']["block_no"])
+                try:
+                    assert received_block_no == recent_block_no+1
+                except AssertionError as e:
+                    print(f'error in compete(): {e}')
+                    break
 
-                # instantial class with existing txs, misc_msg and wsh. this is passed to self.handle_new_block()
+                recent_block_no = received_block_no
+
+                # instantiate class with existing txs, misc_msg and wsh. this is passed to self.handle_new_block()
                 tx_misc_wsh = TxMiscWsh(
                     txs=tx_dict,
                     misc_msgs=misc_msgs,
                     wsh=wsh_dict
                 )
-                #todo: this should run in a separate thread
-                self.handle_new_block(
-                    rsp=rsp,
-                    q_object_from_compete_process_to_mining=q_object_from_compete_process_to_mining,
-                    q_for_compete=q_for_compete,
-                    tx_misc_wsh=tx_misc_wsh
-                )
+                rsp.append(tx_misc_wsh)  # rsp == ['bcb', block, tx_misc_wsh]
 
-            elif rsp[0] == "m":  # misc messages
-                misc_msgs[rsp[1]['msg_hash']] = [rsp[1]['msg'], rsp[1]['sig'], rsp[1]['pubkey'], rsp[1]["time"],
-                                                 rsp[1]['purp'], rsp[1]["fee"]]
-
-            elif rsp[0] == "wh":  # wallet hash states
-                pass
+                # set received block to true, will divert any r
 
 
-            elif rsp[0] == "a":  # assignment statements are not included directly
-                pass  # if a proxy and asgn_stmt involves a represented BCW
+                # reset block dicts dicts
+                tx_dict = self.create_empty_tx_dict()
+                wsh_dict = dict()  # wallet state hash dictionary
+                misc_msgs = dict()
+                q_object_from_compete_process_to_mining.put(rsp)
 
             else:
+                if rsp[0] == "a":  # assignment statements are not included directly
 
-                try:
-                    tx_dict_key = reason_dict[rsp[0]]  #  either 'ttx', 'rsv_req' or 'rvk_req'
-                    main_msg = rsp[1][tx_dict_key]
-                    sig = rsp[1]['sig']
-                    tx_dict[tx_dict_key][rsp[1]["tx_hash"]] = [main_msg, sig]
-                except KeyError as e:
-                    print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
-                    continue
+                    #todo:  create a process which hangles proxy duties (if any) of BCW,
+                    print(f"received an assignment statement, But BCW logic not yet implemented:\n{rsp}")
+                    pass
 
-                print(tx_dict)
+                elif rsp[0] == "m":  # misc messages
+
+                    misc_m = [rsp[1]['msg'], rsp[1]['sig'], rsp[1]['pubkey'], rsp[1]["time"],
+                                                     rsp[1]['purp'], rsp[1]["fee"]]
+
+                    # if new block has been received but next block not being generated,
+                    if received_new_block.is_set() is True and generating_block.is_set() is False:
+                        q_object_from_compete_process_to_mining.put(['m', rsp[1]['msg_hash'], misc_m])
+
+                    else:  # if new block has been received but
+                        misc_msgs[rsp[1]['msg_hash']] = misc_msgs
+
+                elif rsp[0] == "wh":  # wallet hash states
+                    pass
+
+                else:  # transaction message
+                    # todo: when checking transaction messages, check for fees
+                    try:
+                        tx_dict_key = reason_dict[rsp[0]]  #  either 'ttx', 'rsv_req' or 'rvk_req'
+                        main_msg = rsp[1][tx_dict_key]
+                        sig = rsp[1]['sig']
+
+                        if received_new_block.is_set() is True and generating_block.is_set() is False:
+                            q_object_from_compete_process_to_mining.put(
+                                [tx_dict_key, rsp[1]["tx_hash"], [main_msg, sig]]
+                            )
+                        else:
+                            tx_dict[tx_dict_key][rsp[1]["tx_hash"]] = [main_msg, sig]
+                    except KeyError as e:
+                        print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
+                        continue
+
+                    print(tx_dict)
 
         print("in Orses_Compete_Algo: Compete, process done")
-
-
-
-
 
 
 if __name__ == '__main__':
