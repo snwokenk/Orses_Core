@@ -7,7 +7,7 @@ from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
 
-import multiprocessing, queue, shutil, os, time
+import multiprocessing, queue, shutil, os, time, threading
 
 
 class DummyAdminNode(DummyNode):
