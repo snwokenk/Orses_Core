@@ -28,6 +28,11 @@ class DummyAdminNode(DummyNode):
         self.q_for_compete = multiprocessing.Queue() if self.is_competitor is True else None
         self.q_for_validator = multiprocessing.Queue()
         self.q_for_bk_propagate = multiprocessing.Queue()
+        self.q_object_from_compete_process_to_mining = multiprocessing.Queue()
+        self.q_for_block_validator = multiprocessing.Queue()
+        self.is_generating_block = multiprocessing.Event()
+        self.has_received_new_block = multiprocessing.Event()
+        self.competitor = Competitor(reward_wallet="Wf693c7655fa6c49b3b28e2ac3394944c43d369cc", admin_inst=self.admin)
 
     def copy_important_files(self):
         path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Default_Addresses_Sandbox")
@@ -65,23 +70,34 @@ class DummyAdminNode(DummyNode):
         # response_thread = threads.deferToThread(temp)  # deffering blocking function to thread
         # response_thread.addCallback(lambda x: print(f"{self.admin.admin_name} is Stopped"))
 
-    def run_compete_process(self, q_for_compete, q_for_validator, q_for_bk_propagate):
+    def run_mining_thread_for_dummyNode(self):
+        if self.admin.isCompetitor is True:
+
+            self.reactor.callInThread(
+                self.competitor.handle_new_block,
+                q_object_from_compete_process_to_mining=self.q_object_from_compete_process_to_mining,
+                q_for_block_validator=self.q_for_block_validator,
+                is_generating_block=self.is_generating_block,
+                has_received_new_block=self.has_received_new_block
+            )
+
+    def run_compete_thread(self):
 
         if self.admin.isCompetitor is True:
-            competitor = Competitor(reward_wallet="Wf693c7655fa6c49b3b28e2ac3394944c43d369cc", admin_inst=self.admin)
-            p = multiprocessing.Process(
-                target=competitor.compete,
-                kwargs={
-                    "q_for_compete": q_for_compete,
-                    "q_for_validator": q_for_validator,
-                    "q_from_bk_propagator": q_for_bk_propagate
-                }
+
+            self.reactor.callInThread(
+                self.competitor.compete,
+                q_for_compete=self.q_for_compete,
+                q_object_from_compete_process_to_mining=self.q_object_from_compete_process_to_mining,
+                is_generating_block=self.is_generating_block,
+                has_received_new_block=self.has_received_new_block
 
             )
-            p.daemon = True
-            p.start()
 
-            return p
+            # run the mining thread, main node will use multiprocessing but dummy nodes use threads
+            self.run_mining_thread_for_dummyNode()
+
+            return True
 
     def run_node(self, real_reactor_instance, q_object_to_each_node: multiprocessing.Queue, reg_network_sandbox=True, compete_process=None):
         """
@@ -101,9 +117,10 @@ class DummyAdminNode(DummyNode):
         q_for_validator = self.q_for_validator
         q_for_propagate = multiprocessing.Queue()
         q_for_bk_propagate = self.q_for_bk_propagate
-        q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
+        q_for_block_validator = self.q_for_block_validator  # between block validators and block propagators
         q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
         q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
+        q_object_from_compete_process_to_mining = self.q_object_from_compete_process_to_mining
 
         # start compete(mining) process, if admin.isCompetitor is True. No need to check compete for virtual node
         print(f"in DummyAdminNode, is admin competitor {self.admin.isCompetitor}")

@@ -355,8 +355,9 @@ class NonGenesisBlock(BaseBlock):
 
     def __init__(self):
         super().__init__()
-        self.tx = dict()
-        self.misc_msgs = dict()
+        self.tx = None
+        self.misc_msgs = None
+        self.wsh = None
 
     def set_block_header(self, block_header):
         self.bh = block_header
@@ -367,9 +368,13 @@ class NonGenesisBlock(BaseBlock):
     def set_misc_msgs(self, misc_msgs: dict):
         self.misc_msgs =  misc_msgs
 
-    def set_before_competing(self, transaction_dict, misc_msgs):
+    def set_wsh_dict(self, wsh):
+        self.wsh = wsh
+
+    def set_before_competing(self, transaction_dict, misc_msgs, wsh):
         self.set_txs(transaction_dict=transaction_dict)
         self.set_misc_msgs(misc_msgs=misc_msgs)
+        self.set_wsh_dict(wsh=wsh)
 
 
 class BlockOne(NonGenesisBlock):

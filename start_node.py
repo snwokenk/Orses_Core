@@ -243,22 +243,36 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_min
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and compete == 'y':
 
+        # multiprocessing event objects
+        is_generating_block = multiprocessing.Event()
+        has_received_new_block = multiprocessing.Event()
+
+        # instantiate the competitor class
         competitor = Competitor(reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d", admin_inst=admin)
+
+        # start compete thread using twisted reactor's thread
         reactor.callInThread(
             competitor.compete,
-            q_for_compete,
-            q_object_from_compete_process_to_mining
+            q_for_compete=q_for_compete,
+            q_object_from_compete_process_to_mining=q_object_from_compete_process_to_mining,
+            is_generating_block=is_generating_block,
+            has_received_new_block=has_received_new_block
 
         )
+
+        # start process for actual hashing
         p = multiprocessing.Process(
-            target=competitor.handle_new_block(),
+            target=competitor.handle_new_block,
             kwargs={
-                "q_for_compete": q_for_compete,
-                "q_for_validator": q_for_validator,
-                "q_from_bk_propagator": q_for_bk_propagate
+                "q_object_from_compete_process_to_mining": q_object_from_compete_process_to_mining,
+                "q_for_block_validator": q_for_block_validator,
+                "is_generating_block": is_generating_block,
+                "has_received_new_block": has_received_new_block
+
             }
 
         )
+
         p.daemon = True
         p.start()
 
@@ -375,11 +389,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_min
 
     for temp_node in node_dict["competing"]:
 
-        node_compete_process = temp_node.run_compete_process(
-            q_for_compete=temp_node.q_for_compete,
-            q_for_validator=temp_node.q_for_validator,
-            q_for_bk_propagate=temp_node.q_for_bk_propagate
-        )
+        node_compete_process = temp_node.run_compete_thread()
 
         reactor.callInThread(
 

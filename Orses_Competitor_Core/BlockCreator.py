@@ -41,11 +41,11 @@ class BlockOneCreator(NonGenesisBlockCreator):
         self.block = BlockOne()
         self.block_header_callable = BlockOneHeader
 
-
-    def set_before_competing(self, misc_msgs, transaction_dict):
+    def set_before_competing(self, wsh, misc_msgs, transaction_dict):
         self.block.set_before_competing(
             misc_msgs=misc_msgs,
-            transaction_dict=transaction_dict
+            transaction_dict=transaction_dict,
+            wsh=wsh
         )
 
 
