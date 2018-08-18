@@ -257,11 +257,18 @@ class BlockOneHeader(BaseBlockHeader):
     def __init__(self):
         super().__init__()
 
+    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root):
+        self.set_block_no(block_number=1)
+        self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
+        self.set_shuffled_hex_values()
+        self.set_maximum_probability_target('p6+0')
+        self.set_merkle_root(merkle_root=merkle_root)
 
 
 class GenesisBlockHeader(BaseBlockHeader):
 
-    def set_header_before_comepete(self, primary_sig_wallet_id, merkle_root):
+
+    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root):
         self.set_block_no()
         self.set_primary_signatory(primary_sig_wallet_id=primary_sig_wallet_id)
         self.set_shuffled_hex_values()

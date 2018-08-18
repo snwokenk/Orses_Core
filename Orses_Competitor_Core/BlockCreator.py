@@ -36,10 +36,11 @@ class NonGenesisBlockCreator(BaseBlockCreator):
 
 
 class BlockOneCreator(NonGenesisBlockCreator):
-    def __init__(self, primary_sig_wallet_id):
+    def __init__(self, primary_sig_wallet_id, combined_list):
         super().__init__(primary_sig_wallet_id)
         self.block = BlockOne()
         self.block_header_callable = BlockOneHeader
+        self.merkle_root = self.compute_merkle(combined_list=combined_list)
 
     def set_before_competing(self, wsh, misc_msgs, transaction_dict):
         self.block.set_before_competing(
@@ -47,6 +48,14 @@ class BlockOneCreator(NonGenesisBlockCreator):
             transaction_dict=transaction_dict,
             wsh=wsh
         )
+
+    def compute_merkle(self, combined_list=None):
+
+        o = OrsesMerkleRootTree(items=combined_list)
+        o.create_merkle_tree()
+
+        return o.get_merkle_root()
+
 
 
 class RegularBlockCreator(NonGenesisBlockCreator):
@@ -144,8 +153,6 @@ class GenesisBlockCreator:
         data = json.dumps(self.pubkey).encode()
         hash_id = Hasher.sha_hasher(data=data)
         list_of_hashes_for_merkle.append(hash_id)
-
-
 
         print(list_of_hashes_for_merkle)
 

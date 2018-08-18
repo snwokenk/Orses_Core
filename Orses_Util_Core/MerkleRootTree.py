@@ -39,6 +39,28 @@ class OrsesMerkleRootTree:
 
     def __init__(self, items: Iterable):
 
+        """
+        TO CREATE MERKLE TREE AND GET MERKLE ROOT:
+        list1 = ["fae", "cef12", .....]
+        o = OrsesMerkleRootTree(items=list1)
+        o.create_merkle_tree()
+        merkle_root = o.get_merkle_root()
+
+
+        TO GET PROOF LIST (TO VERIFY A HASH IS PART OF THE MERKLE TREE):
+        proof list = o.get_branch_for_proof(hash_needed_to_prove)
+
+
+        TO VALIDATE HASH USING PROOF LIST AND MERKLE ROOT
+        is_part = OrsesMerkleRootTree.validate_branch_for_proof(hash_needed_to_prove, proof_list, merkle_root)
+
+        if hash part of merkle root 'is_part' is  True else False
+
+
+
+        :param items:
+        """
+
         # the tree leafs
         self.items_to_include_in_tree = items
 

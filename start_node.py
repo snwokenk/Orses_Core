@@ -47,6 +47,8 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: in the compete_process, add txs, wsh, etc using the TxMiscWsh methods
+# todo: in order to speed up merkle root creation, propagation and verification, dicts might be turned to list
 # todo: when adding transactions etc to new block, verify it hasn't been added to prev block(not in merkle root)
 
 # todo: in compete() of Competitor class, figure out how to add store txs, wallet state hashes and misc msgs before
