@@ -1,4 +1,5 @@
 from Orses_Competitor_Core.Block_Data_Aggregator import GenesisBlock, GenesisBlockHeader, BlockOne, BlockOneHeader
+from Orses_Competitor_Core.Block_Data_Aggregator import RegularBlock, RegularBlockHeader
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
 from Crypto.Hash import SHA256
@@ -40,13 +41,15 @@ class BlockOneCreator(NonGenesisBlockCreator):
         super().__init__(primary_sig_wallet_id)
         self.block = BlockOne()
         self.block_header_callable = BlockOneHeader
+        self.merkle_tree = None
         self.merkle_root = self.compute_merkle(combined_list=combined_list)
 
-    def set_before_competing(self, wsh, misc_msgs, transaction_dict):
+    def set_block_before_competing(self, wsh, misc_msgs, transaction_dict, secondary_signatories):
         self.block.set_before_competing(
             misc_msgs=misc_msgs,
             transaction_dict=transaction_dict,
-            wsh=wsh
+            wsh=wsh,
+            secondary_signatories=secondary_signatories # secondary signatories is blank
         )
 
     def compute_merkle(self, combined_list=None):
@@ -54,12 +57,38 @@ class BlockOneCreator(NonGenesisBlockCreator):
         o = OrsesMerkleRootTree(items=combined_list)
         o.create_merkle_tree()
 
+        self.merkle_tree = o
+
         return o.get_merkle_root()
 
 
 
 class RegularBlockCreator(NonGenesisBlockCreator):
-    pass
+
+    def __init__(self, primary_sig_wallet_id, combined_list):
+
+        super().__init__(primary_sig_wallet_id=primary_sig_wallet_id)
+
+        self.block = RegularBlock()
+        self.block_header_callable = RegularBlockHeader()
+        self.merkle_tree = None
+        self.merkle_root = self.compute_merkle(combined_list=combined_list)
+
+    def set_block_before_competing(self, wsh, misc_msgs, transaction_dict, secondary_signatories):
+        self.block.set_before_competing(
+            misc_msgs=misc_msgs,
+            transaction_dict=transaction_dict,
+            wsh=wsh,
+            secondary_signatories=secondary_signatories # secondary signatories is blank
+        )
+
+    def compute_merkle(self, combined_list=None):
+        o = OrsesMerkleRootTree(items=combined_list)
+        o.create_merkle_tree()
+
+        self.merkle_tree = o
+
+        return o.get_merkle_root()
 
 
 class GenesisBlockCreator:

@@ -47,7 +47,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: in the compete_process, add txs, wsh, etc using the TxMiscWsh methods
+# todo: might do away with a separate secondary signatories section for block 1 and above, just add to misc_messages or reward
 # todo: in order to speed up merkle root creation, propagation and verification, dicts might be turned to list
 # todo: when adding transactions etc to new block, verify it hasn't been added to prev block(not in merkle root)
 

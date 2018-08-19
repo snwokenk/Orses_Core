@@ -248,21 +248,50 @@ class RegularBlockHeader(BaseBlockHeader):
     def __init__(self):
         super().__init__()
         self.p_h = None  # previous hashes of past 2 blocks
+        self.no_txs = 0  # number of transactions misc messages and txs is given
+        self.no_asgn = 0  # the sum of assignment statements represented by wallet hash states saved
 
     def set_previous_2_hashes(self, list_of_prev_2_hashes):
         self.p_h = list_of_prev_2_hashes
 
-
-class BlockOneHeader(BaseBlockHeader):
-    def __init__(self):
-        super().__init__()
-
-    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root):
+    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root, no_of_txs: int, no_of_asgns: int,
+                                  list_of_prev_2_hashes: list):
         self.set_block_no(block_number=1)
         self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
         self.set_shuffled_hex_values()
         self.set_maximum_probability_target('p6+0')
         self.set_merkle_root(merkle_root=merkle_root)
+        self.set_no_txs(no_txs=no_of_txs)
+        self.set_no_asgns(no_asgns=no_of_asgns)
+        self.set_previous_2_hashes(list_of_prev_2_hashes=list_of_prev_2_hashes)
+
+    def set_no_txs(self, no_txs: int):
+        self.no_txs = no_txs
+
+    def set_no_asgns(self, no_asgns: int):
+        self.no_asgns = no_asgns
+
+
+class BlockOneHeader(BaseBlockHeader):
+    def __init__(self):
+        super().__init__()
+        self.no_txs = 0  # number of transactions misc messages and txs is given
+        self.no_asgns = 0  # the sum of assignment statements represented by wallet hash states saved
+
+    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root, no_of_txs: int, no_of_asgns: int):
+        self.set_block_no(block_number=1)
+        self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
+        self.set_shuffled_hex_values()
+        self.set_maximum_probability_target('p6+0')
+        self.set_merkle_root(merkle_root=merkle_root)
+        self.set_no_txs(no_txs=no_of_txs)
+        self.set_no_asgns(no_asgns=no_of_asgns)
+
+    def set_no_txs(self, no_txs: int):
+        self.no_txs = no_txs
+
+    def set_no_asgns(self, no_asgns: int):
+        self.no_asgns = no_asgns
 
 
 class GenesisBlockHeader(BaseBlockHeader):
@@ -378,18 +407,23 @@ class NonGenesisBlock(BaseBlock):
     def set_wsh_dict(self, wsh):
         self.wsh = wsh
 
-    def set_before_competing(self, transaction_dict, misc_msgs, wsh):
+    def set_secondary_signatories(self, list_of_secondary_signatories):
+        self.s_s = list_of_secondary_signatories
+
+    def set_before_competing(self, transaction_dict, misc_msgs, wsh, secondary_signatories):
         self.set_txs(transaction_dict=transaction_dict)
         self.set_misc_msgs(misc_msgs=misc_msgs)
         self.set_wsh_dict(wsh=wsh)
+        self.set_secondary_signatories(list_of_secondary_signatories=secondary_signatories)
+
+    def set_after_competing(self, block_header):
+        self.set_block_header(block_header=block_header)
 
 
 class BlockOne(NonGenesisBlock):
 
     def set_signatories_of_gen_block(self, signatories_list: list):
         self.misc_msgs["gen_s_s"] = signatories_list
-
-
 
 
 class RegularBlock(NonGenesisBlock):
