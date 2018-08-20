@@ -97,6 +97,7 @@ class NetworkPropagator:
             print("ending initiator, Setup Not Able")
             return
 
+        is_competing = self.q_object_compete is not None and self.admin.isCompetitor is True
         try:
 
             while True:
@@ -114,6 +115,17 @@ class NetworkPropagator:
                     elif rsp[-1] is True:
                         print("in convo initiator, reached here", self.connected_protocols_dict)
                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                        reason_msg = rsp[0][0]
+                        # todo: create a process which handles proxy duties (if any) of BCW,
+                        # send to compete process, if node is competing
+                        # assignment statements are not included in block so no need to send to compete process
+                        if is_competing and reason_msg != 'a':
+                            # rsp[0][0] = 0 index of reason msg which is either a, b, c or d
+                            self.q_object_compete.put([reason_msg,rsp[2]]) if rsp[3] is True else None
+                        elif reason_msg == "a":
+                            print(f"Received an assignment statement, BCW logic not yet implemented")
+
+                        # propagate
                         self.reactor_instance.callInThread(
                             msg_sender_creator,
                             rsp=rsp,

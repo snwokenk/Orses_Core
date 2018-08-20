@@ -155,10 +155,13 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
         temp_extra = 0
         ini_pr_ch = initial_prime_char
         leading_prime = True
-        for j in hash[exp_leading:]:
-            if j == prime_char and leading_prime:
+        for j in hash[exp_leading:]:  # this is from eligible hashes so start from exp leading index
+            if j == prime_char and leading_prime is True:
                 # if j is prime and previous value was prime then j value is added n in 16^n.
                 ini_pr_ch += 1
+            elif j == prime_char and leading_prime is False:  # prime character still an eligible addl char
+                temp_extra += 16
+
             elif j in addl_chars:
                 # add the value, if j is prime char and previous char was not prime , then f value is added score
                 leading_prime = False
@@ -236,7 +239,7 @@ def get_reward_txs(
 
 def generate_regular_block(block_no: int, admin_inst, combined_list: list, transactions: dict, misc_msgs: dict,
                            wsh: dict, fees: int, no_of_txs: int, no_of_asgns: int, primary_sig_wallet: str,
-                           len_competiion=60, exp_leading_prime=7, single_prime_char='f',
+                           addl_chars, len_competiion=60, exp_leading_prime=7, single_prime_char='f',
                            should_save=False, include_foundation=True):
 
     # primary wallet_for test"W884c07be004ee2a8bc14fb89201bbc607e75258d"
@@ -279,7 +282,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list, trans
             block_no=1,
             len_of_comp=len_competiion,
             include_foundation_reward=include_foundation,
-            secondary_sig_wallets=[]  # todo: add secondary rewards to reward transactions for now, skip
+            secondary_sig_wallets=[]  # todo: add secondary rewards to reward transactions. for now, skip
         )
 
         # insert reward transactions hash into combined hash list [prim signatory rwd hash, foundation reward hash]
@@ -302,11 +305,32 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list, trans
             merkle_root=new_block_creator_inst.merkle_root,
             no_of_txs=no_of_txs,
             no_of_asgns=no_of_asgns,
-            list_of_prev_2_hashes=list_of_prev_2_hashes  # todo: this list should get
+            list_of_prev_2_hashes=list_of_prev_2_hashes,  # todo: this list should get
+            list_of_maximum_prob=['p6+0', "p7+0", "p6+0", "p7+0", "p6+0"]
         )
 
+        final_block_header = start_competing(
+            block_header=block_header,
+            len_competition=len_competiion,
+            exp_leading=exp_leading_prime,
+            single_prime_char=single_prime_char,
+            addl_chars=addl_chars
+        )
 
+        block_object = new_block_creator_inst.get_block()
+        block_object.set_after_competing(
+            block_header=final_block_header
+        )
 
+        new_block = block_object.get_block()
+
+        if should_save:
+            folder = admin_inst.fl.get_block_data_folder_path()
+            admin_inst.fl.save_json_into_file(
+                filename=str(block_no),
+                python_json_serializable_object=new_block,
+                in_folder=folder
+            )
 
     return new_block
 
@@ -403,13 +427,11 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
     new_block = block_object.get_block()
 
     if should_save:
-        filename = admin_inst.fl.get_block_data_folder_path()
-        with open(filename, "w") as outfile:
-            json.dump(outfile, new_block)
-        FileAction.save_json_into_file(
-            filename="0",
+        folder = admin_inst.fl.get_block_data_folder_path()
+        admin_inst.fl.save_json_into_file(
+            filename="1",
             python_json_serializable_object=new_block,
-            in_folder="Blockchain_Data"
+            in_folder=folder
         )
 
     return block_object
@@ -478,6 +500,7 @@ class TxMiscWsh:
     def __init__(self, txs, misc_msgs, wsh, combined_list_of_hashes: list, fees: int):
 
         self.number_of_transactions = 0
+        self.number_of_assignment_statements = 0
         self.txs = txs
         self.misc_msgs = misc_msgs  # misc messages dictionary
         self.wsh = wsh  # wallet hash states
@@ -487,6 +510,7 @@ class TxMiscWsh:
     def append_to_combined_list(self, a_hash):
         comb_index = self.number_of_transactions
         self.combined_list_of_hashes.append(a_hash)
+        self.number_of_transactions+=1
 
         return comb_index
 
@@ -499,26 +523,29 @@ class TxMiscWsh:
 
         return transactions
 
-    def add_to_misc_msg(self, msg_hash, msg: list):
+    def add_to_misc_msg(self, msg_hash, msg: list, fees: int):
         msg_index = self.append_to_combined_list(msg_hash)
         msg.append(msg_index)
         self.misc_msgs[msg_hash] = msg
-        self.number_of_transactions+=1
+        self.fee+=fees
 
-    def add_to_txs(self, type_of_tx, tx_hash, tx: list):
+    def add_to_txs(self, type_of_tx, tx_hash, tx: list, fees: int):
         if type_of_tx in {"ttx", "rsv_req", "rvk_req"}:
             tx_index = self.append_to_combined_list(tx_hash)
             tx.append(tx_index)
             self.txs[type_of_tx][tx_hash] = tx
-            self.number_of_transactions+=1
+            self.fees+=fees
         else:
             print(f"in Orses_Compete_Algo.py: in add_to_txs, type_of_tx NOT VALID")
 
-    def add_to_wsh(self, wsh_hash, wsh_list: list):
+    def add_to_wsh(self, wsh_hash, wsh_list: list, no_of_asgn_stmt: int, fees: int):
         wsh_index = self.append_to_combined_list(wsh_hash)
         wsh_list.append(wsh_index)
+        self.number_of_assignment_statements+=no_of_asgn_stmt
 
         self.wsh[wsh_hash] = wsh_list
+
+        self.fees += fees
 
 
 class Competitor:
@@ -616,12 +643,27 @@ class Competitor:
             block_before_recent_block_header=block_before_recent_block_header
         )
 
+        # single character of this competition is value of key '16' in shuffled hex value dict
         single_prime_char = block_before_recent_block_header["shv"]['16']  # char at shuffled he
 
-        exp_leading_prime = block_before_recent_block_header["mpt"].split(sep="+")  # "P7+0"  == ['P7', '0']
-        exp_leading_prime = int(exp_leading_prime[0][1:])
 
-        return start_time, len_competition, single_prime_char, exp_leading_prime, block_before_recent_block_no + 2
+        # get the number of times single prime char shows up in front of hash
+        mpt_split = block_before_recent_block_header["mpt"].split(sep="+")  # "P7+0"  == ['P7', '0']
+        exp_leading_prime = int(mpt_split[0][1:])
+        number_of_addl_chars = int(mpt_split[1])
+
+        # get addl_chars if needed (if number after plus is >  ie p7+2 or p7+3 no after + can never be 1 (p7+1 == p8+0)
+        # additional characters are choosen from biggest to smallest key
+        addl_chars = ""
+        for i in range(1, number_of_addl_chars):
+
+            # addl_chars = "value at key '15', value at key '14',....etc" value at key '1' is never used
+            # value at key '16' is the prime char and is automatically assumed as the first addl char
+            addl_chars = f"{addl_chars}{block_before_recent_block_header['shv'][str(16-i)]}"
+
+
+        return start_time, len_competition, single_prime_char, exp_leading_prime, block_before_recent_block_no + 2, \
+               addl_chars
 
     def thread_to_keep_track_of_when_block_being_generated(self, q_object_for_compete_process):
         #
@@ -638,6 +680,7 @@ class Competitor:
         # todo: while generating block, allow for receiving of transactions/msgs for next competition
 
         start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no = None, None, None, None, None
+        addl_chars = None
         tx_misc_wsh = None
 
         # None == has not generated block or Just finished generating
@@ -659,7 +702,7 @@ class Competitor:
                     if rsp[0] == "bcb":  # new block! new arguments  ['bcb', block, class_holding tx_misc, wsh]
 
                         has_received_new_block.set()
-                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no = \
+                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
                             self.get_new_block_arguments(rsp=rsp, pause_time=pause_time)
 
                         tx_misc_wsh = rsp[2]
@@ -703,8 +746,12 @@ class Competitor:
                         wsh=tx_misc_wsh.wsh,
                         block_no=new_block_no,
                         fees=tx_misc_wsh.fees,
-                        combined_list=tx_misc_wsh.combined_list_of_hashes
-
+                        combined_list=tx_misc_wsh.combined_list_of_hashes,
+                        admin_inst=self.admin_inst,
+                        primary_sig_wallet=self.reward_wallet,
+                        addl_chars=addl_chars,
+                        no_of_txs=tx_misc_wsh.number_of_transactions,
+                        no_of_asgns=tx_misc_wsh.number_of_assignment_statements
                     )
 
                     # once done clear event object (becomes false) to notify compete_process
@@ -741,12 +788,7 @@ class Competitor:
         else:
             return
 
-        # these dicts will be used to
-        tx_dict = self.create_empty_tx_dict()
-        wsh_dict = dict()  # wallet state hash dictionary
-        misc_msgs = dict()
-        combined_list_of_hashes = list()
-        fees = 0
+
 
         # instantiate class with existing txs, misc_msg and wsh. this is passed to self.handle_new_block()
         tx_misc_wsh = TxMiscWsh(
@@ -799,8 +841,7 @@ class Competitor:
             else:
                 if rsp[0] == "a":  # assignment statements are not included directly
 
-                    #todo:  create a process which hangles proxy duties (if any) of BCW,
-                    print(f"received an assignment statement, But BCW logic not yet implemented:\n{rsp}")
+                    print(f"received an assignment statement in compete, SHOULD NOT RECEIVE IN COMPETE\n{rsp}")
                     pass
 
                 elif rsp[0] == "m":  # misc messages
@@ -816,7 +857,8 @@ class Competitor:
 
                         tx_misc_wsh.add_to_misc_msg(
                             msg_hash=rsp[1]['msg_hash'],
-                            msg=misc_m
+                            msg=misc_m,
+                            fees=misc_m[-1]
                         )
 
                 elif rsp[0] == "wh":  # wallet hash states
@@ -824,8 +866,11 @@ class Competitor:
 
                 else:  # transaction message
                     # todo: when checking transaction messages, check for fees
+
                     try:
-                        tx_dict_key = reason_dict[rsp[0]]  #  either 'ttx', 'rsv_req' or 'rvk_req'
+                        # rsp[0] either b,c,d
+                        # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req'
+                        tx_dict_key = reason_dict[rsp[0]]
                         main_msg = rsp[1][tx_dict_key]
                         sig = rsp[1]['sig']
 
@@ -838,7 +883,8 @@ class Competitor:
                             tx_misc_wsh.add_to_txs(
                                 type_of_tx=tx_dict_key,
                                 tx_hash=rsp[1]["tx_hash"],
-                                tx=main_msg
+                                tx=[main_msg, sig],
+                                fees=main_msg['fee']
                             )
                     except KeyError as e:
                         print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")

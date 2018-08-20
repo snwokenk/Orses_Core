@@ -287,16 +287,30 @@ class BlockChainPropagator:
             print("ending block initiator, Setup Not Able")
             return
 
-        try:
-            if self.q_object_compete:  # competing process, used to propagate self or other's blocks
+        is_competing = self.q_object_compete is not None and self.admin_instance.isCompetitor is True
 
-                while True:
-                    rsp = self.q_object_connected_to_block_validator.get()
+        try:
+
+            while True:
+                rsp = self.q_object_connected_to_block_validator.get()
+                print(f"in blockchainPropagator Initiator, rsp: {rsp}")
+
+                try:
+                    if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
+                        raise KeyboardInterrupt
+
+                    elif isinstance(rsp, list):
+                        reason_msg = rsp[0]  # reason of message
+
+                        if reason_msg == "nb":  # new block created locally
+                            pass
+                except KeyboardInterrupt:
+                    print("ending convo initiator in BlockchainPropagator")
                     break
-            else:
-                while True:
-                    msg = self.q_object_connected_to_block_validator.get()
-                    break
+                except Exception as e:
+                    print(f"\n-----\nError in {__file__}, in initiator\nMessage causing Error: {rsp}\n"
+                          f"Exception raised: {e}")
+                    continue
 
         except (KeyboardInterrupt, SystemExit):
             pass
@@ -355,7 +369,7 @@ class BlockChainPropagator:
 
                 except Exception as e:  # log error and continue, avoid stopping reactor process cuz of error
                     # todo: implement error logging, when message received causes error. for now print error and msg
-                    print(f"\n-----\nError in {__file__}\nMessage causing Error: {rsp}\n"
+                    print(f"\n-----\nError in {__file__} in convo manager\nMessage causing Error: {rsp}\n"
                           f"Exception raised: {e}")
                     continue
         except (SystemExit, KeyboardInterrupt):
@@ -843,14 +857,18 @@ class PropagateValidatedBlock(BlockChainMessageSender):
     """
     used to send blocks to others IF they do not already have it
     """
-    def __init__(self, protocol, convo_id):
-        super().__init__(protocol, convo_id)
+    def __init__(self, protocol, convo_id, propagator_inst):
+        super().__init__(protocol, convo_id, propagator_inst)
 
 
 class ReceivePropagatatedBlock(BlockChainMessageReceiver):
+    """
+    This is used to receive block (once the node is up and running.
+    NOT used to receive blocks during setup,
+    """
 
-    def __init__(self, protocol, convo_id):
-        super().__init__(protocol, convo_id)
+    def __init__(self, protocol, convo_id, propagator_inst):
+        super().__init__(protocol, convo_id,propagator_inst)
 
 
 

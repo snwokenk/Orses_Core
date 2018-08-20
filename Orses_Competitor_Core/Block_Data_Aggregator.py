@@ -183,6 +183,9 @@ class BaseBlockHeader:
             second_variable = int(temp_list[1])
 
             prime_prob = 16 ** first_variable
+
+            # second variable really has a constraint of 2 - 15. since p7+1 same as p8+0, It should never occur
+            # p7+16 should never occur because this is a prob of 1(100%) for the 7th index (8 char is in 7th index)
             addl_prop = (16 / second_variable) if 0 < second_variable < 16 else 0
 
             return prime_prob * addl_prop if addl_prop > 0 else prime_prob
@@ -227,6 +230,8 @@ class BaseBlockHeader:
 
                 prob_notation = f"P{int(no_of_prime_chars_req)}+{no_of_sec_chars_accepted}"
 
+                self.mpt = prob_notation
+
                 return prob_notation
 
     def set_shuffled_hex_values(self):
@@ -255,11 +260,11 @@ class RegularBlockHeader(BaseBlockHeader):
         self.p_h = list_of_prev_2_hashes
 
     def set_header_before_compete(self, primary_sig_wallet_id, merkle_root, no_of_txs: int, no_of_asgns: int,
-                                  list_of_prev_2_hashes: list):
+                                  list_of_prev_2_hashes: list, list_of_maximum_prob: list):
         self.set_block_no(block_number=1)
         self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
         self.set_shuffled_hex_values()
-        self.set_maximum_probability_target('p6+0')
+        self.set_maximum_probability_target(list_of_maximum_prob)
         self.set_merkle_root(merkle_root=merkle_root)
         self.set_no_txs(no_txs=no_of_txs)
         self.set_no_asgns(no_asgns=no_of_asgns)
@@ -292,6 +297,10 @@ class BlockOneHeader(BaseBlockHeader):
 
     def set_no_asgns(self, no_asgns: int):
         self.no_asgns = no_asgns
+
+    def set_maximum_probability_target(self, probability_of_5_runnerups):  # just a string "p7+0"
+
+        self.mpt = probability_of_5_runnerups
 
 
 class GenesisBlockHeader(BaseBlockHeader):
