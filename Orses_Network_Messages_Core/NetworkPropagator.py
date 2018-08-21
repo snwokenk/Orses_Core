@@ -113,7 +113,7 @@ class NetworkPropagator:
                     elif rsp[-1] is None:
                         pass
                     elif rsp[-1] is True:
-                        print("in convo initiator, reached here", self.connected_protocols_dict)
+                        print("in convo initiator, connected protocols", self.connected_protocols_dict)
                         self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
                         reason_msg = rsp[0][0]
                         # todo: create a process which handles proxy duties (if any) of BCW,
@@ -139,11 +139,6 @@ class NetworkPropagator:
                     print("Message: ", rsp, ": exception: ", e)
                     continue
 
-                else:
-                    if self.q_object_compete:
-
-                        # rsp[0][0] = 0 index of reason msg which is either a, b, c or d
-                        self.q_object_compete.put([rsp[0][0],rsp[2]]) if rsp[3] is True else None
 
         except (KeyboardInterrupt, SystemExit):
             pass

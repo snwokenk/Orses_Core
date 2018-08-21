@@ -15,8 +15,9 @@ import json, copy
 
 class NetworkMessageSorter:
     def __init__(self, q_object_from_protocol, q_for_bk_propagate, q_for_propagate, n_propagator_inst,
-                 b_propagator_inst, node=None):
+                 b_propagator_inst, node=None, admin=None):
         self.node = node
+        self.admin = admin if admin is not None else self.node.admin
         self.network_prop_inst = n_propagator_inst
         self.blockchain_prop_inst = b_propagator_inst
         self.q_for_propagate = q_for_propagate
@@ -47,7 +48,7 @@ class NetworkMessageSorter:
             self.network_prop_inst.reactor_instance.callInThread(
                 self.create_sender_message,
                 protocol=protocol,
-                admin_inst=self.node.admin
+                admin_inst=self.admin
             )
 
             print(f"in NetworkMessageSorter.py Listener Protocol Created When Connected {protocol}")
@@ -101,7 +102,7 @@ class NetworkMessageSorter:
                         self.create_receiver_message,
                         msg=msg_data,
                         protocol=self.non_validated_connected_protocols_dict[protocol_id][0],
-                        admin_inst=self.node.admin,
+                        admin_inst=self.admin,
 
                     )
 

@@ -800,11 +800,12 @@ class Competitor:
         )
 
         # q_object_from_compete_process_to_mining = multiprocessing.Queue()
-
+        msg_count = 0
         while True:
             rsp = q_for_compete.get()  # [reason letter, main tx dict OR main block dict]
+            msg_count += 1
 
-            print(f"in Orses_compete, msg sent: {rsp}")
+            print(f"in Orses_compete, msg sent, msg count is {msg_count}: {rsp}")
 
             # rsp should be dictionary of transaction ie
             if isinstance(rsp, str) and rsp in {"exit", "quit"}:
@@ -875,6 +876,8 @@ class Competitor:
                         sig = rsp[1]['sig']
 
                         if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
+
+                            # print("is here 111")
                             q_object_from_compete_process_to_mining.put(
                                 [tx_dict_key, rsp[1]["tx_hash"], [main_msg, sig]]
                             )

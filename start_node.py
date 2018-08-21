@@ -126,7 +126,7 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
                         if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
                             i.put(ans)
                     break
-                elif ans == "print internet":
+                elif dummy_internet is not None and ans == "print internet":
                     print("dummy internet instance: ",dummy_internet)
                     print("listening nodes: ",dummy_internet.listening_nodes)
                     print("addr to node: ", dummy_internet.address_to_node_dict)
@@ -469,18 +469,50 @@ def main():
         compete = 'n'
 
     # *** instantiate queue variables ***
-    q_for_compete = multiprocessing.Queue() if compete == 'y' else None
+    q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and compete == 'y') else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
     q_for_bk_propagate = multiprocessing.Queue()
     q_for_block_validator = multiprocessing.Queue()  # between block validators and block propagators
     q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
     q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
-    q_object_to_each_node = multiprocessing.Queue()  # for exit signal
+    q_object_from_compete_process_to_mining = multiprocessing.Queue()  # q between compete_process and handle_new_block
+
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
-    if compete == 'y':
-        pass
+    if admin.isCompetitor is True and compete == 'y':
+        # multiprocessing event objects
+        is_generating_block = multiprocessing.Event()
+        has_received_new_block = multiprocessing.Event()
+
+        # instantiate the competitor class
+        competitor = Competitor(reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d", admin_inst=admin)
+
+        # start compete thread using twisted reactor's thread
+        reactor.callInThread(
+            competitor.compete,
+            q_for_compete=q_for_compete,
+            q_object_from_compete_process_to_mining=q_object_from_compete_process_to_mining,
+            is_generating_block=is_generating_block,
+            has_received_new_block=has_received_new_block
+
+        )
+
+        # start process for actual hashing
+        p = multiprocessing.Process(
+            target=competitor.handle_new_block,
+            kwargs={
+                "q_object_from_compete_process_to_mining": q_object_from_compete_process_to_mining,
+                "q_for_block_validator": q_for_block_validator,
+                "is_generating_block": is_generating_block,
+                "has_received_new_block": has_received_new_block
+
+            }
+
+        )
+
+        p.daemon = True
+        p.start()
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(
@@ -519,18 +551,26 @@ def main():
     # *** start propagator initiator in another thread ***
     reactor.callInThread(propagator.run_propagator_convo_initiator)
 
+    # *** instantiate network message sorter ***
+    network_message_sorter = NetworkMessageSorter(
+        q_object_from_protocol,
+        q_for_bk_propagate,
+        q_for_propagate,
+        node=None,
+        admin=admin,
+        b_propagator_inst=blockchain_propagator,
+        n_propagator_inst=propagator
+    )
+
     # *** start network manaager and run veri node factory and regular factory using reactor.callFromThread ***
     network_manager = NetworkManager(
         admin=admin,
         q_object_from_protocol=q_object_from_protocol,
         q_object_to_validator=q_for_validator,
-        net_msg_sorter=propagator,
+        net_msg_sorter=network_message_sorter,
         reg_listening_port=55600,
         reg_network_sandbox=False
     )
-
-    # *** instantiate network message sorter ***
-    network_message_sorter = NetworkMessageSorter(q_object_from_protocol, q_for_bk_propagate, q_for_propagate)
 
     # *** run sorter in another thread ***
     reactor.callInThread(network_message_sorter.run_sorter)
@@ -555,14 +595,15 @@ def main():
     reactor.callWhenRunning(
         send_stop_to_reactor,
         reactor,
-        q_object_to_each_node,
-        None,
+        None,  # q object to each node is None
+        None,  # DummyInternet is None
         q_for_propagate,
         q_for_bk_propagate,
         q_for_compete,
         q_object_from_protocol,
         q_for_validator,
         q_for_block_validator,
+        0  # number of nodes is zero because this is main function
 
     )
 
@@ -598,9 +639,9 @@ if __name__ == '__main__':
 
         elif "--sandbox" in option_dict and "--live" not in option_dict:  # run sandbox mode
 
-            number_of_nodes = int(option_dict["--sandbox"])
+            no_of_nodes = int(option_dict["--sandbox"])
             mining_nodes = int(option_dict["--mining"]) if "--mining" in option_dict else 0
-            sandbox_main(number_of_nodes=number_of_nodes, reg_network_sandbox=False, preferred_no_of_mining_nodes=mining_nodes)
+            sandbox_main(number_of_nodes=no_of_nodes, reg_network_sandbox=False, preferred_no_of_mining_nodes=mining_nodes)
 
         elif "--sandbox" not in option_dict and "--live" in option_dict:  # run live mode
             main()
