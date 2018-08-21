@@ -205,7 +205,8 @@ def get_reward_txs(
         primary_sig_wallet,
         secondary_sig_wallets: list,  # todo: create secondary reward. for now skip
         block_no: int,
-        len_of_comp: int ,
+        fees: int,
+        len_of_comp: int,
         include_foundation_reward=True,
         block_one_reward_per_second=15854895991,
 ):
@@ -223,7 +224,7 @@ def get_reward_txs(
     extra_reward = foundation_reward // 2
 
     primary_signatory_reward = main_reward + extra_reward
-    primary_rwd_tx = {primary_sig_wallet: primary_signatory_reward}
+    primary_rwd_tx = {primary_sig_wallet: [primary_signatory_reward, fees, primary_signatory_reward+fees]}
     foundation_rwd_tx = {"fnd_rwd": foundation_reward}
 
     list_of_hashes = [Hasher.sha_hasher(json.dumps(primary_rwd_tx)), Hasher.sha_hasher(json.dumps(foundation_rwd_tx))]
@@ -233,6 +234,8 @@ def get_reward_txs(
         fnd_reward_hash: foundation_rwd_tx,
 
     }
+
+
 
     return [rwd_txs, list_of_hashes]
 
@@ -280,6 +283,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list, trans
         transactions["rwd_txs"], list_of_hashes = get_reward_txs(
             primary_sig_wallet=new_block_creator_inst.primary_sig_wallet_id,
             block_no=1,
+            fees=fees,
             len_of_comp=len_competiion,
             include_foundation_reward=include_foundation,
             secondary_sig_wallets=[]  # todo: add secondary rewards to reward transactions. for now, skip
@@ -384,12 +388,15 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
 
     # create reward transactions
     transactions["rwd_txs"], list_of_hashes = get_reward_txs(
-        primary_sig_wallet=block_one_creator_inst.primary_sig_wallet_id,
+        primary_sig_wallet=primary_sig_wallet,
         block_no=1,
+        fees=fees,
         len_of_comp=len_competiion,
         include_foundation_reward=include_foundation,
         secondary_sig_wallets=[]  # todo: add secondary rewards to reward transactions for now, skip
     )
+
+
 
     # insert reward transactions hash into combined hash list [prim signatory rwd hash, foundation reward hash]
     combined_list.extend(list_of_hashes)
@@ -549,8 +556,9 @@ class TxMiscWsh:
 
 
 class Competitor:
-    def __init__(self, reward_wallet, admin_inst):
+    def __init__(self, reward_wallet, admin_inst, just_launched=False):
         self.admin_inst = admin_inst
+        self.just_launched = just_launched
         self.reward_wallet = reward_wallet
         self.block_creator = None
         self.hex_value_to_time = self.set_hex_value_to_seconds()
@@ -665,6 +673,16 @@ class Competitor:
         return start_time, len_competition, single_prime_char, exp_leading_prime, block_before_recent_block_no + 2, \
                addl_chars
 
+    def get_block_one_arguments(self, rsp):
+        start_time = time.time() + 1  # start immediately for block one but 2 second pause
+        len_competition = 60
+        single_prime_char = 'f'
+        exp_leading_prime=7
+        new_block_no = 1
+        addl_chars = ""
+
+        return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars
+
     def thread_to_keep_track_of_when_block_being_generated(self, q_object_for_compete_process):
         #
         pass
@@ -719,6 +737,13 @@ class Competitor:
                     elif rsp[0] == "wsh":  # for wallet state hash
                         pass
 
+                    elif rsp[0] == "bk0":  # sending genesis block, network just launched
+                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
+                            self.get_block_one_arguments(rsp=rsp)
+                        tx_misc_wsh = rsp[2]
+
+                        print(f"In Handle blocks, {start_time}, {time.time()}")
+
                     else:  # rsp SHOULD represent a transaction rsp == [tx_type, tx_hash, [main_msg, sig]]
 
                         tx_misc_wsh.add_to_txs(
@@ -727,6 +752,7 @@ class Competitor:
                             tx=rsp[2]
                         )
 
+                print(f"In Handle blocks, {start_time}, {time.time()}")
                 # todo: implement this later:
                 # todo: if 5 random bytes already received changed to and (time.time() >= start_time or random_received => 5)
                 if is_generating_block.is_set() is False and time.time() >= start_time:
@@ -737,7 +763,7 @@ class Competitor:
                     is_generating_block.set()
 
                     # ***** this is a blocking code  **** #
-                    just_created_block = generate_regular_block(
+                    new_block = generate_regular_block(
                         exp_leading_prime=exp_leading_prime,
                         len_competiion=len_of_competition,
                         single_prime_char=single_prime_char,
@@ -762,8 +788,8 @@ class Competitor:
                     # todo: this is done by sending using validator to blockchain queue ie q_for_block_validator
 
 
-                    print(f"just created block: ")
-                    q_for_block_validator.put(["nb", just_created_block])
+                    print(f"just created block: {new_block}")
+                    # q_for_block_validator.put(["nb", new_block])
 
     def compete(
             self,
@@ -788,8 +814,6 @@ class Competitor:
         else:
             return
 
-
-
         # instantiate class with existing txs, misc_msg and wsh. this is passed to self.handle_new_block()
         tx_misc_wsh = TxMiscWsh(
             txs=self.create_empty_tx_dict(),
@@ -799,7 +823,14 @@ class Competitor:
             fees=0
         )
 
-        # q_object_from_compete_process_to_mining = multiprocessing.Queue()
+        # if genesis block is most recent and network was just launched then run this
+        if self.just_launched and recent_block_no == 0:
+            print(f"in {__file__}: Just launched so should be mining")
+            q_object_from_compete_process_to_mining.put(['bk0', recent_blk, tx_misc_wsh])
+        else:
+            print(f"Not mining {recent_blk}, {recent_block_no}")
+
+
         msg_count = 0
         while True:
             rsp = q_for_compete.get()  # [reason letter, main tx dict OR main block dict]

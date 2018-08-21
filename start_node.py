@@ -12,6 +12,8 @@ from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyInternet
 from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
+# 'sudo netstat -ap | grep :<port_number>' to get process id owning port then 'kill <pid>' to kill process
+
 # using git: http://rogerdudler.github.io/git-guide/
 # https://stackoverflow.com/questions/19924104/python-multiprocessing-handling-child-errors-in-parent
 # https://docs.quantifiedcode.com/python-anti-patterns/index.html
@@ -144,8 +146,20 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
     response_thread.addErrback(lambda x: print(x))
 
 
-def create_node_instances(dummy_internet, number_of_nodes_to_create: int, preferred_no_of_mining_nodes=0):
+def create_node_instances(dummy_internet, number_of_nodes_to_create: int, preferred_no_of_mining_nodes=0, ):
+    """
+
+    :param dummy_internet:
+    :param number_of_nodes_to_create:
+    :param preferred_no_of_mining_nodes: number of mining nodes from nodes created
+    :param genesis_start: tells competing node to start create block 1 without waiting for blocks.
+    (only block available should be block 0 aka genesis block)
+    :return:
+    """
     assert number_of_nodes_to_create > 0, "number of admins to create must be at least 1"
+    assert number_of_nodes_to_create >= preferred_no_of_mining_nodes, "number of mining nodes should be less than or " \
+                                                                      "equal to number of created nodes"
+
     admins_list = list()
     nodes_dict ={
         "competing": [],
@@ -171,15 +185,19 @@ def create_node_instances(dummy_internet, number_of_nodes_to_create: int, prefer
     return nodes_dict
 
 
-def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_mining_nodes=0):
+def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_of_mining_nodes=0, just_launched=True):
     """
-
+    :param number_of_nodes: number of dummy nodes to create + main node for user
     :param reg_network_sandbox: if false regular network will not be sandbox. This allows to send data to main node
     and then see how it reacts with the sandbox nodes
+    :param preferred_no_of_mining_nodes: number of mining nodes out of created nodes must be =< number of nodes
+    :param just_launched: tells node just launched and to start immediately mining
     :return:
     """
 
-    # ThreadPool setup, 10 thread pools * number of node instances + 10 for main node:
+    assert number_of_nodes >= preferred_no_of_mining_nodes, "number of mining nodes should be less than or equal " \
+                                                            "to number of created nodes"
+    # ThreadPool setup, 15 thread pools * number of node instances + 15 for main node:
     t_pool = reactor.getThreadPool()
     print(f"ThreadPool size is: {t_pool.max}")
     t_pool.adjustPoolsize(minthreads=0, maxthreads=int((number_of_nodes*15) + 15))
@@ -252,7 +270,11 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_min
         has_received_new_block = multiprocessing.Event()
 
         # instantiate the competitor class
-        competitor = Competitor(reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d", admin_inst=admin)
+        competitor = Competitor(
+            reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
+            admin_inst=admin,
+            just_launched=just_launched
+        )
 
         # start compete thread using twisted reactor's thread
         reactor.callInThread(
@@ -426,7 +448,7 @@ def sandbox_main(number_of_nodes, reg_network_sandbox=False, preferred_no_of_min
     admin.save_admin()
 
 
-def main():
+def main(just_launched=False):
 
     # input admin name and password
     admin_name = input("admin name: ")
@@ -486,7 +508,11 @@ def main():
         has_received_new_block = multiprocessing.Event()
 
         # instantiate the competitor class
-        competitor = Competitor(reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d", admin_inst=admin)
+        competitor = Competitor(
+            reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
+            admin_inst=admin,
+            just_launched=just_launched
+        )
 
         # start compete thread using twisted reactor's thread
         reactor.callInThread(
@@ -622,7 +648,7 @@ def main():
 
 if __name__ == '__main__':
 
-    long_opts = ["live", "sandbox=", "mining="]  # if sandbox is put then number of nodes must be present
+    long_opts = ["live", "sandbox=", "mining=", "new"]  # if sandbox is put then number of nodes must be present
     # short_opts = "l s:n"
 
     try:
@@ -635,16 +661,30 @@ if __name__ == '__main__':
         print(option_dict)
 
         if not option_dict:  # run default sandbox simulation
-            sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=0)
+            sandbox_main(
+                number_of_nodes=1,
+                reg_network_sandbox=False,
+                preferred_no_of_mining_nodes=0,
+                just_launched=False
+            )
 
         elif "--sandbox" in option_dict and "--live" not in option_dict:  # run sandbox mode
 
             no_of_nodes = int(option_dict["--sandbox"])
             mining_nodes = int(option_dict["--mining"]) if "--mining" in option_dict else 0
-            sandbox_main(number_of_nodes=no_of_nodes, reg_network_sandbox=False, preferred_no_of_mining_nodes=mining_nodes)
+
+            # run sandbox with provided args
+            sandbox_main(
+                number_of_nodes=no_of_nodes,
+                reg_network_sandbox=False,
+                preferred_no_of_mining_nodes=mining_nodes,
+                just_launched=True if "--new" in option_dict else False
+            )
 
         elif "--sandbox" not in option_dict and "--live" in option_dict:  # run live mode
-            main()
+            main(
+                just_launched=True if "--new" in option_dict else False
+            )
         else:
             print(f" to run live node use: 'python start_node.py -l' OR\n"
                   f"'python start_node.py --live'\n")
