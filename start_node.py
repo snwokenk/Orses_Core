@@ -47,6 +47,8 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+
+# todo: refactor main to closely match sandbox_main but without the fake nodes
 # todo: might do away with a separate secondary signatories section for block 1 and above, just add to misc_messages or reward
 # todo: in order to speed up merkle root creation, propagation and verification, dicts might be turned to list
 # todo: when adding transactions etc to new block, verify it hasn't been added to prev block(not in merkle root)
@@ -578,7 +580,39 @@ def main():
 
 
 if __name__ == '__main__':
-    sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=0)
+
+    long_opts = ["live", "sandbox=", "mining="]  # if sandbox is put then number of nodes must be present
+    # short_opts = "l s:n"
+
+    try:
+        optlist, args = getopt.getopt(sys.argv[1:], shortopts='', longopts=long_opts)
+    except getopt.GetoptError as e:
+        print(e)
+    else:
+
+        option_dict = dict(optlist)
+        print(option_dict)
+
+        if not option_dict:  # run default sandbox simulation
+            sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=0)
+
+        elif "--sandbox" in option_dict and "--live" not in option_dict:  # run sandbox mode
+
+            number_of_nodes = int(option_dict["--sandbox"])
+            mining_nodes = int(option_dict["--mining"]) if "--mining" in option_dict else 0
+            sandbox_main(number_of_nodes=number_of_nodes, reg_network_sandbox=False, preferred_no_of_mining_nodes=mining_nodes)
+
+        elif "--sandbox" not in option_dict and "--live" in option_dict:  # run live mode
+            main()
+        else:
+            print(f" to run live node use: 'python start_node.py -l' OR\n"
+                  f"'python start_node.py --live'\n")
+            print(f"to run sandbox node use: 'python start_node.py --sandbox (no_nodes)' no_nodes should be how "
+                  f"fake nodes to create.\nie 'python start_node.py --sandbox 2' will create 2 extra fake nodes\n"
+                  f"you can also use 'python start_node.py -s (no_nodes)'  to create nodes")
+
+    # sandbox_main(number_of_nodes=1, reg_network_sandbox=False, preferred_no_of_mining_nodes=0)
+
 
     # long_opt = ["sandbox"]
     # short_opt = "s"
