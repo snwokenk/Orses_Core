@@ -54,6 +54,8 @@ class BlockOneCreator(NonGenesisBlockCreator):
 
     def compute_merkle(self, combined_list=None):
 
+        print("combine list in compute_merkle", combined_list)
+
         o = OrsesMerkleRootTree(items=combined_list)
         o.create_merkle_tree()
 

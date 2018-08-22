@@ -193,12 +193,14 @@ def start_competing(block_header, exp_leading=6, len_competition=30, single_prim
 
     print(f"The winning hash and nonce is {winning_hash}")
 
-    block_header.block_hash = winning_hash["nonce"][1]
-    block_header.n = format(winning_hash["nonce"][0][0], "x")
-    block_header.x_n = winning_hash["nonce"][0][1]
-    print(block_header.get_block_header())
+    if winning_hash:
 
-    return block_header
+        block_header.block_hash = winning_hash["nonce"][1]
+        block_header.n = format(winning_hash["nonce"][0][0], "x")
+        block_header.x_n = winning_hash["nonce"][0][1]
+        print(block_header.get_block_header())
+
+    return block_header.get_block_header()
 
 
 def get_reward_txs(
@@ -380,11 +382,7 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
 
 
 
-    # instantiate block one creator
-    block_one_creator_inst = BlockOneCreator(
-        primary_sig_wallet_id=primary_sig_wallet,
-        combined_list=combined_list
-    )
+
 
     # create reward transactions
     transactions["rwd_txs"], list_of_hashes = get_reward_txs(
@@ -400,6 +398,12 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
 
     # insert reward transactions hash into combined hash list [prim signatory rwd hash, foundation reward hash]
     combined_list.extend(list_of_hashes)
+
+    # instantiate block one creator
+    block_one_creator_inst = BlockOneCreator(
+        primary_sig_wallet_id=primary_sig_wallet,
+        combined_list=combined_list
+    )
 
     # set misc messages with top 10 signatories
     # todo: secondary signatories reward should be added into reward tx
@@ -441,7 +445,7 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
             in_folder=folder
         )
 
-    return block_object
+    return new_block
 
 
 def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char='f', should_save=False):
@@ -674,10 +678,10 @@ class Competitor:
                addl_chars
 
     def get_block_one_arguments(self, rsp):
-        start_time = time.time() + 1  # start immediately for block one but 2 second pause
+        start_time = int(time.time())  # start immediately for block one but 2 second pause
         len_competition = 60
         single_prime_char = 'f'
-        exp_leading_prime=7
+        exp_leading_prime=5
         new_block_no = 1
         addl_chars = ""
 
@@ -689,7 +693,7 @@ class Competitor:
 
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
                          is_generating_block: multiprocessing.synchronize.Event,
-                         has_received_new_block: multiprocessing.synchronize.Event, pause_time=7):
+                         has_received_new_block: multiprocessing.synchronize.Event, pause_time=1):
 
         # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
         # todo: for now q object will wait for 7 seconds
@@ -708,6 +712,7 @@ class Competitor:
         while True:
             try:
                 rsp = q_object_from_compete_process_to_mining.get(timeout=pause_time)
+                print("received rsp in Handle new block")
             except Empty:
                 pass
             else:
@@ -741,6 +746,7 @@ class Competitor:
                         start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
                             self.get_block_one_arguments(rsp=rsp)
                         tx_misc_wsh = rsp[2]
+                        has_received_new_block.set()
 
                         print(f"In Handle blocks, {start_time}, {time.time()}")
 
@@ -752,10 +758,13 @@ class Competitor:
                             tx=rsp[2]
                         )
 
-                print(f"In Handle blocks, {start_time}, {time.time()}")
-                # todo: implement this later:
-                # todo: if 5 random bytes already received changed to and (time.time() >= start_time or random_received => 5)
-                if is_generating_block.is_set() is False and time.time() >= start_time:
+
+            # todo: implement this later:
+            # todo: if 5 random bytes already received changed to and (time.time() >= start_time or random_received => 5)
+            try:
+                if is_generating_block.is_set() is False and has_received_new_block.is_set() is True and time.time() >= start_time:
+
+                    print("Bout To Start Competing")
 
 
 
@@ -788,8 +797,11 @@ class Competitor:
                     # todo: this is done by sending using validator to blockchain queue ie q_for_block_validator
 
 
-                    print(f"just created block: {new_block}")
+                    print(f"just created block: {new_block}, is generating block: {is_generating_block.is_set()}")
                     # q_for_block_validator.put(["nb", new_block])
+            except TypeError as e:
+                print(f"in Orses Compete error: {e}")
+                continue
 
     def compete(
             self,

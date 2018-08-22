@@ -106,7 +106,7 @@ class OrsesMerkleRootTree:
         :return: list of hashes/None objects
         """
 
-        curr_node = self.dict_of_leaf_nodes[leaf_node_hash]
+        curr_node = self.dict_of_leaf_nodes[leaf_node_hash] if leaf_node_hash in self.dict_of_leaf_nodes else None
         proof_list = list()
         while curr_node is not None:
             proof_list.append([curr_node.partner.position, curr_node.partner.hash_value]) if curr_node.partner \
@@ -123,30 +123,44 @@ class OrsesMerkleRootTree:
         :param proof_list:
         :return:
         """
+        if leaf_node_hash is None or merkle_root is None:
+            return False
+
         current_hash = leaf_node_hash
-        for i in proof_list:
-            if i is None:
-                current_hash = hashing(current_hash, current_hash) # none means to duplicate current hash and hash
-            else:
-                if i[0] == "r":
-                    current_hash = hashing(current_hash, i[1])
-                elif i[0] == "l":
-                    current_hash = hashing(i[1], current_hash)
+        if not proof_list:  # empty proof list indicates the only transaction
+            current_hash = hashing(current_hash, current_hash)
+        else:
+            for i in proof_list:
+                if i is None:
+                    current_hash = hashing(current_hash, current_hash) # none means to duplicate current hash and hash
+                else:
+                    if i[0] == "r":
+                        current_hash = hashing(current_hash, i[1])
+                    elif i[0] == "l":
+                        current_hash = hashing(i[1], current_hash)
 
         # current_hash should be equal to merkle_root at the end of the loop
         return current_hash == merkle_root
 
     def create_merkle_tree(self):
-        count = 1
-        items = self.items_to_include_in_tree
+        """
+        create merkle tree if at least 1 item else return None
+        :return:
+        """
+        if self.items_to_include_in_tree:
+            count = 1
+            items = self.items_to_include_in_tree
 
-        while True:
-            self.tree[count] = items = self.hash_rows(items, count)
-            if len(items) == 1:
-                self.merkle_root = items[0]
-                return self.merkle_root
+            while True:
+                self.tree[count] = items = self.hash_rows(items, count)
+                if len(items) == 1:
+                    self.merkle_root = items[0]
+                    return self.merkle_root
 
-            count += 1
+                count += 1
+        else:
+
+            return None
 
     def get_merkle_root(self):
         return self.merkle_root
@@ -249,13 +263,13 @@ if __name__ == '__main__':
         }
     }
 
-    merkle_tree = OrsesMerkleRootTree(list(list1))
+    merkle_tree = OrsesMerkleRootTree(["c8472e1e64cfe50d6572691b8969a5f7e3ac8115aff39f36fe40b753a4af579a", "ecbc97cd733a59c53e47779fe2952700693433b2ffe21292465e350f4173d68d"])
     merkle_tree.create_merkle_tree()
 
     print(merkle_tree.merkle_root)
     # print(merkle_tree.tree, "\n")
 
-    tx_to_validate = "feaa53609b4265078f8cef123ba43e01cc2ca6871f05bea9efafa6133a9914c5"
+    tx_to_validate = "ecbc97cd733a59c53e47779fe2952700693433b2ffe21292465e350f4173d68d"
     #
     proof_list1 = merkle_tree.get_branch_for_proof(tx_to_validate)
     print("----------")
@@ -263,7 +277,7 @@ if __name__ == '__main__':
     print("**********")
     isValidated = merkle_tree.validate_branch_for_proof(
         leaf_node_hash=tx_to_validate,
-        merkle_root="456f4f16b6abbcd4ee4f06e0f96c511c8731ee8b77e68fe7ab25fc6e8171bfa2",
+        merkle_root=merkle_tree.merkle_root,
         proof_list=proof_list1
     )
 

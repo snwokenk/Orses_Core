@@ -299,7 +299,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
         )
 
-        p.daemon = True
+        p.daemon = False
         p.start()
 
 
@@ -665,7 +665,7 @@ if __name__ == '__main__':
                 number_of_nodes=1,
                 reg_network_sandbox=False,
                 preferred_no_of_mining_nodes=0,
-                just_launched=False
+                just_launched=True
             )
 
         elif "--sandbox" in option_dict and "--live" not in option_dict:  # run sandbox mode
