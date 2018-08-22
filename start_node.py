@@ -50,7 +50,16 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: refactor main to closely match sandbox_main but without the fake nodes
+# todo: before proceeding, create a class that returns queues and keeps tract of how many queue object was created
+# todo: using this number, the end signal process can know how many times to send the end signal "exit" or "quit"
+
+# todo: Refactor ttx or rsv_req validators to search blocks and verify enough tokens are unspent for transaction
+# todo: create a block validator which validates newly created block from others
+# todo: this validator first checks that transactions in the block are part of its validated transactions
+# todo: those that are not a independently verified before block is accepted by node
+# todo: this process of validation should keep track of the winning block and the
+
+
 # todo: might do away with a separate secondary signatories section for block 1 and above, just add to misc_messages or reward
 # todo: in order to speed up merkle root creation, propagation and verification, dicts might be turned to list
 # todo: when adding transactions etc to new block, verify it hasn't been added to prev block(not in merkle root)

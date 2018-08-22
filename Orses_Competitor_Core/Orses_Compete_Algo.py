@@ -796,9 +796,10 @@ class Competitor:
                     # todo: when new block is created, send block to blockchainPropagatorInitiator process
                     # todo: this is done by sending using validator to blockchain queue ie q_for_block_validator
 
-
                     print(f"just created block: {new_block}, is generating block: {is_generating_block.is_set()}")
-                    # q_for_block_validator.put(["nb", new_block])
+
+                    # this goes to block initiator method process of BlockchainPropagator
+                    q_for_block_validator.put(["nb", new_block])
             except TypeError as e:
                 print(f"in Orses Compete error: {e}")
                 continue
@@ -935,7 +936,6 @@ class Competitor:
                     except KeyError as e:
                         print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
                         continue
-
 
         print("in Orses_Compete_Algo: Compete, process done")
 

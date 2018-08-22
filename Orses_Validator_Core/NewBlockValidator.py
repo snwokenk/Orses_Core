@@ -46,11 +46,13 @@ rules for block validation:
 
 """
 from Orses_Validator_Core.BaseBlockValidator import BaseBlockValidator
-# todo: create validation logic
 
 
 class NewBlockValidator(BaseBlockValidator):
-    def __init__(self, block_no, block, admin_inst,is_newly_created=False, q_object=None):
+    """
+    A Base Class
+    """
+    def __init__(self, block_no, block, admin_inst, is_newly_created=False, q_object=None):
         super().__init__(
             block_no=block_no,
             block=block,
@@ -62,6 +64,23 @@ class NewBlockValidator(BaseBlockValidator):
     def validate(self):
 
         return True  # for now just return true
+
+    def validate_reward_txs(self):
+        pass
+
+    def validate_ttx(self):
+        pass
+
+    def validate_rsv_req(self):
+        pass
+
+    def validate_rvk_req(self):
+        pass
+
+    def validate_wsh(self):
+        pass
+
+
 
 
 if __name__ == '__main__':
