@@ -27,70 +27,53 @@ class BaseBlockCreator:
 
 class NonGenesisBlockCreator(BaseBlockCreator):
 
-    def __init__(self, primary_sig_wallet_id):
-        super().__init__(primary_sig_wallet_id=primary_sig_wallet_id)
-        self.tx = dict()
-        self.misc_msgs = dict()
-
-    def compute_merkle(self):
-        pass  # Override
-
-
-class BlockOneCreator(NonGenesisBlockCreator):
     def __init__(self, primary_sig_wallet_id, combined_list):
-        super().__init__(primary_sig_wallet_id)
-        self.block = BlockOne()
-        self.block_header_callable = BlockOneHeader
+        super().__init__(primary_sig_wallet_id=primary_sig_wallet_id)
         self.merkle_tree = None
         self.merkle_root = self.compute_merkle(combined_list=combined_list)
-
-    def set_block_before_competing(self, wsh, misc_msgs, transaction_dict, secondary_signatories):
-        self.block.set_before_competing(
-            misc_msgs=misc_msgs,
-            transaction_dict=transaction_dict,
-            wsh=wsh,
-            secondary_signatories=secondary_signatories # secondary signatories is blank
-        )
 
     def compute_merkle(self, combined_list=None):
 
         print("combine list in compute_merkle", combined_list)
+        merkle_root_list = [tx_list[0] for tx_list in combined_list]  # get hash at index 0 of each list
+        print("merkle root list in compute_merkle", merkle_root_list)
 
-        o = OrsesMerkleRootTree(items=combined_list)
+        o = OrsesMerkleRootTree(items=merkle_root_list)
         o.create_merkle_tree()
 
         self.merkle_tree = o
 
         return o.get_merkle_root()
 
+
+class BlockOneCreator(NonGenesisBlockCreator):
+    def __init__(self, primary_sig_wallet_id, combined_list):
+        super().__init__(primary_sig_wallet_id, combined_list)
+        self.block = BlockOne()
+        self.block_header_callable = BlockOneHeader
+
+    def set_block_before_competing(self, combined_list, secondary_signatories):
+        self.block.set_before_competing(
+            combined_list=combined_list,
+            secondary_signatories=secondary_signatories  # secondary signatories is blank
+        )
 
 
 class RegularBlockCreator(NonGenesisBlockCreator):
 
     def __init__(self, primary_sig_wallet_id, combined_list):
 
-        super().__init__(primary_sig_wallet_id=primary_sig_wallet_id)
+        super().__init__(primary_sig_wallet_id=primary_sig_wallet_id, combined_list=combined_list)
 
         self.block = RegularBlock()
         self.block_header_callable = RegularBlockHeader()
-        self.merkle_tree = None
-        self.merkle_root = self.compute_merkle(combined_list=combined_list)
 
-    def set_block_before_competing(self, wsh, misc_msgs, transaction_dict, secondary_signatories):
+    def set_block_before_competing(self, combined_list, secondary_signatories):
         self.block.set_before_competing(
-            misc_msgs=misc_msgs,
-            transaction_dict=transaction_dict,
-            wsh=wsh,
+            combined_list=combined_list,
             secondary_signatories=secondary_signatories # secondary signatories is blank
         )
 
-    def compute_merkle(self, combined_list=None):
-        o = OrsesMerkleRootTree(items=combined_list)
-        o.create_merkle_tree()
-
-        self.merkle_tree = o
-
-        return o.get_merkle_root()
 
 
 class GenesisBlockCreator:

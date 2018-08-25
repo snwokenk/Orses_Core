@@ -18,4 +18,5 @@ class NewBlockOneValidator(NewBlockValidator):
         )
 
 
-    def
+    def verify_merkle_root_parts(self):
+        pass

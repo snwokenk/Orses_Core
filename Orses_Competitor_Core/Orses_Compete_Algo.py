@@ -231,15 +231,13 @@ def get_reward_txs(
 
     list_of_hashes = [Hasher.sha_hasher(json.dumps(primary_rwd_tx)), Hasher.sha_hasher(json.dumps(foundation_rwd_tx))]
     primary_reward_hash, fnd_reward_hash = list_of_hashes
-    rwd_txs = {
-        primary_reward_hash: primary_rwd_tx,
-        fnd_reward_hash: foundation_rwd_tx,
+    rwd_txs = [
+        [primary_reward_hash, primary_rwd_tx],
+        [fnd_reward_hash, foundation_rwd_tx],
 
-    }
+    ]
 
-
-
-    return [rwd_txs, list_of_hashes]
+    return rwd_txs
 
 
 def generate_regular_block(block_no: int, admin_inst, combined_list: list, transactions: dict, misc_msgs: dict,
@@ -282,7 +280,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list, trans
 
 
         # insert reward transactions into transaction dict
-        transactions["rwd_txs"], list_of_hashes = get_reward_txs(
+        list_of_hashes = get_reward_txs(
             primary_sig_wallet=new_block_creator_inst.primary_sig_wallet_id,
             block_no=1,
             fees=fees,
@@ -299,9 +297,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list, trans
         # todo: secondary signatories reward should be added into reward tx
 
         new_block_creator_inst.set_block_before_competing(
-            transaction_dict=transactions,
-            misc_msgs=misc_msgs,
-            wsh=wsh,
+            combined_list=combined_list,
             secondary_signatories=[]  # is blank, pro
         )
 
@@ -379,13 +375,8 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
     :return:
     """
 
-
-
-
-
-
     # create reward transactions
-    transactions["rwd_txs"], list_of_hashes = get_reward_txs(
+    list_of_hashes = get_reward_txs(
         primary_sig_wallet=primary_sig_wallet,
         block_no=1,
         fees=fees,
@@ -393,8 +384,6 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
         include_foundation_reward=include_foundation,
         secondary_sig_wallets=[]  # todo: add secondary rewards to reward transactions for now, skip
     )
-
-
 
     # insert reward transactions hash into combined hash list [prim signatory rwd hash, foundation reward hash]
     combined_list.extend(list_of_hashes)
@@ -409,9 +398,7 @@ def generate_block_one(admin_inst, combined_list: list, transactions: dict, misc
     # todo: secondary signatories reward should be added into reward tx
 
     block_one_creator_inst.set_block_before_competing(
-        transaction_dict=transactions,
-        misc_msgs=misc_msgs,
-        wsh=wsh,
+        combined_list=combined_list,
         secondary_signatories=[]  # is blank, pro
     )
 
@@ -518,10 +505,10 @@ class TxMiscWsh:
         self.fees = fees
         self.combined_list_of_hashes = combined_list_of_hashes
 
-    def append_to_combined_list(self, a_hash):
+    def append_to_combined_list(self, a_hash, main_msg):
         comb_index = self.number_of_transactions
-        self.combined_list_of_hashes.append(a_hash)
-        self.number_of_transactions+=1
+        self.combined_list_of_hashes.append([a_hash, main_msg])
+        self.number_of_transactions += 1
 
         return comb_index
 
@@ -535,24 +522,27 @@ class TxMiscWsh:
         return transactions
 
     def add_to_misc_msg(self, msg_hash, msg: list, fees: int):
-        msg_index = self.append_to_combined_list(msg_hash)
+
+        # misc_msgs == {msg_hash: msg}
+        # msg == []
+        msg_index = self.append_to_combined_list(msg_hash, msg)
         msg.append(msg_index)
         self.misc_msgs[msg_hash] = msg
-        self.fee+=fees
+        self.fees += fees
 
     def add_to_txs(self, type_of_tx, tx_hash, tx: list, fees: int):
         if type_of_tx in {"ttx", "rsv_req", "rvk_req"}:
-            tx_index = self.append_to_combined_list(tx_hash)
+            tx_index = self.append_to_combined_list(tx_hash, tx)
             tx.append(tx_index)
             self.txs[type_of_tx][tx_hash] = tx
-            self.fees+=fees
+            self.fees += fees
         else:
             print(f"in Orses_Compete_Algo.py: in add_to_txs, type_of_tx NOT VALID")
 
     def add_to_wsh(self, wsh_hash, wsh_list: list, no_of_asgn_stmt: int, fees: int):
-        wsh_index = self.append_to_combined_list(wsh_hash)
+        wsh_index = self.append_to_combined_list(wsh_hash, wsh_list)
         wsh_list.append(wsh_index)
-        self.number_of_assignment_statements+=no_of_asgn_stmt
+        self.number_of_assignment_statements += no_of_asgn_stmt
 
         self.wsh[wsh_hash] = wsh_list
 
@@ -598,7 +588,7 @@ class Competitor:
             except TypeError:
                 print(f"in determine_time(), block_before_recent is not a dict but of type "
                       f"{type(block_before_recent_block_header)}")
-            except KeyError as e:
+            except KeyError:
                 print(f"block_before_recent is not a dict but of type "
                       f"{type(block_before_recent_block_header)}")
 
@@ -643,7 +633,6 @@ class Competitor:
         last_block_time = block_header["time"]
         start_time = last_block_time + pause_time  # 7 second proxy window
 
-
         # get single prime, exp leading prime, addl chars, len of competition from block before recent
         block_before_recent_block_no = int(block_header["block_no"]) - 1
         block_before_recent = self.get_block_before_recent_block(
@@ -657,7 +646,6 @@ class Competitor:
 
         # single character of this competition is value of key '16' in shuffled hex value dict
         single_prime_char = block_before_recent_block_header["shv"]['16']  # char at shuffled he
-
 
         # get the number of times single prime char shows up in front of hash
         mpt_split = block_before_recent_block_header["mpt"].split(sep="+")  # "P7+0"  == ['P7', '0']
@@ -736,7 +724,7 @@ class Competitor:
                                 msg_hash=rsp[1],
                                 msg=rsp[2]
                             )
-                        except AttributeError as e: # tx_misc_wsh is still None
+                        except AttributeError as e:  # tx_misc_wsh is still None
                             print(f"tx_misc_wsh is still none: {e}")
 
                     elif rsp[0] == "wsh":  # for wallet state hash
@@ -757,7 +745,6 @@ class Competitor:
                             tx_hash=rsp[1],
                             tx=rsp[2]
                         )
-
 
             # todo: implement this later:
             # todo: if 5 random bytes already received changed to and (time.time() >= start_time or random_received => 5)
@@ -815,7 +802,6 @@ class Competitor:
         print(f"in Orses_compete_alog, Started Compete Process For admin: {self.admin_inst.admin_name}")
         recent_blk = q_for_compete.get()
         print(f"in Orses_compete_Algo, recent block:\n{recent_blk} admin: {self.admin_inst.admin_name}")
-        rwd_wallet = self.reward_wallet
 
         reason_dict = dict()
         reason_dict['b'] = "ttx"

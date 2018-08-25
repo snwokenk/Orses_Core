@@ -50,9 +50,6 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: before proceeding, create a class that returns queues and keeps tract of how many queue object was created
-# todo: using this number, the end signal process can know how many times to send the end signal "exit" or "quit"
-
 # todo: Refactor ttx or rsv_req validators to search blocks and verify enough tokens are unspent for transaction
 # todo: create a block validator which validates newly created block from others
 # todo: this validator first checks that transactions in the block are part of its validated transactions

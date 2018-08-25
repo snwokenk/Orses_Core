@@ -80,6 +80,10 @@ class NewBlockValidator(BaseBlockValidator):
     def validate_wsh(self):
         pass
 
+    def verify_merkle_root_parts(self):
+        pass
+
+
 
 
 

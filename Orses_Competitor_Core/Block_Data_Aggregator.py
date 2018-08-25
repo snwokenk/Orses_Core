@@ -400,29 +400,20 @@ class NonGenesisBlock(BaseBlock):
 
     def __init__(self):
         super().__init__()
-        self.tx = None
-        self.misc_msgs = None
-        self.wsh = None
+
+        self.block_activity = None
 
     def set_block_header(self, block_header):
         self.bh = block_header
 
-    def set_txs(self, transaction_dict: dict):
-        self.tx = transaction_dict
-
-    def set_misc_msgs(self, misc_msgs: dict):
-        self.misc_msgs =  misc_msgs
-
-    def set_wsh_dict(self, wsh):
-        self.wsh = wsh
+    def set_block_activty(self, combined_list):
+        self.block_activity = combined_list
 
     def set_secondary_signatories(self, list_of_secondary_signatories):
         self.s_s = list_of_secondary_signatories
 
-    def set_before_competing(self, transaction_dict, misc_msgs, wsh, secondary_signatories):
-        self.set_txs(transaction_dict=transaction_dict)
-        self.set_misc_msgs(misc_msgs=misc_msgs)
-        self.set_wsh_dict(wsh=wsh)
+    def set_before_competing(self, combined_list,  secondary_signatories):
+        self.set_block_activty(combined_list=combined_list)
         self.set_secondary_signatories(list_of_secondary_signatories=secondary_signatories)
 
     def set_after_competing(self, block_header):
@@ -430,9 +421,7 @@ class NonGenesisBlock(BaseBlock):
 
 
 class BlockOne(NonGenesisBlock):
-
-    def set_signatories_of_gen_block(self, signatories_list: list):
-        self.misc_msgs["gen_s_s"] = signatories_list
+    pass
 
 
 class RegularBlock(NonGenesisBlock):
