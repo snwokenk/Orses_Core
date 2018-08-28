@@ -7,8 +7,8 @@ getting the last block received and requesting for blocks
 It includes class with data
 """
 import os, json, shutil
-from Orses_Validator_Core.NewBlockValidator import NewBlockValidator
-from Orses_Validator_Core.NonNewBlockValidator import NonNewBlockValidator
+# from Orses_Validator_Core.NewBlockValidator import NewBlockValidator
+# from Orses_Validator_Core.NonNewBlockValidator import NonNewBlockValidator
 
 
 class BlockChainData:
@@ -84,7 +84,8 @@ class BlockChainData:
 
         # verify that we don't already have block:
         if BlockChainData.get_block(block_no, admin_instance=admin_instance) is None:
-            isValidated = NonNewBlockValidator(block_no, block, admin_instance).validate()
+            # isValidated = NonNewBlockValidator(block_no, block, admin_instance).validate()
+            isValidated = True
 
             if isValidated is True:
                 file1 = os.path.join(admin_instance.fl.get_block_data_folder_path(), str(block_no))

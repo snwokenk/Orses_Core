@@ -52,10 +52,11 @@ class BlockOneCreator(NonGenesisBlockCreator):
         self.block = BlockOne()
         self.block_header_callable = BlockOneHeader
 
-    def set_block_before_competing(self, combined_list, secondary_signatories):
+    def set_block_before_competing(self, combined_list, secondary_signatories, wsh):
         self.block.set_before_competing(
             combined_list=combined_list,
-            secondary_signatories=secondary_signatories  # secondary signatories is blank
+            secondary_signatories=secondary_signatories,  # secondary signatories is blank
+            wsh=wsh
         )
 
 
@@ -68,10 +69,11 @@ class RegularBlockCreator(NonGenesisBlockCreator):
         self.block = RegularBlock()
         self.block_header_callable = RegularBlockHeader()
 
-    def set_block_before_competing(self, combined_list, secondary_signatories):
+    def set_block_before_competing(self, combined_list, secondary_signatories, wsh):
         self.block.set_before_competing(
             combined_list=combined_list,
-            secondary_signatories=secondary_signatories # secondary signatories is blank
+            secondary_signatories=secondary_signatories,  # secondary signatories is blank
+            wsh=wsh
         )
 
 

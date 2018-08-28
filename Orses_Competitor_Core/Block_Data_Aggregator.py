@@ -1,5 +1,5 @@
 from Orses_Database_Core.RetrieveData import RetrieveData
-from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
+# from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 from collections import Iterable
 
 import time, random, statistics, math
@@ -402,6 +402,7 @@ class NonGenesisBlock(BaseBlock):
         super().__init__()
 
         self.block_activity = None
+        self.wsh = None
 
     def set_block_header(self, block_header):
         self.bh = block_header
@@ -412,9 +413,13 @@ class NonGenesisBlock(BaseBlock):
     def set_secondary_signatories(self, list_of_secondary_signatories):
         self.s_s = list_of_secondary_signatories
 
-    def set_before_competing(self, combined_list,  secondary_signatories):
+    def set_wsh(self, wsh):
+        self.wsh = wsh
+
+    def set_before_competing(self, combined_list,  secondary_signatories, wsh):
         self.set_block_activty(combined_list=combined_list)
         self.set_secondary_signatories(list_of_secondary_signatories=secondary_signatories)
+        self.set_wsh(wsh=wsh)
 
     def set_after_competing(self, block_header):
         self.set_block_header(block_header=block_header)

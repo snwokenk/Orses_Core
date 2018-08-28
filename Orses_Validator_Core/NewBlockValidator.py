@@ -46,24 +46,32 @@ rules for block validation:
 
 """
 from Orses_Validator_Core.BaseBlockValidator import BaseBlockValidator
+from Orses_Util_Core.MerkleRootTree import OrsesMerkleRootTree
+from Orses_Util_Core.Inherited_Classes import BlockChainDataInherited, CompetitorInherited, \
+    competitive_hasher_func, get_qualified_hashes_func
 
 
 class NewBlockValidator(BaseBlockValidator):
     """
     A Base Class
     """
-    def __init__(self, block_no, block, admin_inst, is_newly_created=False, q_object=None):
+    def __init__(self, block, admin_inst, block_propagator_inst,  is_newly_created=False, q_object=None):
         super().__init__(
-            block_no=block_no,
             block=block,
             admin_inst=admin_inst,
             is_newly_created=is_newly_created,
             q_object=q_object
         )
+        self.block_header = self.block["bh"]
+        self.block_propagator_inst = block_propagator_inst
 
     def validate(self):
 
-        return True  # for now just return true
+        if self.verify_merkle_root_parts() and self.verify_block_hash_meets_target():
+            print("Block Validated by Validator")
+            return True
+        else:
+            return False
 
     def validate_reward_txs(self):
         pass
@@ -81,7 +89,68 @@ class NewBlockValidator(BaseBlockValidator):
         pass
 
     def verify_merkle_root_parts(self):
-        pass
+        block_actvity = self.block["block_activity"]
+        list_for_merkle_root = [item[0] for item in block_actvity]
+        o = OrsesMerkleRootTree(list_for_merkle_root)
+        o.create_merkle_tree()
+
+        merkle_root_validated = o.merkle_root == self.block["bh"]["mrh"]
+
+        return merkle_root_validated
+
+    def verify_block_hash_meets_target(self):
+        """
+        verify that hash of block meets required probability target
+        :return:
+        """
+
+        previous_block_no = self.prev_blockNo
+
+        c = CompetitorInherited(
+            reward_wallet="0",
+            admin_inst=self.admin_inst,
+            just_launched=False if previous_block_no > 0 else False
+        )
+
+        if previous_block_no > 0:
+            start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
+                c.get_new_block_arguments(rsp=self.block)
+        elif previous_block_no == 0:
+            start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
+                c.get_block_one_arguments()
+        else:
+            return False
+
+        merkle_root = self.block_header["mrh"]
+        extra_nonce = self.block_header["bh"]
+        nonce = self.block_header["n"]
+        combined_merkle = f'{extra_nonce}{merkle_root}'
+        is_hash_valid = get_qualified_hashes_func(
+            prime_char=single_prime_char*exp_leading_prime,
+            extra_nonce=None,
+            nonce=None,
+            hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}'.encode()),
+            len_prime_char=exp_leading_prime,
+            check_if_valid=True
+
+        )
+
+        print("In NewBlockValidator  Hash Is Valid", is_hash_valid)
+
+        return is_hash_valid
+
+    def validate_block_activities(self):
+        """
+        use this method to validate activities in "block_activity" section
+        :return:
+        """
+
+    def get_block(self, block_no):
+
+        return BlockChainDataInherited.get_block(
+            admin_instance=self.admin_inst,
+            block_no=block_no
+        )
 
 
 

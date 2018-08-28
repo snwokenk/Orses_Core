@@ -50,6 +50,11 @@ else:
     print("All Required Packages Installed")
 
 
+# todo: set block activity to be a dictionary, To create merkle root, sort from smallest hash to greated hash(default)
+# todo: the goal is to allow quick checking of blocks for transactions/token ownership.
+# todo: when another node receives a winning block, it recreates list, creates merkle tree and saves the merkle tree
+# todo: object as a pickle file. This allows for quick
+
 # todo: Refactor ttx or rsv_req validators to search blocks and verify enough tokens are unspent for transaction
 # todo: create a block validator which validates newly created block from others
 # todo: this validator first checks that transactions in the block are part of its validated transactions

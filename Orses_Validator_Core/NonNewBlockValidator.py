@@ -11,9 +11,8 @@ from Orses_Validator_Core.BaseBlockValidator import BaseBlockValidator
 
 class NonNewBlockValidator(BaseBlockValidator):
 
-    def __init__(self, block_no, block, admin_inst,is_newly_created=False, q_object=None):
+    def __init__(self, block, admin_inst,is_newly_created=False, q_object=None):
         super().__init__(
-            block_no=block_no,
             block=block,
             admin_inst=admin_inst,
             is_newly_created=is_newly_created,

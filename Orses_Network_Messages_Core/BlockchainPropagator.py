@@ -39,17 +39,22 @@ from twisted.internet import reactor, defer, threads
 from queue import Empty
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 from Orses_Validator_Core.NonNewBlockValidator import NonNewBlockValidator
+from Orses_Validator_Core.NewBlockOneValidator import NewBlockOneValidator
+from Orses_Validator_Core.NewBlockValidator import NewBlockValidator
+
 
 
 bk_validator_dict = dict()
 bk_validator_dict["req_block"] = NonNewBlockValidator  # validator for non new blocks
+bk_validator_dict["nb"] = NewBlockValidator
+bk_validator_dict["nb1"] = NewBlockOneValidator
 
 
 blockchain_msg_reasons = {
     "knw_blk",  # request most recent block
     "req_block",
-    "new_block",  # a newly created block
-
+    "nb",  # a newly created block
+    "nb1",
 }
 
 
@@ -121,7 +126,6 @@ class BlockChainPropagator:
             # get most recent block known by connected nodes. Will only get an int
             # uses separate thread for each protocol message
 
-
             msg_sender_creator_for_multiple(
                 set_of_excluded_protocol_id={},
                 msg=["knw_blk"],
@@ -174,7 +178,6 @@ class BlockChainPropagator:
                     recent_block=BlockChainData.get_current_known_block(prop_inst.admin_instance)[1])
             else:
                 send_response_to_other_threads(has_setup=False, prop_inst=prop_inst)
-
 
             # wait for blocks to download, then end
             response_thread = threads.deferToThread(
@@ -273,7 +276,6 @@ class BlockChainPropagator:
             first_initial_setup
         )
 
-
     def run_propagator_convo_initiator(self):
         """
         used to initiate a block request, send validated blocks
@@ -302,8 +304,14 @@ class BlockChainPropagator:
                     elif isinstance(rsp, list):
                         reason_msg = rsp[0]  # reason of message
 
-                        if reason_msg == "nb":  # new block created locally
-                            pass
+                        if reason_msg in {"nb", "nb1"}:  # new block created locally
+                            msg_sender_creator_for_multiple(
+                                set_of_excluded_protocol_id={},
+                                msg=rsp,
+                                protocol_list=list(self.connected_protocols_dict),
+                                propagator_inst=self
+
+                            )
                 except KeyboardInterrupt:
                     print("ending convo initiator in BlockchainPropagator")
                     break
@@ -382,7 +390,6 @@ class BlockChainPropagator:
         print("In BlockchainPropagator.py convo manager ended")
 
 
-
 def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, **kwargs):
 
     reason_msg = msg[0]  # [reason, main message(if applicable)]
@@ -398,6 +405,14 @@ def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, 
                 protocol_id=protocol_id,
                 blockchainPropagatorInstance=propagator_inst,
                 q_from_prop_to_msg=propagator_inst.q_object_to_receive_from_messages
+            )
+        elif reason_msg in {"nb", "nb1"}:
+            msg_snd = SendNewlyCreatedBlock(
+                protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+                convo_id=convo_id,
+                msg=msg,
+                propagator_inst=propagator_inst
+
             )
         elif reason_msg == "req_block":
             if "blocks_to_receive" in kwargs and "expected_recent_block" in kwargs:
@@ -420,6 +435,7 @@ def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, 
 
 
 def msg_sender_creator_for_one(protocol_id, msg, propagator_inst: BlockChainPropagator, **kwargs):
+
     propagator_inst.reactor_instance.callInThread(
         msg_sender_creator,
         protocol_id=protocol_id,
@@ -435,13 +451,12 @@ def msg_sender_creator_for_multiple(set_of_excluded_protocol_id, msg, protocol_l
 
     for protocol_id in protocol_list:
         if protocol_id not in set_of_excluded_protocol_id:
-            propagator_inst.reactor_instance.callInThread(
-                msg_sender_creator,
+
+            msg_sender_creator_for_one(
                 protocol_id=protocol_id,
                 msg=msg,
                 propagator_inst=propagator_inst,
                 **kwargs
-
             )
 
 
@@ -457,25 +472,19 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator
     convo_id = msg[1]
     reason_msg = msg[2]
 
-    # instantiate a validator, if needed
-    if isinstance(reason_msg, str) and reason_msg in blockchain_msg_reasons:
-
-        if reason_msg not in {"knw_blk"}:  # if it is in, then no need for a validator
-            statement_validator = bk_validator_dict[reason_msg]
-    elif isinstance(reason_msg, list) and len(reason_msg) >= 2:
-
-        # req_block message
-        if isinstance(reason_msg[0], str) and reason_msg[0] in blockchain_msg_reasons:
-            statement_validator = bk_validator_dict[reason_msg[0]]
-
-    else:  # send end message
-        propagator_inst.reactor_instance.callInThread(
-            notify_of_ended_message,
-            protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
-            convo_id=convo_id,
-            propagator_instance=propagator_inst
-        )
-        return
+    # # instantiate a validator, if needed
+    # if isinstance(reason_msg, str) and reason_msg in blockchain_msg_reasons:
+    #     pass
+    # elif isinstance(reason_msg, list) and len(reason_msg) >= 2:
+    #     pass
+    # else:  # send end message
+    #     propagator_inst.reactor_instance.callInThread(
+    #         notify_of_ended_message,
+    #         protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
+    #         convo_id=convo_id,
+    #         propagator_instance=propagator_inst
+    #     )
+    #     return
 
     # todo: move this while loop into a function, which returns a convo id
 
@@ -492,7 +501,7 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator
     propagator_inst.convo_dict[protocol_id].update({convo_id[0]: prop_receiver})
     prop_receiver.listen(msg=msg)
 
-    if reason_msg == "new_block":
+    if reason_msg == "nb":  # new block reason
         pass  # store hash in message_from_other_veri_node_dict to keep track of where it was received
 
 
@@ -534,7 +543,7 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
             convo_id=convo_id,
             propagator_inst = propagator_inst
         )
-    # request new blocks
+    # request for new blocks
     # receiver is SendNewBlockRequested, this sends actual blocks requested
     elif isinstance(reason_msg, list) and reason_msg[0] == "req_block":  # todo: have a way of safely sending blocks without loss of data
 
@@ -542,6 +551,17 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
             protocol=protocol,
             convo_id=convo_id,
             blockchainPropagatorInstance=propagator_inst
+        )
+
+    # new creator blog being propagated from peer
+    # reason_msg == ["nb", block]
+    elif isinstance(reason_msg, list) and reason_msg[0] in {"nb", "nb1"}:
+
+        msg_rcv = ReceiveNewlyCreatedBlock(
+            protocol=protocol,
+            convo_id=convo_id,
+            propagator_inst=propagator_inst,
+            is_block_one=False if reason_msg[0] == "nb" else True
         )
 
     else:
@@ -869,6 +889,55 @@ class ReceivePropagatatedBlock(BlockChainMessageReceiver):
 
     def __init__(self, protocol, convo_id, propagator_inst):
         super().__init__(protocol, convo_id,propagator_inst)
+
+
+class SendNewlyCreatedBlock(BlockChainMessageSender):
+
+    def __init__(self, msg, protocol, convo_id, propagator_inst):
+        super().__init__(protocol, convo_id, propagator_inst)
+
+        self.msg = msg
+
+    def speak(self):
+        """
+        Just speak and end conversation
+        :return:
+        """
+        self.speaker(msg=self.msg)
+        self.end_convo = True
+
+
+class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
+    def __init__(self, protocol, convo_id, propagator_inst, is_block_one):
+        super().__init__(protocol, convo_id,propagator_inst)
+        self.is_block_one = is_block_one
+
+    def listen(self, msg):
+        """
+        listen for new block and then validate new block
+        :param msg:
+        :return:
+        """
+
+        # msg = ['b', [convo id, convo id], ['nb'
+
+        # end the convo
+        self.end_convo = True
+        validator = NewBlockValidator if not self.is_block_one else NewBlockOneValidator
+        block = msg[2][1]
+
+        block_validated = validator(
+            admin_inst=self.propagator_inst.admin_instance,
+            block=block,
+            block_propagator_inst=self.propagator_inst,
+            is_newly_created=True
+
+        )
+        print(f"in ReceiveNewlyCreatedBlock", msg)
+        print(f"in ReceiveNewlyCreatedBlock, is block valid", block_validated)
+        # self.propagator_inst.reactor_instance.callInThread(
+        #
+        # )
 
 
 
