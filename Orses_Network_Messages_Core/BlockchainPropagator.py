@@ -932,7 +932,7 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
             block_propagator_inst=self.propagator_inst,
             is_newly_created=True
 
-        )
+        ).validate()
         print(f"in ReceiveNewlyCreatedBlock", msg)
         print(f"in ReceiveNewlyCreatedBlock, is block valid", block_validated)
         # self.propagator_inst.reactor_instance.callInThread(

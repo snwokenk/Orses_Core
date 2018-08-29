@@ -49,6 +49,10 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: create a class that holds the transactions, misc messages etc received from the network. This class can then be
+# todo: referenced for already received tx hashes and those in blocks or waiting for blocks.
+# todo: the class should be named OrsesMempool
+
 
 # todo: set block activity to be a dictionary, To create merkle root, sort from smallest hash to greated hash(default)
 # todo: the goal is to allow quick checking of blocks for transactions/token ownership.

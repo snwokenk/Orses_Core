@@ -44,6 +44,9 @@ def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, nonce, extra_non
             return True
         dict_of_valid_hash[hash_hex] = [nonce, extra_nonce]
 
+    else:
+        return False
+
 
 def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash,  q,
                      extra_nonce_index, max_nonce_value, end_time):
@@ -543,6 +546,8 @@ class TxMiscWsh:
 
     def add_to_txs(self, type_of_tx, tx_hash, tx: list, fees: int):
         if type_of_tx in {"ttx", "rsv_req", "rvk_req"}:
+
+            # tx = [main_msg, sign]
             tx_index = self.append_to_combined_list(tx_hash, tx)
             # tx.append(tx_index)
             # self.txs[type_of_tx][tx_hash] = tx

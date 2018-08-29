@@ -51,6 +51,9 @@ from Orses_Util_Core.Inherited_Classes import BlockChainDataInherited, Competito
     competitive_hasher_func, get_qualified_hashes_func
 
 
+
+# todo: once block is valid, send it off to WinnerValidator, This Process Validates blocks and then sends the winning
+# todo: block to
 class NewBlockValidator(BaseBlockValidator):
     """
     A Base Class
@@ -69,6 +72,7 @@ class NewBlockValidator(BaseBlockValidator):
 
         if self.verify_merkle_root_parts() and self.verify_block_hash_meets_target():
             print("Block Validated by Validator")
+
             return True
         else:
             return False
@@ -94,7 +98,12 @@ class NewBlockValidator(BaseBlockValidator):
         o = OrsesMerkleRootTree(list_for_merkle_root)
         o.create_merkle_tree()
 
-        merkle_root_validated = o.merkle_root == self.block["bh"]["mrh"]
+        merkle_root_validated = o.merkle_root == self.block_header["mrh"]
+
+
+        print(f" is merkle root validated {merkle_root_validated}")
+        print(f"merkle root from block {self.block_header['mrh']}\n"
+              f"merkle root recreated {o.merkle_root}")
 
         return merkle_root_validated
 
@@ -119,31 +128,44 @@ class NewBlockValidator(BaseBlockValidator):
             start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
                 c.get_block_one_arguments()
         else:
+            print("block hash is False")
             return False
 
-        merkle_root = self.block_header["mrh"]
-        extra_nonce = self.block_header["bh"]
-        nonce = self.block_header["n"]
-        combined_merkle = f'{extra_nonce}{merkle_root}'
-        is_hash_valid = get_qualified_hashes_func(
-            prime_char=single_prime_char*exp_leading_prime,
-            extra_nonce=None,
-            nonce=None,
-            hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}'.encode()),
-            len_prime_char=exp_leading_prime,
-            check_if_valid=True
+        try:
+            merkle_root = self.block_header["mrh"]
+            extra_nonce = self.block_header["x_n"]
 
-        )
+            # turn nonce back to int from hex str
+            nonce = int(self.block_header["n"], 16)
 
-        print("In NewBlockValidator  Hash Is Valid", is_hash_valid)
+            combined_merkle = f'{extra_nonce}{merkle_root}'
+            is_hash_valid = get_qualified_hashes_func(
+                prime_char=single_prime_char*exp_leading_prime,
+                extra_nonce=None,
+                nonce=None,
+                hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}'.encode()),
+                len_prime_char=exp_leading_prime,
+                check_if_valid=True
 
-        return is_hash_valid
+            )
+            print("In NewBlockValidator  Hash Is Valid", is_hash_valid)
+        except Exception as e:
+            print(f"in New Block Validator exception {e}")
+            return False
+        else:
+            return is_hash_valid
 
     def validate_block_activities(self):
         """
         use this method to validate activities in "block_activity" section
         :return:
         """
+
+        for activity in self.block["block_activity"]:
+
+            # activity = [hash, main_msg list or dict
+            # check if hash in validated transactions
+            if activity[0] in self.block_propagator_inst.
 
     def get_block(self, block_no):
 
