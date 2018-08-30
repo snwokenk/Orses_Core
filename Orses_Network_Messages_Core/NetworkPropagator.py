@@ -19,7 +19,7 @@ validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeVali
 
 class NetworkPropagator:
 
-    def __init__(self, q_object_connected_to_validator, q_for_propagate, reactor_instance,
+    def __init__(self, mempool, q_object_connected_to_validator, q_for_propagate, reactor_instance,
                  q_object_between_initial_setup_propagators, is_sandbox=False, q_object_to_competing_process=None,
                  admin_inst=None):
         """
@@ -28,6 +28,11 @@ class NetworkPropagator:
         :param q_object_to_competing_process: q object used to send new validated messages to competing process,
         if active
         """
+        # set mempool object shared with BlockchainPropagator
+        # contains dict with hash previews for valid msgs and invalid messages
+        # contains a method to check
+        self.mempool = mempool
+
         self.admin = admin_inst
         self.is_sandbox = is_sandbox
         self.q_object_validator = q_object_connected_to_validator
@@ -42,9 +47,9 @@ class NetworkPropagator:
 
         # dict with reason+hash previews as dict keys( this can be updated using binary search Tree) will do for now
         # main tx dict as value
-        self.validated_message_dict_with_hash_preview = dict()
+        # self.validated_message_dict_with_hash_preview = dict()
 
-        self.invalidated_message_dict_with_hash_preview = dict()
+        # self.invalidated_message_dict_with_hash_preview = dict()
 
         #message_from_other_veri_node_dict[protocol_id] = {hashpreviews}
         # dict with hash previews received from other nodes
@@ -114,7 +119,11 @@ class NetworkPropagator:
                         pass
                     elif rsp[-1] is True:
                         print("in convo initiator, connected protocols", self.connected_protocols_dict)
-                        self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                        # self.validated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                        self.mempool.insert_into_valid_msg_preview_hash(
+                            hash_prev=rsp[0],
+                            msg=rsp[2]
+                        )
                         reason_msg = rsp[0][0]
                         # todo: create a process which handles proxy duties (if any) of BCW,
                         # send to compete process, if node is competing
@@ -133,7 +142,8 @@ class NetworkPropagator:
                             admin_inst=self.admin
                         )
                     else:
-                        self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                        # self.invalidated_message_dict_with_hash_preview[rsp[0]] = rsp[2]
+                        self.mempool.insert_into_invalid_msg_preview_hash(hash_prev=rsp[0], msg=rsp[2])
 
                 except Exception as e:
                     print("Message: ", rsp, ": exception: ", e)
@@ -504,10 +514,10 @@ class StatementReceiver(PropagatorMessageReceiver):
             # will be turned to true in self.speak()
             elif self.received_first_msg is False and isinstance(msg[-1], str):
                 # have seen and accepted transaction
-                if msg[-1] in self.propagator_inst.validated_message_dict_with_hash_preview:
+                if self.propagator_inst.mempool.check_valid_msg_hash_prev_dict(hash_prev=msg[-1]):
                     self.speak(rsp=True)
                 # have seen and rejected transaction
-                elif msg[-1] in self.propagator_inst.invalidated_message_dict_with_hash_preview:
+                elif msg[-1] in self.propagator_inst.mempool.check_invalid_msg_hash_prev_dict(hash_prev=msg[-1]):
                     self.speak(rsp=False)
                 # has not seen transaction
                 else:

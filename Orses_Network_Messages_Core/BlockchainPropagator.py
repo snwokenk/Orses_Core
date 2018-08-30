@@ -59,11 +59,14 @@ blockchain_msg_reasons = {
 
 
 class BlockChainPropagator:
-    def __init__(self, q_object_connected_to_block_validator, q_object_to_competing_process,
+    def __init__(self, mempool, q_object_connected_to_block_validator, q_object_to_competing_process,
                  q_for_bk_propagate, q_object_between_initial_setup_propagators,reactor_instance,
                  admin_instance):
         # initiate Blockchain Data folder if not already created. If create_genesis_only is True, then
         BlockChainData(admin_instance, create_genesis_only=False)
+
+        # set mempool shared with networkPropagtor
+        self.mempool = mempool
 
         self.admin_instance = admin_instance
         self.q_object_connected_to_block_validator = q_object_connected_to_block_validator

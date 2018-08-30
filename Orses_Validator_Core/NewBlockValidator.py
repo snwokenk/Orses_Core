@@ -107,7 +107,7 @@ class NewBlockValidator(BaseBlockValidator):
 
         return merkle_root_validated
 
-    def verify_block_hash_meets_target(self):
+    def verify_block_hash_meets_target(self) -> bool:
         """
         verify that hash of block meets required probability target
         :return:
@@ -161,11 +161,14 @@ class NewBlockValidator(BaseBlockValidator):
         :return:
         """
 
-        for activity in self.block["block_activity"]:
+        # todo: check mempool if hash in valid uncomfirmed, if it is not, check to make sure hash IS NOT in comfirmed
+        # todo: (last 20 blocks). If it is not, pass the message into validators
 
-            # activity = [hash, main_msg list or dict
-            # check if hash in validated transactions
-            if activity[0] in self.block_propagator_inst.
+        # for activity in self.block["block_activity"]:
+        #
+        #     # activity = [hash, main_msg list or dict
+        #     # check if hash in validated transactions
+        #     if activity[0] in self.block_propagator_inst.
 
     def get_block(self, block_no):
 

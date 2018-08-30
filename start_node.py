@@ -2,6 +2,7 @@ from Orses_Administrator_Core.Administrator import Admin
 from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
 from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagator
+from Orses_Network_Messages_Core.MemPool import MemPool
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
 
@@ -277,6 +278,9 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     q_object_to_each_node = multiprocessing.Queue()  # for exit signal
     q_object_from_compete_process_to_mining = multiprocessing.Queue()  # q between compete_process and handle_new_block
 
+    # instantiate mempool object
+    mempool = MemPool(admin_inst=admin)
+
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and compete == 'y':
 
@@ -320,6 +324,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(
+        mempool=mempool,
         q_object_connected_to_block_validator=q_for_block_validator,
         q_object_to_competing_process=q_for_compete,
         q_for_bk_propagate=q_for_bk_propagate,
@@ -341,6 +346,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
     # *** Instantiate Network Propagator ***
     propagator = NetworkPropagator(
+        mempool=mempool,
         q_object_connected_to_validator=q_for_validator,
         q_for_propagate=q_for_propagate,
         reactor_instance=main_node.reactor,
