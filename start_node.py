@@ -50,15 +50,9 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: create a class that holds the transactions, misc messages etc received from the network. This class can then be
-# todo: referenced for already received tx hashes and those in blocks or waiting for blocks.
-# todo: the class should be named OrsesMempool
-
-
-# todo: set block activity to be a dictionary, To create merkle root, sort from smallest hash to greated hash(default)
-# todo: the goal is to allow quick checking of blocks for transactions/token ownership.
-# todo: when another node receives a winning block, it recreates list, creates merkle tree and saves the merkle tree
-# todo: object as a pickle file. This allows for quick
+# todo: finish check_winning_block_from_network. in this function, the winning hash selected locally should be
+# todo: broadcasted, along with a signature, block no. The function should then wait for response for these messages
+# todo: receive blocks or
 
 # todo: Refactor ttx or rsv_req validators to search blocks and verify enough tokens are unspent for transaction
 # todo: create a block validator which validates newly created block from others

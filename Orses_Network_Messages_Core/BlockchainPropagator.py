@@ -41,6 +41,8 @@ from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 from Orses_Validator_Core.NonNewBlockValidator import NonNewBlockValidator
 from Orses_Validator_Core.NewBlockOneValidator import NewBlockOneValidator
 from Orses_Validator_Core.NewBlockValidator import NewBlockValidator
+from Orses_Competitor_Core.CompetitionHelperFunctions import get_prime_char, get_prime_char_for_block_one, \
+    get_addl_chars_exp_leading, get_addl_chars_exp_leading_block_one
 
 
 
@@ -74,6 +76,7 @@ class BlockChainPropagator:
         self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
         self.q_object_to_receive_from_messages = multiprocessing.Queue()
+        self.q_object_for_winning_block_process = multiprocessing.Queue()
         self.reactor_instance = reactor_instance
         self.convo_dict = dict()
         self.convo_id = 0
@@ -392,7 +395,8 @@ class BlockChainPropagator:
 
         print("In BlockchainPropagator.py convo manager ended")
 
-    def run_block_winner_chooser_process(self, block, end_time, q_object_to_propagator: multiprocessing.queues.Queue) -> None:
+    def run_block_winner_chooser_process(self, block, end_time,
+                                         q_obj_from_validater: multiprocessing.queues.Queue) -> None:
         """
         A new instance of this function is run in a separate thread by the blockchainpropagator process
         Each new instance represents a new round, The aim of this process is to find the winning block based on the
@@ -406,26 +410,84 @@ class BlockChainPropagator:
         :param q_object_to_propagator: multiprocessing.Queue object which to receive any subsequent blocks
         :return:
         """
-        winning_block = block
+        block_header = block["bh"]
+        block_no = int(block_header["block_no"])
+        block_before_recent_no = block_no - 2
+        dict_of_potential_blocks = dict()
+        dict_of_potential_blocks[block_header["block_hash"]] = block
+
+        # get the parameters used for competition
+        if block_no == 1:
+            prime_char = get_prime_char_for_block_one()
+            exp_leading_prime, addl_chars = get_addl_chars_exp_leading_block_one()
+        else:
+            block_before_recent = BlockChainData.get_block(
+                admin_instance=self.admin_instance,
+                block_no=block_before_recent_no
+            )
+
+            block_before_recent_header = block_before_recent["bh"]
+
+            prime_char = get_prime_char(block={}, block_header=block_before_recent_header)
+            exp_leading_prime, addl_chars = get_addl_chars_exp_leading(block={}, block_header=block_before_recent_header)
+
+        # check first block received and get score
+        winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
+            prime_char=prime_char,
+            addl_chars=addl_chars,
+            curr_winning_hash="",
+            hash_of_new_block=block_header["block_hash"],
+            exp_leading=exp_leading_prime,
+            current_winning_score=0
+        )
 
         while time.time() <= end_time:
             try:
                 # blocks are received from NewBlockValidator.
                 # this function, is meant to determine the winning block from valid blocks received
-                new_block = q_object_to_propagator.get(timeout=0.25)
+                # it is not meant to validate a block, blocks should already be validated
+                new_block = q_obj_from_validater.get(timeout=0.25)
             except Empty:
                 continue
             else:
                 # todo: check block hash to see if it is the winning block
                 # todo: use the choose_winning_hash_from_two function to determine if score of new is better
-                pass
+                if isinstance(new_block, str) and new_block in {'exit', 'quit'}:
+                    break
 
-    def check_winning_block_from_network(self):
+                new_block_header = new_block["bh"]
+
+                dict_of_potential_blocks[new_block_header["block_hash"]] = new_block
+
+                winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
+                    prime_char=prime_char,
+                    addl_chars=addl_chars,
+                    curr_winning_hash=winning_hash,
+                    hash_of_new_block=new_block_header["block_hash"],
+                    exp_leading=exp_leading_prime,
+                    current_winning_score=winning_score
+                )
+
+        local_winning_block = dict_of_potential_blocks[winning_hash]
+
+
+    def check_winning_block_from_network(self, local_winning_block):
         """
         This function will use the locally determined winning block and check for endorsements from proxy nodes.
         The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
         :return:
         """
+
+        winning_hash = local_winning_block["bh"]["block_hashs"]
+
+        # todo: send your winning hash to other
+
+        while True:
+            winning_hash_rsp = self.q_object_for_winning_block_process.get()
+
+
+
+        # create a message
 
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
@@ -474,7 +536,6 @@ def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_
         determined_with_tiebreaker = False
 
     return [current_winning_score, curr_winning_hash, determined_with_tiebreaker]
-
 
 
 

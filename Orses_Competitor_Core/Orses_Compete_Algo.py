@@ -1,5 +1,5 @@
 from hashlib import sha256
-import time, multiprocessing, os,  copy, queue, json, math
+import time, multiprocessing, os,  queue, json, math
 from multiprocessing.queues import Queue
 from multiprocessing import synchronize
 from queue import Empty # Exception
@@ -8,6 +8,8 @@ from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Cryptography_Core.Hasher import Hasher
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
+from Orses_Competitor_Core.CompetitionHelperFunctions import get_prime_char, get_addl_chars_exp_leading, \
+    get_prime_char_for_block_one, get_addl_chars_exp_leading_block_one
 
 
 """
@@ -661,21 +663,15 @@ class Competitor:
         )
 
         # single character of this competition is value of key '16' in shuffled hex value dict
-        single_prime_char = block_before_recent_block_header["shv"]['16']  # char at shuffled he
+        single_prime_char = get_prime_char(block={}, block_header=block_before_recent_block_header) # char at shuffled he
 
-        # get the number of times single prime char shows up in front of hash
-        mpt_split = block_before_recent_block_header["mpt"].split(sep="+")  # "P7+0"  == ['P7', '0']
-        exp_leading_prime = int(mpt_split[0][1:])
-        number_of_addl_chars = int(mpt_split[1])
 
-        # get addl_chars if needed (if number after plus is >  ie p7+2 or p7+3 no after + can never be 1 (p7+1 == p8+0)
-        # additional characters are choosen from biggest to smallest key
-        addl_chars = ""
-        for i in range(1, number_of_addl_chars):
+        # get exp_leading_prime and addl chars
+        exp_leading_prime, addl_chars = get_addl_chars_exp_leading(
+            block={},
+            block_header=block_before_recent_block_header
+        )
 
-            # addl_chars = "value at key '15', value at key '14',....etc" value at key '1' is never used
-            # value at key '16' is the prime char and is automatically assumed as the first addl char
-            addl_chars = f"{addl_chars}{block_before_recent_block_header['shv'][str(16-i)]}"
 
         return start_time, len_competition, single_prime_char, exp_leading_prime, block_before_recent_block_no + 2, \
                addl_chars
@@ -683,16 +679,11 @@ class Competitor:
     def get_block_one_arguments(self):
         start_time = int(time.time())  # start immediately for block one but 2 second pause
         len_competition = 30
-        single_prime_char = 'f'
-        exp_leading_prime=5
+        single_prime_char = get_prime_char_for_block_one()
+        exp_leading_prime, addl_chars = get_addl_chars_exp_leading_block_one()
         new_block_no = 1
-        addl_chars = ""
-
         return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars
 
-    def thread_to_keep_track_of_when_block_being_generated(self, q_object_for_compete_process):
-        #
-        pass
 
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
                          is_generating_block: multiprocessing.synchronize.Event,
