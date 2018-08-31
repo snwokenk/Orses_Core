@@ -522,6 +522,9 @@ def main(just_launched=False):
     q_object_from_compete_process_to_mining = multiprocessing.Queue()  # q between compete_process and handle_new_block
 
 
+    # instantiate mempool object
+    mempool = MemPool(admin_inst=admin)
+
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and compete == 'y':
         # multiprocessing event objects
@@ -563,12 +566,14 @@ def main(just_launched=False):
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(
+        mempool=mempool,
         q_object_connected_to_block_validator=q_for_block_validator,
         q_object_to_competing_process=q_for_compete,
         q_for_bk_propagate=q_for_bk_propagate,
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         reactor_instance=reactor,
-        admin_instance=admin
+        admin_instance=admin,
+
 
     )
 
@@ -583,6 +588,7 @@ def main(just_launched=False):
 
     # *** Instantiate Network Propagator ***
     propagator = NetworkPropagator(
+        mempool=mempool,
         q_object_connected_to_validator=q_for_validator,
         q_for_propagate=q_for_propagate,
         reactor_instance=reactor,

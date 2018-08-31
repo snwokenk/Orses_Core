@@ -51,9 +51,8 @@ from Orses_Util_Core.Inherited_Classes import BlockChainDataInherited, Competito
     competitive_hasher_func, get_qualified_hashes_func
 
 
-
 # todo: once block is valid, send it off to WinnerValidator, This Process Validates blocks and then sends the winning
-# todo: block to
+# todo: block to other blockpropagator, compete process
 class NewBlockValidator(BaseBlockValidator):
     """
     A Base Class
@@ -70,7 +69,8 @@ class NewBlockValidator(BaseBlockValidator):
 
     def validate(self):
 
-        if self.verify_merkle_root_parts() and self.verify_block_hash_meets_target():
+        if self.verify_merkle_root_parts() and self.verify_block_hash_meets_target() and \
+                self.verify_random_bytes_included():
             print("Block Validated by Validator")
 
             return True
@@ -106,6 +106,15 @@ class NewBlockValidator(BaseBlockValidator):
               f"merkle root recreated {o.merkle_root}")
 
         return merkle_root_validated
+
+    def verify_random_bytes_included(self):
+        """
+        this will check that the 5 random bytes are included from
+        :return:
+        """
+        # todo: add the logic verifying random bytes are in block and proxy nodes providing these random bytes did
+        # todo: not provide for the last two blocks
+        return True
 
     def verify_block_hash_meets_target(self) -> bool:
         """

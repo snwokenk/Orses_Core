@@ -6,6 +6,7 @@ It also includes transaction/messages already in block (last 10 blocks)
 
 import gc
 
+
 class MemPool:
 
     def __init__(self, admin_inst, blocks_before_delete=20):

@@ -517,7 +517,7 @@ class StatementReceiver(PropagatorMessageReceiver):
                 if self.propagator_inst.mempool.check_valid_msg_hash_prev_dict(hash_prev=msg[-1]):
                     self.speak(rsp=True)
                 # have seen and rejected transaction
-                elif msg[-1] in self.propagator_inst.mempool.check_invalid_msg_hash_prev_dict(hash_prev=msg[-1]):
+                elif self.propagator_inst.mempool.check_invalid_msg_hash_prev_dict(hash_prev=msg[-1]):
                     self.speak(rsp=False)
                 # has not seen transaction
                 else:

@@ -34,7 +34,7 @@ current messages defined:
 3. to define: message_to_propagate validated blocks, message to receive blocks being propagated and validating it
 """
 
-import json, multiprocessing
+import json, multiprocessing, time
 from twisted.internet import reactor, defer, threads
 from queue import Empty
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
@@ -220,7 +220,7 @@ class BlockChainPropagator:
 
             return False
 
-        def wait_for_most_recent_block_response(prop_inst, protocol_list, count=0):
+        def wait_for_most_recent_block_response(prop_inst: BlockChainPropagator, protocol_list, count=0) -> list:
 
             """
             used to wait for responses from peer nodes.
@@ -279,7 +279,7 @@ class BlockChainPropagator:
             first_initial_setup
         )
 
-    def run_propagator_convo_initiator(self):
+    def run_propagator_convo_initiator(self) -> None:
         """
         used to initiate a block request, send validated blocks
         Process is only used to INITIATE convo, any replies go to the run_propagator_convo_manager thread
@@ -307,7 +307,7 @@ class BlockChainPropagator:
                     elif isinstance(rsp, list):
                         reason_msg = rsp[0]  # reason of message
 
-                        if reason_msg in {"nb", "nb1"}:  # new block created locally
+                        if reason_msg in {"nb", "nb1"}:  # new block created locally nb1 block one created
                             msg_sender_creator_for_multiple(
                                 set_of_excluded_protocol_id={},
                                 msg=rsp,
@@ -326,7 +326,7 @@ class BlockChainPropagator:
         except (KeyboardInterrupt, SystemExit):
             pass
 
-    def run_propagator_convo_manager(self):
+    def run_propagator_convo_manager(self) -> None:
 
         initial_setup_done = self.q_object_between_initial_setup_propagators.get()  # returns bool
 
@@ -391,6 +391,92 @@ class BlockChainPropagator:
             pass
 
         print("In BlockchainPropagator.py convo manager ended")
+
+    def run_block_winner_chooser_process(self, block, end_time, q_object_to_propagator: multiprocessing.queues.Queue) -> None:
+        """
+        A new instance of this function is run in a separate thread by the blockchainpropagator process
+        Each new instance represents a new round, The aim of this process is to find the winning block based on the
+        rules set forth. Once the block is found , it is returned along with the secondary signatories to use.
+
+        Winning block hash is then sent to other nodes, who can then determine block with the most endorsements
+
+        Blocks might be sent to other processes waiting for or needing current block info
+        :param block: the first block received from the competition
+        :param end_time: the time when a block is decided (also known as 7 second window
+        :param q_object_to_propagator: multiprocessing.Queue object which to receive any subsequent blocks
+        :return:
+        """
+        winning_block = block
+
+        while time.time() <= end_time:
+            try:
+                # blocks are received from NewBlockValidator.
+                # this function, is meant to determine the winning block from valid blocks received
+                new_block = q_object_to_propagator.get(timeout=0.25)
+            except Empty:
+                continue
+            else:
+                # todo: check block hash to see if it is the winning block
+                # todo: use the choose_winning_hash_from_two function to determine if score of new is better
+                pass
+
+    def check_winning_block_from_network(self):
+        """
+        This function will use the locally determined winning block and check for endorsements from proxy nodes.
+        The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
+        :return:
+        """
+
+
+def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
+                                 exp_leading: int, current_winning_score=0) -> list:  # return a list
+    """
+
+    :param prime_char: hex character that must be leading in a hash
+    :param addl_chars: addl characters (if any) used after the leading hash
+    :param curr_winning_hash: current hash of winning block
+    :param hash_of_new_block: hash of new block to determine
+    :param exp_leading: expected amount of leading prime char in a hash
+    :param current_winning_score: winning score of winning hash
+    :return: returns  list : [winning score, winning hash, True/False if winner determined using tiebreaker]
+    """
+    initial_prime_char = exp_leading
+
+    temp_score = 0
+    temp_extra = 0
+    ini_pr_ch = initial_prime_char
+    leading_prime = True
+    for j in hash_of_new_block[exp_leading:]:  # this is from eligible hashes so start from exp leading index
+        if j == prime_char and leading_prime is True:
+            # if j is prime and previous value was prime then j value is added n in 16^n.
+            ini_pr_ch += 1
+        elif j == prime_char and leading_prime is False:  # prime character still an eligible addl char
+            temp_extra += 16
+
+        elif j in addl_chars:
+            # add the value, if j is prime char and previous char was not prime , then f value is added score
+            leading_prime = False
+            # temp_score = 16 ** ini_pr_ch if not score else score
+            temp_extra += 15 - addl_chars.find(j)  # addl_chars string sorted from hi value char(15) to lowest.
+        else:
+            temp_score = 16 ** ini_pr_ch
+            temp_score += temp_extra
+            break
+    # print("temp_score", temp_score, "score", score, "\n---")
+    if temp_score > current_winning_score:
+        current_winning_score = temp_score
+        curr_winning_hash = hash_of_new_block
+        determined_with_tiebreaker = False
+    elif temp_score == current_winning_score:
+        # todo: institute tie breaker according to whitepaper and protocols written
+        determined_with_tiebreaker = True
+    else:
+        determined_with_tiebreaker = False
+
+    return [current_winning_score, curr_winning_hash, determined_with_tiebreaker]
+
+
+
 
 
 def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, **kwargs):
@@ -535,7 +621,7 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
     :param kwargs:
     :return:
     """
-    admin_inst = propagator_inst.admin_instance
+
 
     # a request most recent block known message/
     # receiver is to send most recent block known (int block number is sent NOT whole block)
@@ -929,6 +1015,9 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
         validator = NewBlockValidator if not self.is_block_one else NewBlockOneValidator
         block = msg[2][1]
 
+
+        # the block validator will check the block to make sure it meets the requirement needed to be
+        #  considedered a valid block
         block_validated = validator(
             admin_inst=self.propagator_inst.admin_instance,
             block=block,
