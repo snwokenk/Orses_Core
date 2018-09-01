@@ -470,25 +470,41 @@ class BlockChainPropagator:
 
         local_winning_block = dict_of_potential_blocks[winning_hash]
 
+        self.check_winning_block_from_network(
+            dict_of_potential_winners=dict_of_potential_blocks,
+            winning_hash=winning_hash,
+            winning_score=winning_score
+        )
 
-    def check_winning_block_from_network(self, local_winning_block):
+    def check_winning_block_from_network(self, dict_of_potential_winners, winning_hash, winning_score):
         """
         This function will use the locally determined winning block and check for endorsements from proxy nodes.
         The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
         :return:
         """
 
-        winning_hash = local_winning_block["bh"]["block_hashs"]
-
-        # todo: send your winning hash to other
-
-        while True:
-            winning_hash_rsp = self.q_object_for_winning_block_process.get()
+        winning_block = dict_of_potential_winners[winning_hash]
 
 
+        # todo: for now use the absolute number of endorsements from nodes
+        # todo: but once BCW logic is added, the winning node should be the block(which is valid)
+        # todo: endorsed by proxy nodes REPRENSENTING THE LARGEST AMOUNT OF TOKENS RESERVED(WITH A TIME DISCOUNT)
+
+        # send winning hash to others
+        # msg is signature of hash and last 3 letters of hash, other nodes use this signature and check using nodes public key and hash of block
+        # if the signature is wrong node checks other hashes it has using the last 3 letters
+        # if node does not have a hash ending in the last three letters OR does not have a hash then the full hash is sent
+
+
+        # check for response
+        no_of_protocols = len(self.connected_protocols_dict)
+        len_of_check = time.time() + 5
+        while no_of_protocols > 0 and time.time() <= len_of_check:
+            winning_hash_rsp = self.q_object_for_winning_block_process.get(timeout=0.2)
+            if isinstance(winning_hash_rsp, str) and winning_hash_rsp in {'exit', 'quit'}:
+                break
 
         # create a message
-
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
                                  exp_leading: int, current_winning_score=0) -> list:  # return a list
@@ -536,8 +552,6 @@ def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_
         determined_with_tiebreaker = False
 
     return [current_winning_score, curr_winning_hash, determined_with_tiebreaker]
-
-
 
 
 def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, **kwargs):
@@ -733,6 +747,7 @@ def get_convo_id(protocol_id, propagator_inst: BlockChainPropagator):
             continue
         propagator_inst.connected_protocols_dict[protocol_id][1] += 1
         return convo_id
+
 
 # *** base message sender class ***
 class BlockChainMessageSender:
@@ -1093,4 +1108,32 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
         # )
 
 
+class SendBlockWinnerChoice(BlockChainMessageSender):
+    """
+    class is used to send choice of block winner to other competing/proxy nodes
+    """
+    pass
 
+
+class ReceiveBlockWinnerChoice(BlockChainMessageReceiver):
+    """
+    class is used to receive another competing/proxy node's choice of block winner
+    """
+    pass
+
+
+class SendNetworkWinnerChoice(BlockChainMessageSender):
+    """
+    after determining the block with the most endorsement, network winner is chosen.
+    This is to broadcast to others about this choice,
+    """
+
+    pass
+
+
+class ReceiveNetworkWinnerChoice(BlockChainMessageReceiver):
+    """
+    receive network winner choice from other nodes. This will first check the last five chars and 32-35 (inclusive)
+    characters. If current node also has the same
+    """
+    pass

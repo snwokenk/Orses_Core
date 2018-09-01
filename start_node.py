@@ -19,6 +19,7 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 # https://stackoverflow.com/questions/19924104/python-multiprocessing-handling-child-errors-in-parent
 # https://docs.quantifiedcode.com/python-anti-patterns/index.html
 # https://opensource.guide/starting-a-project/
+# https://bitcoin.stackexchange.com/questions/10821/how-long-does-it-take-to-propagate-a-newly-created-block-to-the-entire-bitcoin-n
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
@@ -53,6 +54,8 @@ else:
 # todo: finish check_winning_block_from_network. in this function, the winning hash selected locally should be
 # todo: broadcasted, along with a signature, block no. The function should then wait for response for these messages
 # todo: receive blocks or
+
+# todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 
 # todo: Refactor ttx or rsv_req validators to search blocks and verify enough tokens are unspent for transaction
 # todo: create a block validator which validates newly created block from others
