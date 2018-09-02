@@ -18,7 +18,7 @@ class DigitalSignerValidator:
     def validate(msg, pubkey: dict, signature):
         """
         used to validate signature
-        :param message: string or byte string, message to validate signature(assignment statements, token transfers etc)
+        :param msg: string or byte string, message to validate signature(assignment statements, token transfers etc)
         :param signature: bytes string or hex string
         :param pubkey: {"x": base85 string, "y": base85 string}  # use base64.b85decode(pubkey["x"}.encode) to get
                         pubkey bytes

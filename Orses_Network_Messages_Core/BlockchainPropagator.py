@@ -45,6 +45,10 @@ from Orses_Competitor_Core.CompetitionHelperFunctions import get_prime_char, get
     get_addl_chars_exp_leading, get_addl_chars_exp_leading_block_one
 
 
+from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
+from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
+
+
 
 bk_validator_dict = dict()
 bk_validator_dict["req_block"] = NonNewBlockValidator  # validator for non new blocks
@@ -57,7 +61,10 @@ blockchain_msg_reasons = {
     "req_block",
     "nb",  # a newly created block
     "nb1",
+    "bc" # block choice
 }
+
+
 
 
 class BlockChainPropagator:
@@ -71,30 +78,55 @@ class BlockChainPropagator:
         self.mempool = mempool
 
         self.admin_instance = admin_instance
+
+        # ***multiprocessing.Queue objects used to communicated between threads and processes***
         self.q_object_connected_to_block_validator = q_object_connected_to_block_validator
         self.q_object_compete = q_object_to_competing_process
         self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
         self.q_object_to_receive_from_messages = multiprocessing.Queue()
         self.q_object_for_winning_block_process = multiprocessing.Queue()
+
+        # ***reactor from start_node.py passed as a parameter***
         self.reactor_instance = reactor_instance
+
+        # ***dictionaries used for communication between nodes and block propagation***
         self.convo_dict = dict()
-        self.convo_id = 0
+        # self.convo_id = 0
         self.connected_protocols_dict = dict()
+        self.connected_protocols_dict_of_pubkey = dict()
+
+        # class attributes for use in block propagation and logic
         self.locally_known_block = BlockChainData.get_current_known_block(admin_instance)[0]
         self.has_current_block = False
         self.protocol_with_most_recent_block = None  # [protocol id, convo_id, block_no known]
+
+        # ***attributes used in block creation and consensus formation***
+        self.dict_of_potential_blocks = {
+            "prev": dict(),
+            "full_hash": dict()
+        }
 
     def add_protocol(self, protocol):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
+        self.connected_protocols_dict_of_pubkey[protocol.proto_id] = None
 
     def remove_protocol(self, protocol):
 
         del self.connected_protocols_dict[protocol.proto_id]
         del self.convo_dict[protocol.proto_id]
+        del self.connected_protocols_dict_of_pubkey[protocol.proto_id]
+
+    def get_pubkey_of_node_with_protocol(self, protocol):
+        try:
+            return self.connected_protocols_dict_of_pubkey[protocol.proto_id]
+        except KeyError:
+            print(f"In get_pubkey_of_node_with_protocol, blockchainPropagator, protocol id not in dict. BUT SHOULD BE")
+            return None
+
 
     def initial_setup(self, recursive_count=0, no_connected_peers_ok=True):
         """
@@ -413,8 +445,8 @@ class BlockChainPropagator:
         block_header = block["bh"]
         block_no = int(block_header["block_no"])
         block_before_recent_no = block_no - 2
-        dict_of_potential_blocks = dict()
-        dict_of_potential_blocks[block_header["block_hash"]] = block
+        self.dict_of_potential_blocks["full_hash"][block_header["block_hash"]] = block
+        self.dict_of_potential_blocks["prev"][[block_header["block_hash"][-8:]]] = block_header["block_hash"]
 
         # get the parameters used for competition
         if block_no == 1:
@@ -457,7 +489,9 @@ class BlockChainPropagator:
 
                 new_block_header = new_block["bh"]
 
-                dict_of_potential_blocks[new_block_header["block_hash"]] = new_block
+                self.dict_of_potential_blocks["full_hash"][new_block_header["block_hash"]] = block
+                self.dict_of_potential_blocks["prev"][new_block_header["block_hash"][-8:]] = \
+                    new_block_header["block_hash"]
 
                 winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
                     prime_char=prime_char,
@@ -468,22 +502,19 @@ class BlockChainPropagator:
                     current_winning_score=winning_score
                 )
 
-        local_winning_block = dict_of_potential_blocks[winning_hash]
-
         self.check_winning_block_from_network(
-            dict_of_potential_winners=dict_of_potential_blocks,
             winning_hash=winning_hash,
             winning_score=winning_score
         )
 
-    def check_winning_block_from_network(self, dict_of_potential_winners, winning_hash, winning_score):
+    def check_winning_block_from_network(self,  winning_hash, winning_score):
         """
         This function will use the locally determined winning block and check for endorsements from proxy nodes.
         The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
         :return:
         """
 
-        winning_block = dict_of_potential_winners[winning_hash]
+        winning_block = self.dict_of_potential_blocks["full_hash"][winning_hash]
 
 
         # todo: for now use the absolute number of endorsements from nodes
@@ -504,7 +535,12 @@ class BlockChainPropagator:
             if isinstance(winning_hash_rsp, str) and winning_hash_rsp in {'exit', 'quit'}:
                 break
 
+            elif isinstance(winning_hash_rsp, list): # [winning hash, signature]
+                pass
+
+
         # create a message
+
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
                                  exp_leading: int, current_winning_score=0) -> list:  # return a list
@@ -590,6 +626,8 @@ def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, 
                 )
             else:
                 msg_snd = None
+        elif reason_msg == "bc": # block choice
+            pass
         else:
             msg_snd = None
 
@@ -636,22 +674,6 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator
     convo_id = msg[1]
     reason_msg = msg[2]
 
-    # # instantiate a validator, if needed
-    # if isinstance(reason_msg, str) and reason_msg in blockchain_msg_reasons:
-    #     pass
-    # elif isinstance(reason_msg, list) and len(reason_msg) >= 2:
-    #     pass
-    # else:  # send end message
-    #     propagator_inst.reactor_instance.callInThread(
-    #         notify_of_ended_message,
-    #         protocol=propagator_inst.connected_protocols_dict[protocol_id][0],
-    #         convo_id=convo_id,
-    #         propagator_instance=propagator_inst
-    #     )
-    #     return
-
-    # todo: move this while loop into a function, which returns a convo id
-
     convo_id[0] = get_convo_id(protocol_id=protocol_id, propagator_inst=propagator_inst)
 
     prop_receiver = get_message_receiver(
@@ -665,8 +687,11 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: BlockChainPropagator
     propagator_inst.convo_dict[protocol_id].update({convo_id[0]: prop_receiver})
     prop_receiver.listen(msg=msg)
 
-    if reason_msg == "nb":  # new block reason
-        pass  # store hash in message_from_other_veri_node_dict to keep track of where it was received
+    if isinstance(reason_msg, list):
+        pass
+    else:
+        if reason_msg == "nb":  # new block reason
+            pass  # store hash in message_from_other_veri_node_dict to keep track of where it was received
 
 
 def notify_of_ended_message(protocol, convo_id: list, propagator_instance: BlockChainPropagator):
@@ -709,24 +734,29 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
         )
     # request for new blocks
     # receiver is SendNewBlockRequested, this sends actual blocks requested
-    elif isinstance(reason_msg, list) and reason_msg[0] == "req_block":  # todo: have a way of safely sending blocks without loss of data
+    elif isinstance(reason_msg, list):
+        if reason_msg[0] == "req_block":  # todo: have a way of safely sending blocks without loss of data
+            msg_rcv = SendNewBlocksRequested(
+                protocol=protocol,
+                convo_id=convo_id,
+                blockchainPropagatorInstance=propagator_inst
+            )
 
-        msg_rcv = SendNewBlocksRequested(
-            protocol=protocol,
-            convo_id=convo_id,
-            blockchainPropagatorInstance=propagator_inst
-        )
+        # new creator blog being propagated from peer
+        # reason_msg == ["nb", block]
+        elif reason_msg[0] in {"nb", "nb1"}:
 
-    # new creator blog being propagated from peer
-    # reason_msg == ["nb", block]
-    elif isinstance(reason_msg, list) and reason_msg[0] in {"nb", "nb1"}:
+            msg_rcv = ReceiveNewlyCreatedBlock(
+                protocol=protocol,
+                convo_id=convo_id,
+                propagator_inst=propagator_inst,
+                is_block_one=False if reason_msg[0] == "nb" else True
+            )
+        elif reason_msg[0] == "bc":  # block choice
+            msg_rcv = None
 
-        msg_rcv = ReceiveNewlyCreatedBlock(
-            protocol=protocol,
-            convo_id=convo_id,
-            propagator_inst=propagator_inst,
-            is_block_one=False if reason_msg[0] == "nb" else True
-        )
+        else:
+            msg_rcv = None
 
     else:
         print(f"in {__file__}: get_message_receiver, reason msg {reason_msg}")
@@ -1108,18 +1138,113 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
         # )
 
 
+
+# TODO: this should be totally revamped
+# TODO: Rather than sending blockwinnnerchoice, This shoud "REQUEST" for blockwinner from other node.
+# TODO: if other node already has a blockwinner, it sends it
+# TODO: if it doesn't but will get if, then a deferral is created in that node and it is sent once it determines
+
+# todo: when sending request, if local node does not have pubkey of peer node, this should be indicated
 class SendBlockWinnerChoice(BlockChainMessageSender):
     """
     class is used to send choice of block winner to other competing/proxy nodes
     """
-    pass
+    def __init__(self, protocol, convo_id, propagator_inst, local_block_winner_choice_prev,
+                 local_block_winner_choice_hash, q_object):
+        super().__init__(protocol=protocol, convo_id=convo_id, propagator_inst=propagator_inst)
+
+        #  last 8 chars of hash
+        self.local_block_winner_choice_prev = local_block_winner_choice_prev
+        self.local_block_winner_choice_hash = local_block_winner_choice_hash
+        self.q_object_to_winner_process = q_object
+
+    def speak(self, rsp=None):
+        if self.end_convo is False:
+
+            if self.sent_first_msg is False and rsp is None:
+                self.sent_first_msg = True
+
+                # msg = [winner prev==last 8 chars of hash, signature using full hash]
+                msg = [self.local_block_winner_choice_prev,
+                       DigitalSigner.sign_with_provided_privkey(
+                           self.propagator_inst.admin_instance.get_privkey(as_dict=True),
+                           message=self.local_block_winner_choice_hash)]
+                msg = ["bc", msg]
+
+                self.speaker(msg=msg)
+
+    def listen(self, msg):
+        if self.end_convo is False:
+            if isinstance(msg, list):
+                if self.other_convo_id is None:
+                    self.other_convo_id = msg[1][1]  # msg = ['b', [your convo id, other convo id], main_msg]
+                    self.convo_id = [self.other_convo_id, self.local_convo_id]
+
+                if msg[-1] == self.end_convo:
+                    # todo: send this response to the network winner choice process
+                    pass
 
 
 class ReceiveBlockWinnerChoice(BlockChainMessageReceiver):
     """
     class is used to receive another competing/proxy node's choice of block winner
     """
-    pass
+
+    def __init__(self, protocol, convo_id, propagator_inst, local_block_winner_choice):
+        super().__init__(protocol=protocol, convo_id=convo_id, propagator_inst=propagator_inst)
+        self.local_block_winner_choice = local_block_winner_choice
+
+
+    def listen(self, msg):
+        if self.end_convo is False:
+            if msg[-1] == self.last_msg:
+                self.end_convo = True
+            elif self.received_first_msg is False:
+                self.received_first_msg = True
+                # msg[2] == ['bc',[last 8 chars of hash, signature of full hash]] == main msg
+                # msg[1] == convo id list
+                # msg[0] == 'b' shows its from blockchainpropagator logic
+                # todo: check to see if peer nodes choice same as if it is send an ver message
+
+    def check_peer_node_choice(self, main_msg):
+        """
+        check prev for full hash and verify by checking signature of other node, if pubkey not present,
+        return none for req of pubkey
+        :param main_msg:
+        :return:
+        """
+        main_msg = main_msg[-1]
+        preview = main_msg[0]
+        signature = main_msg[-1]
+
+        if not self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol]:
+            return None  # does not have pubkey
+        else:
+            protocol_pubkey = self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol]
+
+        try:
+            # get hash choice from prev
+            peer_node_hash_choice = self.propagator_inst.dict_of_potential_blocks["prev"][prev]
+        except KeyError:  # local node does not have block hash, so full hash and block must be sent
+            return False
+
+        else:
+            # validate signature
+            is_valid = DigitalSignerValidator.validate(
+                msg=peer_node_hash_choice,
+                pubkey=protocol_pubkey,
+                signature=signature
+            )
+
+            if is_valid:
+                pass
+            else:
+                return False
+
+
+
+
+
 
 
 class SendNetworkWinnerChoice(BlockChainMessageSender):

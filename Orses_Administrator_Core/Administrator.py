@@ -103,6 +103,22 @@ class Admin:
         step1 = SHA256.new(self.pubkey).digest()
         return "VID-" + RIPEMD160.new(step1).hexdigest()
 
+    def get_privkey(self, as_dict=False):
+
+        if self.privkey:
+            if as_dict is True:
+                return {
+                    "x": self.privkey.pointQ.x,
+                    "y": self.privkey.pointQ.y,
+                    "d": self.privkey.d
+                }
+            else:
+                return self.privkey
+        else:
+            return None
+
+
+
     def save_admin(self):
         # todo: STOPPED HERE direct from segregated folder
         # pubkey should be saved as a json encoded python dictonary
