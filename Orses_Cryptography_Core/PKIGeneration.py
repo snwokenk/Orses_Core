@@ -115,9 +115,6 @@ class PKI:
         if not pubkey:  # no public key saved with user name
             return False
 
-        # turn back to original bytes from base85encoded string/bytes
-        pubkey_bytes = base64.b85decode(pubkey['x'].encode())+base64.b85decode(pubkey['y'].encode())
-
         if importedKey is True and x_y_only is False:
 
             # construct public key and return a key object or importedKey
@@ -134,9 +131,12 @@ class PKI:
             # x_int = int.from_bytes(x_int, "big")
             return pubkey
         else:
+            # turn back to original bytes from base85encoded string/bytes
+            pubkey_bytes = base64.b85decode(pubkey['x'].encode())+base64.b85decode(pubkey['y'].encode())
 
             # looking for bytes probably to generate user id
             # bytes is done by concatenating the bytes of x and y. see explanation above on how to get the bytes
+
             return pubkey_bytes
 
     @staticmethod

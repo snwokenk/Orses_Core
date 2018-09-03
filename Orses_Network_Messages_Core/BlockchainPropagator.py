@@ -107,6 +107,10 @@ class BlockChainPropagator:
             "full_hash": dict()
         }
 
+        # dict of deferred convo key is convo reason, value is list index 0 as message obj method index 1 as msg
+        # ie {'bc': [[SendBlockWinnerChoice_instance.listen_deffered, msg received from peer], [...]] }
+        self.dict_of_deferred_convo = dict()
+
     def add_protocol(self, protocol):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
@@ -527,6 +531,8 @@ class BlockChainPropagator:
         # if node does not have a hash ending in the last three letters OR does not have a hash then the full hash is sent
 
 
+        # todo: check propagators deffered dict using "bc" as a key, any deferred convo should be continued with block choice provided
+
         # check for response
         no_of_protocols = len(self.connected_protocols_dict)
         len_of_check = time.time() + 5
@@ -798,6 +804,8 @@ class BlockChainMessageSender:
         self.other_convo_id = None  # in listen() get other convo_id
         self.convo_id = [self.other_convo_id, self.local_convo_id]
         self.sent_first_msg = False
+        self.need_admin_pubkey = 'apk'
+        self.need_pubkey = 'wpk'
 
     def speak(self):
         """ override """
@@ -825,6 +833,7 @@ class BlockChainMessageReceiver:
         self.verified_msg = 'ver'
         self.prop_type = 'b'
         self.need_pubkey = 'wpk'
+        self.need_admin_pubkey = 'apk'
         self.messages_heard = set()
         self.protocol = protocol
         self.local_convo_id = convo_id[0]
@@ -1138,38 +1147,51 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
         # )
 
 
-
 # TODO: this should be totally revamped
 # TODO: Rather than sending blockwinnnerchoice, This shoud "REQUEST" for blockwinner from other node.
 # TODO: if other node already has a blockwinner, it sends it
 # TODO: if it doesn't but will get if, then a deferral is created in that node and it is sent once it determines
-
 # todo: when sending request, if local node does not have pubkey of peer node, this should be indicated
-class SendBlockWinnerChoice(BlockChainMessageSender):
+
+class RequestBlockWinnerChoice(BlockChainMessageSender):
     """
     class is used to send choice of block winner to other competing/proxy nodes
+    convo diagram:
+
+    send a message requesting for winner choice, if pubkey of peer node is not known, add that to the message:
+    msg = ['bc'], if need pubkey msg = ['bc', 'apk']
+
+    response from other node might be immediate or delayed: so a defferal must be created to end the conversation
+    if response is too late.
+
+    response from other node:
+
+    [last 8 char prev of block hash, signature of full block hash]
+
+    the preview is used to find block hash and the digitalsignervalidator is used to verify signature
+
+
+    if block hash is not found then it is ignored. (this is to avoid competitors gaming the system)
+    Each individual node should only use block hashes gotten during the window of receiving these.
+
+    Even though a block hash is ignored, it is stored, if this ignored hash has the most endorsements then local node
+    should request for block and validate the block and use it as the official block for that particular block number
     """
-    def __init__(self, protocol, convo_id, propagator_inst, local_block_winner_choice_prev,
-                 local_block_winner_choice_hash, q_object):
+
+    def __init__(self, protocol, convo_id, propagator_inst, local_block_winner_choice_prev, q_object):
+
         super().__init__(protocol=protocol, convo_id=convo_id, propagator_inst=propagator_inst)
 
-        #  last 8 chars of hash
-        self.local_block_winner_choice_prev = local_block_winner_choice_prev
-        self.local_block_winner_choice_hash = local_block_winner_choice_hash
         self.q_object_to_winner_process = q_object
+        self.local_block_winner_choice_prev = local_block_winner_choice_prev
 
     def speak(self, rsp=None):
+
         if self.end_convo is False:
 
             if self.sent_first_msg is False and rsp is None:
                 self.sent_first_msg = True
-
-                # msg = [winner prev==last 8 chars of hash, signature using full hash]
-                msg = [self.local_block_winner_choice_prev,
-                       DigitalSigner.sign_with_provided_privkey(
-                           self.propagator_inst.admin_instance.get_privkey(as_dict=True),
-                           message=self.local_block_winner_choice_hash)]
-                msg = ["bc", msg]
+                msg = ["bc"] if self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol] else ["bc", self.need_admin_pubkey]
 
                 self.speaker(msg=msg)
 
@@ -1183,28 +1205,6 @@ class SendBlockWinnerChoice(BlockChainMessageSender):
                 if msg[-1] == self.end_convo:
                     # todo: send this response to the network winner choice process
                     pass
-
-
-class ReceiveBlockWinnerChoice(BlockChainMessageReceiver):
-    """
-    class is used to receive another competing/proxy node's choice of block winner
-    """
-
-    def __init__(self, protocol, convo_id, propagator_inst, local_block_winner_choice):
-        super().__init__(protocol=protocol, convo_id=convo_id, propagator_inst=propagator_inst)
-        self.local_block_winner_choice = local_block_winner_choice
-
-
-    def listen(self, msg):
-        if self.end_convo is False:
-            if msg[-1] == self.last_msg:
-                self.end_convo = True
-            elif self.received_first_msg is False:
-                self.received_first_msg = True
-                # msg[2] == ['bc',[last 8 chars of hash, signature of full hash]] == main msg
-                # msg[1] == convo id list
-                # msg[0] == 'b' shows its from blockchainpropagator logic
-                # todo: check to see if peer nodes choice same as if it is send an ver message
 
     def check_peer_node_choice(self, main_msg):
         """
@@ -1224,7 +1224,7 @@ class ReceiveBlockWinnerChoice(BlockChainMessageReceiver):
 
         try:
             # get hash choice from prev
-            peer_node_hash_choice = self.propagator_inst.dict_of_potential_blocks["prev"][prev]
+            peer_node_hash_choice = self.propagator_inst.dict_of_potential_blocks["prev"][preview]
         except KeyError:  # local node does not have block hash, so full hash and block must be sent
             return False
 
@@ -1242,9 +1242,69 @@ class ReceiveBlockWinnerChoice(BlockChainMessageReceiver):
                 return False
 
 
+class SendBlockWinnerChoice(BlockChainMessageReceiver):
+    """
+    class is used to receive another competing/proxy node's choice of block winner
+    """
+
+    def __init__(self, protocol, convo_id, propagator_inst,  local_block_winner_choice_prev):
+        super().__init__(protocol=protocol, convo_id=convo_id, propagator_inst=propagator_inst)
+        self.local_block_winner_choice_prev = local_block_winner_choice_prev
+
+    def listen(self, msg):
+        if self.end_convo is False:
+            if msg[-1] == self.last_msg:
+                self.end_convo = True
+            elif self.received_first_msg is False:
+
+                # msg[2] == ['bc'] OR ['bc', 'apk'] if admin pubkey needed
+                # msg[1] == convo id list
+                # msg[0] == 'b' shows its from blockchainpropagator logic
+                main_msg = msg[2]
+
+                # already have block winner
+                if self.local_block_winner_choice_prev:
+
+                    self.received_first_msg = True
+
+                    # only requires blockchain choice
+                    if main_msg[-1] == "bc":
+                        rsp = [self.local_block_winner_choice_prev]
+
+                    # block choice along with pubkey needed
+                    else:  # main_msg[-1] == "apk"
+                        # prev of hash, pubkey with x and y as base85 encoded string
+                        rsp = [self.local_block_winner_choice_prev,
+                               self.propagator_inst.admin_instance.get_pubkey(x_y_only=True)]
+
+                    self.speak(rsp=rsp)
+
+                # block winner not yet found
+                else:
+                    # this will add original message to dict,
+                    # once block choice is determined self.listen_deferred is called
+                    self.add_to_deferred_convo(msg=msg)
+
+    def listen_deffered(self, msg, block_choice_prev):
+
+        if self.end_convo is False:
+            self.local_block_winner_choice_prev = block_choice_prev
+            self.listen(msg=msg)
 
 
+    def speak(self, rsp=None):
 
+        self.end_convo = True
+        if self.end_convo is False and rsp:
+            self.end_convo = True
+            self.speaker(msg=rsp)
+
+    def add_to_deferred_convo(self, msg):
+
+        try:
+            self.propagator_inst.dict_of_deferred_convo["bc"].append([self.listen_deffered, msg])
+        except KeyError:
+            self.propagator_inst.dict_of_deferred_convo["bc"] = [[self.listen_deffered, msg]]
 
 
 class SendNetworkWinnerChoice(BlockChainMessageSender):

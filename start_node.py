@@ -51,9 +51,8 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: finish check_winning_block_from_network. in this function, the winning hash selected locally should be
-# todo: broadcasted, along with a signature, block no. The function should then wait for response for these messages
-# todo: receive blocks or
+# todo: finish up message that request for blockchoice and waits for response for a specified time
+# todo: if other node does not have a block choice yet, it adds to a dict, this dict is then called
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 
