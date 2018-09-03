@@ -121,6 +121,8 @@ class Admin:
         if x_y_only:
             return self.pki.load_pub_key(importedKey=False, x_y_only=True)
         else:
+
+            # returns imported key
             return self.pki.load_pub_key(importedKey=True, x_y_only=False)
 
 
