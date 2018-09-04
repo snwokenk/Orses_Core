@@ -110,7 +110,7 @@ class BlockChainPropagator:
         # this dictionary stores blocks which was endorsed by another node but was not received on time
         # A block from here is only used, when it turns out the it received a plurality (not necessarily a majority)
         # of endorsements
-        self.dict_of_blocks_not_received_on_time = dict()
+        self.dict_of_hash_not_rcv_directly = dict()
 
         # dict of deferred convo key is convo reason, value is list index 0 as message obj method index 1 as msg
         # ie {'bc': [[SendBlockWinnerChoice_instance.listen_deffered, msg received from peer], [...]] }
@@ -1172,8 +1172,11 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
     the preview is used to find block hash and the digitalsignervalidator is used to verify signature
 
 
-    if block hash is not found then it is ignored. (this is to avoid competitors gaming the system)
-    Each individual node should only use block hashes gotten during the window of receiving these.
+    if block hash is not found then preview is stored in dict of hash not received directly. and full hash message is
+    sent. Peer node sends the full hash and full hash is stored as the value to the dict of hash not received directly
+    end messages are then sent and convo's end_convo flag is set to True
+
+    if block hash is found, then end message is sent and end_convo flag set to True by both nodes
 
     Even though a block hash is ignored, it is stored, if this ignored hash has the most endorsements then local node
     should request for block and validate the block and use it as the official block for that particular block number
@@ -1185,8 +1188,12 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
 
         self.q_object_to_winner_process = q_object
         self.local_block_winner_choice_prev = local_block_winner_choice_prev
+        self.peer_node_winner_prev = None
+        self.peer_node_winner_pubkey = None
+        self.peer_node_winner_sig = None
         self.has_pubkey_of_peer_node = True if self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol] \
             else False
+        self.received_first_message = False
 
     def speak(self, rsp=None):
 
@@ -1197,6 +1204,8 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
                 msg = ["bc"] if self.has_pubkey_of_peer_node is True else ["bc", self.need_admin_pubkey_msg]
 
                 self.speaker(msg=msg)
+            elif rsp:
+                self.speaker(msg=rsp)
 
     def listen(self, msg):
         if self.end_convo is False:
@@ -1210,64 +1219,92 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
                     self.end_convo = True
 
                 elif isinstance(main_msg, list):
-                    # main message should be [hash prev, signature using full hash]
-                    # OR [hash prev, signature using full hash, peer node pubkey dict]
-                    rsp = self.check_peer_node_choice(
-                        main_msg=main_msg
-                    )
+                    if len(main_msg) > 1 and self.received_first_message is False:
+                        # main message should be [hash prev, signature using full hash]
+                        # OR [hash prev, signature using full hash, peer node pubkey dict]
+                        self.received_first_message = True
+                        rsp = self.check_peer_node_choice(
+                            main_msg=main_msg
+                        )
 
-                    if rsp is False:  # need hash of block ( will be stored in propagator.inst.dict_of_potential_blocks
-                        pass
-                    else:
+                        if rsp is False:  # need hash of block ( will be stored in propagator.inst.dict_of_potential_blocks
+                            msg = ["nd_h"]  # need hash message
+                        else:
+                            self.end_convo = True
+                            msg = self.last_msg
+                        self.speak(rsp=msg)
+                    elif len(main_msg) == 1 and self.received_first_message:
+                        # main message list with one element: full hash choice.
+                        # initial message's hash prev could not find hash, so full hash is sent
+                        # todo: add logic which stores the hash in
+                        self.check_peer_node_choice(
+                            main_msg=None,
+                            full_hash=main_msg[-1]
+
+                        )
                         self.end_convo = True
+                        self.speak(rsp=self.last_msg)
 
 
 
 
-    def check_peer_node_choice(self, main_msg):
+    def check_peer_node_choice(self, main_msg, full_hash=None):
         """
         check prev for full hash and verify by checking signature of other node, if pubkey not present,
         return none for req of pubkey
         :param main_msg:
+        :param full_hash: if full hash is provided (usually when requested)
         :return:
         """
-        preview = main_msg[0]
-        signature = main_msg[1]
+
+        if full_hash is None:
+            preview = main_msg[0]
+            signature = main_msg[1]
 
 
-        pubkey_of_protocol = self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol] if \
-            self.has_pubkey_of_peer_node else (main_msg[2] if len(main_msg) > 2 and isinstance(main_msg[2], dict) else None)
+            pubkey_of_protocol = self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol] if \
+                self.has_pubkey_of_peer_node else (main_msg[2] if len(main_msg) > 2 and isinstance(main_msg[2], dict) else None)
 
-        if not pubkey_of_protocol:
-            print(f"in check_peer_node_choice, BlockchainPropagato:\n"
-                  f"Did not receive pubkey from protocol even though it was need. Troubleshoot")
+            if not pubkey_of_protocol:
+                print(f"in check_peer_node_choice, BlockchainPropagato:\n"
+                      f"Did not receive pubkey from protocol even though it was need. Troubleshoot")
 
-            # todo: when connecting to a node, get admin data and signature
-            return None
-
-        try:
-            # get hash choice from prev
-            peer_node_hash_choice = self.propagator_inst.dict_of_potential_blocks["prev"][preview]
-        except KeyError:
-            # if KeyError then local node never received particular block hash.
-            # It is stored in a dict in BlockchainPropagator class called Blocks_Not_received_On_Time
-            # Blocks stored here are only used if it turns out that it received a majority of the endorsements
-            self.propagator_inst.dict_of_blocks_not_received_on_time[preview] = [self.protocol]
-            return False
-
-        else:
-            # validate signature
-            is_valid = DigitalSignerValidator.validate(
-                msg=peer_node_hash_choice,
-                pubkey=pubkey_of_protocol,
-                signature=signature
-            )
-
-            print(f"for testing in check_peer_node_choice, blockchainpropagator.py, is signature valid: {is_valid}")
-            if is_valid:
-                self.q_object_to_winner_process.put(peer_node_hash_choice)
-            else:
+                # todo: when connecting to a node, get admin data and signature
                 return None
+
+            try:
+                # get hash choice from prev
+                peer_node_hash_choice = self.propagator_inst.dict_of_potential_blocks["prev"][preview]
+
+            except KeyError:
+                # if KeyError then local node never received particular block hash.
+                # It is stored in a dict in BlockchainPropagator class called Blocks_Not_received_On_Time
+                # Blocks stored here are only used if it turns out that it received a majority of the endorsements
+
+                if preview in self.propagator_inst.dict_of_hash_not_rcv_directly:
+                    peer_node_hash_choice = self.propagator_inst.dict_of_hash_not_rcv_directly[preview]
+                else:
+                    self.peer_node_winner_prev = preview
+                    self.peer_node_winner_pubkey = pubkey_of_protocol
+                    self.peer_node_winner_sign = signature
+                    return False
+        else:
+            peer_node_hash_choice = full_hash
+            pubkey_of_protocol = self.peer_node_winner_pubkey
+            signature = self.peer_node_winner_sig
+
+        # validate signature
+        is_valid = DigitalSignerValidator.validate(
+            msg=peer_node_hash_choice,
+            pubkey=pubkey_of_protocol,
+            signature=signature
+        )
+
+        print(f"for testing in check_peer_node_choice, blockchainpropagator.py, is signature valid: {is_valid}")
+        if is_valid:
+            self.q_object_to_winner_process.put(peer_node_hash_choice)
+        else:
+            return None
 
 
 class SendBlockWinnerChoice(BlockChainMessageReceiver):
@@ -1289,7 +1326,7 @@ class SendBlockWinnerChoice(BlockChainMessageReceiver):
                 # msg[2] == ['bc'] OR ['bc', 'apk'] if admin pubkey needed
                 # msg[1] == convo id list
                 # msg[0] == 'b' shows its from blockchainpropagator logic
-                main_msg = msg[2]
+                main_msg = msg[-1]
 
                 # already have block winner
                 if self.local_block_winner_choice_prev and self.local_block_winner_choice_hash:
@@ -1309,10 +1346,14 @@ class SendBlockWinnerChoice(BlockChainMessageReceiver):
                         rsp = [self.local_block_winner_choice_prev, signature_of_choice]
 
                     # block choice along with pubkey needed
-                    else:  # main_msg[-1] == "apk"
+                    elif main_msg[-1] == "apk":  # main_msg[-1] == "apk"
                         # prev of hash, pubkey with x and y as base85 encoded string
                         rsp = [self.local_block_winner_choice_prev, signature_of_choice,
                                self.propagator_inst.admin_instance.get_pubkey(x_y_only=True)]
+                    else:  # main_msg[-1] should be 'nd_h'
+
+                        # send full hash to peer node
+                        rsp = [self.local_block_winner_choice_hash]
 
                     self.speak(rsp=rsp)
 

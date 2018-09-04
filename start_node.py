@@ -51,8 +51,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: finish up message that request for blockchoice and waits for response for a specified time
-# todo: if other node does not have a block choice yet, it adds to a dict, this dict is then called
+# todo: finish up request and send block choice
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 
