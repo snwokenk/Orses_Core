@@ -51,7 +51,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: finish up request and send block choice
+# todo: start up block winner process in a separate thread from blockchainpropagator convo initiator
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 
