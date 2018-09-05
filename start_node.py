@@ -51,7 +51,10 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: start up block winner process in a separate thread from blockchainpropagator convo initiator
+# todo: URGENT: Previous Block Hash Is Not Tied to Current Block Hash, in block_header create a prev_block key
+# todo: decide winning block in check_winning_block_from_network() from blockchainPropagator
+# todo: use this winning block as the current block and get compete_process to start competing
+
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 

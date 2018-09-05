@@ -73,8 +73,13 @@ class NewBlockValidator(BaseBlockValidator):
                 self.verify_random_bytes_included():
             print("Block Validated by Validator")
 
+            # this q object is connected to run_block_winner_chooser_process() method of BlockchainPropagator class
+            # send validated block
+            if self.q_object:
+                self.q_object.put(self.block)
             return True
         else:
+            print(f"Block NOT Validated by Validator, block:\n{self.block}")
             return False
 
     def validate_reward_txs(self):

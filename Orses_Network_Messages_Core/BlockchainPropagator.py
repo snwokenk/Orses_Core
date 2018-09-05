@@ -84,8 +84,9 @@ class BlockChainPropagator:
         self.q_object_compete = q_object_to_competing_process
         self.q_for_bk_propagate = q_for_bk_propagate
         self.q_object_between_initial_setup_propagators = q_object_between_initial_setup_propagators
-        self.q_object_to_receive_from_messages = multiprocessing.Queue()
+        self.q_object_to_receive_from_messages_initial_setup = multiprocessing.Queue()
         self.q_object_for_winning_block_process = multiprocessing.Queue()
+        self.q_object_from_block_validator = multiprocessing.Queue()
 
         # ***reactor from start_node.py passed as a parameter***
         self.reactor_instance = reactor_instance
@@ -309,7 +310,7 @@ class BlockChainPropagator:
             count1 = 0
             while count1 < count:
                 try:
-                    prop_inst.q_object_to_receive_from_messages.get(timeout=7)
+                    prop_inst.q_object_to_receive_from_messages_initial_setup.get(timeout=7)
                 except Empty:
 
                     print("in Break has broken")
@@ -363,7 +364,15 @@ class BlockChainPropagator:
 
                         if reason_msg in {"nb", "nb1"}:  # new block created locally nb1 block one created
 
-                            # todo: start up block winner process in a separate thread
+                            # rsp == ["nb', end_time_for_winner chooser process, block]
+                            # startup winner chooser process
+                            self.reactor_instance.callInThread(
+                                self.run_block_winner_chooser_process,
+                                block=rsp[-1],
+                                end_time=rsp[1],
+                            )
+
+                            # send newly created blocks to other nodes
                             msg_sender_creator_for_multiple(
                                 set_of_excluded_protocol_id={},
                                 msg=rsp,
@@ -448,8 +457,7 @@ class BlockChainPropagator:
 
         print("In BlockchainPropagator.py convo manager ended")
 
-    def run_block_winner_chooser_process(self, block, end_time,
-                                         q_obj_from_validater: multiprocessing.queues.Queue) -> None:
+    def run_block_winner_chooser_process(self, block, end_time) -> None:
         """
         A new instance of this function is run in a separate thread by the blockchainpropagator process
         Each new instance represents a new round, The aim of this process is to find the winning block based on the
@@ -470,7 +478,7 @@ class BlockChainPropagator:
         block_no = int(block_header["block_no"])
         block_before_recent_no = block_no - 2
         self.dict_of_potential_blocks["full_hash"][block_header["block_hash"]] = block
-        self.dict_of_potential_blocks["prev"][[block_header["block_hash"][-8:]]] = block_header["block_hash"]
+        self.dict_of_potential_blocks["prev"][block_header["block_hash"][-8:]] = block_header["block_hash"]
 
         # get the parameters used for competition
         if block_no == 1:
@@ -502,14 +510,15 @@ class BlockChainPropagator:
                 # blocks are received from NewBlockValidator.
                 # this function, is meant to determine the winning block from valid blocks received
                 # it is not meant to validate a block, blocks should already be validated
-                new_block = q_obj_from_validater.get(timeout=0.25)
+                new_block = self.q_object_from_block_validator.get(timeout=0.25)
             except Empty:
                 continue
             else:
                 # todo: check block hash to see if it is the winning block
                 # todo: use the choose_winning_hash_from_two function to determine if score of new is better
                 if isinstance(new_block, str) and new_block in {'exit', 'quit'}:
-                    break
+                    # rather than using usual break return so check_winning_block_from_network() does not exec
+                    return
 
                 new_block_header = new_block["bh"]
 
@@ -579,16 +588,23 @@ class BlockChainPropagator:
         no_of_protocols = len(self.connected_protocols_dict)
         len_of_check = time.time() + 5
         while no_of_protocols > 0 and time.time() <= len_of_check:
-            winning_hash_rsp = self.q_object_for_winning_block_process.get(timeout=0.2)
-            if isinstance(winning_hash_rsp, str) and winning_hash_rsp in {'exit', 'quit'}:
-                break
-
-            elif isinstance(winning_hash_rsp, list):  # [winning hash, signature]
-                # todo: log and save signature and hashes
+            try:
+                winning_hash_rsp = self.q_object_for_winning_block_process.get(timeout=0.2)
+            except Empty:
                 pass
+            else:
+                if isinstance(winning_hash_rsp, str) and winning_hash_rsp in {'exit', 'quit'}:
+                    break
+
+                elif isinstance(winning_hash_rsp, list):  # [winning hash, signature]
+                    # todo: log and save signature and hashes
+                    pass
 
         # stop accepting block choices
         self.is_accepting_block_choices.clear()
+
+        # decide winning block
+        # todo: decide the winning block and add to local blockchain
 
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
@@ -653,7 +669,7 @@ def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, 
                 convo_id=convo_id,
                 protocol_id=protocol_id,
                 blockchainPropagatorInstance=propagator_inst,
-                q_from_prop_to_msg=propagator_inst.q_object_to_receive_from_messages
+                q_from_prop_to_msg=propagator_inst.q_object_to_receive_from_messages_initial_setup
             )
         elif reason_msg in {"nb", "nb1"}:
             msg_snd = SendNewlyCreatedBlock(
@@ -1196,7 +1212,8 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
                 admin_inst=self.propagator_inst.admin_instance,
                 block=block,
                 block_propagator_inst=self.propagator_inst,
-                is_newly_created=True
+                is_newly_created=True,
+                q_object=self.propagator_inst.q_object_from_block_validator
 
             ).validate()
             print(f"in ReceiveNewlyCreatedBlock", msg)

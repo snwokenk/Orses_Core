@@ -2,10 +2,12 @@
 from twisted.internet import reactor, defer, threads
 from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagator
 from Orses_Network_Messages_Core.NetworkPropagator import NetworkPropagator
+from Orses_Network_Messages_Core.MemPool import MemPool
 from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
+
 
 import multiprocessing, queue, shutil, os, time, threading
 
@@ -124,7 +126,7 @@ class DummyAdminNode(DummyNode):
 
         # start compete(mining) process, if admin.isCompetitor is True. No need to check compete for virtual node
         print(f"in DummyAdminNode, is admin competitor {self.admin.isCompetitor}")
-
+        mempool = MemPool(admin_inst=self.admin)
         if self.admin.isCompetitor is True:
             try:
                 is_alive = compete_process.is_alive()
@@ -135,12 +137,13 @@ class DummyAdminNode(DummyNode):
 
         # *** start blockchain propagator in different thread ***
         blockchain_propagator = BlockChainPropagator(
+            mempool=mempool,
             q_object_connected_to_block_validator=q_for_block_validator,
             q_object_to_competing_process=q_for_compete,
             q_for_bk_propagate=q_for_bk_propagate,
             q_object_between_initial_setup_propagators=q_for_initial_setup,
             reactor_instance=self.reactor,  # use DummyReactor which implements real reactor.CallFromThread
-            admin_instance=self.admin
+            admin_instance=self.admin,
 
         )
 
@@ -154,6 +157,7 @@ class DummyAdminNode(DummyNode):
         self.reactor.callInThread(blockchain_propagator.run_propagator_convo_initiator)
 
         propagator = NetworkPropagator(
+            mempool=mempool,
             q_object_connected_to_validator=q_for_validator,
             q_for_propagate=q_for_propagate,
             reactor_instance=self.reactor,

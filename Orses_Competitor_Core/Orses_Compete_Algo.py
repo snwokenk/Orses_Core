@@ -792,7 +792,8 @@ class Competitor:
                     # this goes to block initiator method process of BlockchainPropagator
 
                     reason_msg = "nb" if new_block_no > 1 else "nb1"
-                    q_for_block_validator.put([reason_msg, new_block])
+                    end_time = time.time() + 30
+                    q_for_block_validator.put([reason_msg, end_time, new_block])
             except TypeError as e:
                 print(f"in Orses Compete error: {e}")
                 continue
