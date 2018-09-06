@@ -108,14 +108,22 @@ class BlockChainPropagator:
             "full_hash": dict()
         }
 
-        # this dictionary stores blocks which was endorsed by another node but was not received on time
+        self.dict_of_potential_indirect_blocks = dict()
+
+        # this dictionary stores block hash which was endorsed by another node but was not received on time
         # A block from here is only used, when it turns out the it received a plurality (not necessarily a majority)
         # of endorsements
         self.dict_of_hash_not_rcv_directly = dict()
 
 
         # dict storing endorsements for use in determining the winning block
+        # hashes stored here were received on time.
+        # if a hash is endorsed but not received on time, it is stored in self.dict_of_hash_not_rcv_directly
+        # ie {"SHA256 hash": number of endorsements (later will be endorsements based on tokens)
         self.dict_of_endorsed_hash = dict()
+
+        # same as dict of endorsed but for hashes not received on time but endorsed
+        self.dict_of_indirect_endorsed_hash = dict()
 
         # multiprocessing.Event that tells when accepting blocks then when accepting block choice
         self.is_accepting_blocks = multiprocessing.Event()
@@ -540,10 +548,11 @@ class BlockChainPropagator:
 
         self.check_winning_block_from_network(
             winning_hash=winning_hash,
-            winning_score=winning_score
+            winning_score=winning_score,
+            block_no=block_no
         )
 
-    def check_winning_block_from_network(self,  winning_hash, winning_score):
+    def check_winning_block_from_network(self,  winning_hash, block_no, winning_score):
         """
         This function will use the locally determined winning block and check for endorsements from proxy nodes.
         The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
@@ -555,9 +564,10 @@ class BlockChainPropagator:
         winning_block = self.dict_of_potential_blocks["full_hash"][winning_hash]
         self.dict_of_endorsed_hash[winning_hash] = 1
 
+        # variable will be used to compare total endorsements to all avaliable endorsements
+        total_endorsements = 0
 
         winning_block_header = winning_block['bh']
-
 
         # todo: for now use the absolute number of endorsements from nodes
         # todo: but once BCW logic is added, the winning node should be the block(which is valid)
@@ -598,13 +608,101 @@ class BlockChainPropagator:
 
                 elif isinstance(winning_hash_rsp, list):  # [winning hash, signature]
                     # todo: log and save signature and hashes
-                    pass
+                    # todo: use absolute number of endorsements. Later endorsements will be based on tokens represented
+                    block_hash = winning_hash_rsp[0]
+                    signature = winning_hash_rsp[1]
+                    if block_hash in self.dict_of_potential_blocks:
+                        try:
+                            self.dict_of_endorsed_hash[winning_hash_rsp[0]] += 1
+                        except KeyError:
+                            self.dict_of_endorsed_hash[winning_hash_rsp[0]] = 1
+                    else:
+                        # hash is endorsed by other non_malicious node but was not received by this node
+                        try:
+                            self.dict_of_indirect_endorsed_hash[winning_hash_rsp[0]] += 1
+                        except KeyError:
+                            self.dict_of_indirect_endorsed_hash[winning_hash_rsp[0]] = 1
+
+                    total_endorsements += 1
 
         # stop accepting block choices
         self.is_accepting_block_choices.clear()
-
+        list_of_direct_hash = sorted(self.dict_of_endorsed_hash, key=lambda x: self.dict_of_endorsed_hash[x])
+        list_of_indirect_hash = sorted(self.dict_of_indirect_endorsed_hash, key=lambda x: self.dict_of_indirect_endorsed_hash[x])
         # decide winning block
+        direct_winner = list_of_direct_hash[-1]
+        indirect_winner = list_of_indirect_hash[-1]
+        block_winner_hash = max(self.dict_of_endorsed_hash[direct_winner], self.dict_of_indirect_endorsed_hash[indirect_winner])
+
+        # get block winner from potential blocks (direct), if not then from indirect
+
+        # todo: get block from indirect if not in dict_of_potential_blocks
+        block_of_winner = self.dict_of_potential_blocks.get(block_winner_hash, None)
+        counter = -1
+        while True:
+
+            if block_of_winner:
+                self.q_object_compete.put(['bcb', block_of_winner])
+                break
+            elif block_winner_hash in self.dict_of_potential_indirect_blocks:
+
+                # validate block received after
+                # blocks received indirectly aren't validated until after
+                validator = NewBlockValidator(
+                    admin_inst=self.admin_instance,
+                    block=self.dict_of_potential_indirect_blocks[block_winner_hash],
+                    block_propagator_inst=self
+
+                ) if block_no > 1 else\
+                NewBlockOneValidator(
+                    admin_inst=self.admin_instance,
+                    block=self.dict_of_potential_indirect_blocks[block_winner_hash],
+                    block_propagator_inst=self
+                )
+
+                is_validated = validator.validate()
+
+                if is_validated:
+                    self.q_object_compete.put(
+                        ['bcb', self.dict_of_potential_indirect_blocks[block_winner_hash]])
+                    break
+                else:  # indirect block isn't valid
+                    counter -= 1
+
+                    # choose a new winner from main direct winner and second indirect winner
+                    # because first indirect winner's block is invalid
+                    if len(list_of_indirect_hash) >= abs(counter):
+                        block_winner_hash = max(self.dict_of_endorsed_hash[direct_winner],
+                                                self.dict_of_indirect_endorsed_hash[list_of_indirect_hash[counter]]
+                                                )
+                        block_of_winner = self.dict_of_potential_blocks.get(block_winner_hash, None)
+                        continue
+                    else:
+                        # no more blocks from indirectly received so. The winning block from directly received
+                        # and validated blocks is chosen
+                        self.q_object_compete.put(['bcb', self.dict_of_potential_blocks[direct_winner]])
+
+
+
+                # defer validation to thread
+                # if indirect block is valid use it
+                # if it is not, use the
+                response_thread = threads.deferToThread(validator.validate)
+                response_thread.addCallback(lambda is_valid: self.q_object_compete.put(
+                    ['bcb', self.dict_of_potential_indirect_blocks[block_winner_hash]]) if is_valid else
+                self.q_object_compete.put(['bcb', self.dict_of_potential_blocks[direct_winner]]))
+
+                # if block winner was received indirectly
+
+
+
         # todo: decide the winning block and add to local blockchain
+        # todo: if winner is an indirect block
+        # send winning block to other processes (no need to check network) If winning block has more than
+
+        self.q_object_compete.put(['bcb', block_of_winner])
+
+
 
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
@@ -1305,12 +1403,15 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
                             msg = self.last_msg
                         self.speak(rsp=msg)
                     elif len(main_msg) == 1 and self.received_first_message:
-                        # main message list with one element: full hash choice.
-                        # initial message's hash prev could not find hash, so full hash is sent
+                        # main message list with one element: full block choice of peer node.
+                        # initial message's hash prev could not find hash, so full block is sent
+                        # this block is stored in separate dictionary for blocks received after the local node's time
                         # todo: add logic which stores the hash in
+                        block = main_msg[-1]
+                        block_hash = block["bh"]["block_hash"]
                         self.check_peer_node_choice(
-                            main_msg=None,
-                            full_hash=main_msg[-1]
+                            main_msg=block,
+                            full_hash=block_hash
 
                         )
                         self.end_convo = True
@@ -1346,14 +1447,20 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
                 # get hash choice from prev
                 peer_node_hash_choice = self.propagator_inst.dict_of_potential_blocks["prev"][preview]
 
+
             except KeyError:
                 # if KeyError then local node never received particular block hash.
                 # It is stored in a dict in BlockchainPropagator class called Blocks_Not_received_On_Time
                 # Blocks stored here are only used if it turns out that it received a majority of the endorsements
 
                 if preview in self.propagator_inst.dict_of_hash_not_rcv_directly:
+
+                    # if hash not received directly has already being received check this dict
                     peer_node_hash_choice = self.propagator_inst.dict_of_hash_not_rcv_directly[preview]
+
                 else:
+
+                    # if hash never received store info and return False, full hash will be sent by peer node
                     self.peer_node_winner_prev = preview
                     self.peer_node_winner_pubkey = pubkey_of_protocol
                     self.peer_node_winner_sig = signature
@@ -1362,6 +1469,9 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
             peer_node_hash_choice = full_hash
             pubkey_of_protocol = self.peer_node_winner_pubkey
             signature = self.peer_node_winner_sig
+
+            #main_msg is a block
+            self.propagator_inst.dict_of_potential_indirect_blocks[peer_node_hash_choice] = main_msg
 
         # validate signature
         is_valid = DigitalSignerValidator.validate(
@@ -1372,8 +1482,11 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
 
         print(f"for testing in check_peer_node_choice, blockchainpropagator.py, is signature valid: {is_valid}")
         if is_valid:
+            # todo set block when you for all possibilities
+            self.propagator_inst.dict_of_hash_not_rcv_directly[self.peer_node_winner_prev] = peer_node_hash_choice
             self.q_object_to_winner_process.put([peer_node_hash_choice, signature])
         else:
+
             return None
 
 
@@ -1423,8 +1536,8 @@ class SendBlockWinnerChoice(BlockChainMessageReceiver):
                                self.propagator_inst.admin_instance.get_pubkey(x_y_only=True)]
                     else:  # main_msg[-1] should be 'nd_h'
 
-                        # send full hash to peer node
-                        rsp = [self.local_block_winner_choice_hash]
+                        # send [local block chosen as winner) to peer node
+                        rsp = [self.propagator_inst.dict_of_potential_blocks["full_hash"][self.local_block_winner_choice_hash]]
 
                     self.speak(rsp=rsp)
 
