@@ -589,7 +589,8 @@ class BlockChainPropagator:
             set_of_excluded_protocol_id={},
             msg=["bc"],
             protocol_list=set(self.connected_protocols_dict),
-            propagator_inst=self
+            propagator_inst=self,
+            q_object_to_winner_process=self.q_object_for_winning_block_process
         )
 
         # todo: check propagators deffered dict using "bc" as a key, any deferred convo should be continued with block choice provided
@@ -631,8 +632,11 @@ class BlockChainPropagator:
         list_of_indirect_hash = sorted(self.dict_of_indirect_endorsed_hash, key=lambda x: self.dict_of_indirect_endorsed_hash[x])
         # decide winning block
         direct_winner = list_of_direct_hash[-1]
-        indirect_winner = list_of_indirect_hash[-1]
-        block_winner_hash = max(self.dict_of_endorsed_hash[direct_winner], self.dict_of_indirect_endorsed_hash[indirect_winner])
+        if list_of_indirect_hash:
+            indirect_winner = list_of_indirect_hash[-1]
+            block_winner_hash = direct_winner if self.dict_of_endorsed_hash[direct_winner] >= self.dict_of_indirect_endorsed_hash[indirect_winner] else indirect_winner
+        else:
+            block_winner_hash = direct_winner
 
         # get block winner from potential blocks (direct), if not then from indirect
 
@@ -672,9 +676,8 @@ class BlockChainPropagator:
                     # choose a new winner from main direct winner and second indirect winner
                     # because first indirect winner's block is invalid
                     if len(list_of_indirect_hash) >= abs(counter):
-                        block_winner_hash = max(self.dict_of_endorsed_hash[direct_winner],
-                                                self.dict_of_indirect_endorsed_hash[list_of_indirect_hash[counter]]
-                                                )
+                        block_winner_hash = direct_winner if self.dict_of_endorsed_hash[direct_winner] > \
+                        self.dict_of_indirect_endorsed_hash[list_of_indirect_hash[counter]] else list_of_indirect_hash[counter]
                         block_of_winner = self.dict_of_potential_blocks.get(block_winner_hash, None)
                         continue
                     else:
@@ -928,6 +931,7 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
                 is_block_one=False if reason_msg[0] == "nb" else True
             )
         elif reason_msg[0] == "bc":  # block choice
+            # todo: implement
             msg_rcv = None
 
         else:
@@ -1361,7 +1365,7 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
         self.peer_node_winner_prev = None
         self.peer_node_winner_pubkey = None
         self.peer_node_winner_sig = None
-        self.has_pubkey_of_peer_node = True if self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol] \
+        self.has_pubkey_of_peer_node = True if self.protocol.proto_id in self.propagator_inst.connected_protocols_dict_of_pubkey \
             else False
         self.received_first_message = False
 
@@ -1545,6 +1549,7 @@ class SendBlockWinnerChoice(BlockChainMessageReceiver):
                 else:
                     # this will add original message to dict,
                     # once block choice is determined self.listen_deferred is called
+                    print(f"In SendBlockWinnerChoice, {self.propagator_inst.admin_instance.admin_name} adding to deffered")
                     self.add_to_deferred_convo(msg=msg)
 
     def listen_deffered(self, msg, block_choice_prev):

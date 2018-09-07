@@ -75,6 +75,7 @@ class BaseBlockHeader:
     def __init__(self):
         self.block_no = None  # hex number without the 0x
         self.block_hash = None  # valid hash of block
+        self.prev_hash = None # hash of previous block
         self.mrh = None  # Merkle root
         self.n = None  # nonce
         self.x_n = None  # extra nonce
@@ -92,6 +93,10 @@ class BaseBlockHeader:
 
     def set_block_no(self, block_number: int):
         self.block_no = format(block_number, "x")
+
+    def set_prev_hash(self, prev_block_hash):
+
+        self.prev_hash = prev_block_hash
 
     def set_block_hash(self, block_hash):
         """
@@ -259,8 +264,16 @@ class RegularBlockHeader(BaseBlockHeader):
     def set_previous_2_hashes(self, list_of_prev_2_hashes):
         self.p_h = list_of_prev_2_hashes
 
-    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root, no_of_txs: int, no_of_asgns: int,
-                                  list_of_prev_2_hashes: list, list_of_maximum_prob: list):
+    def set_header_before_compete(
+            self,
+            primary_sig_wallet_id,
+            merkle_root,
+            no_of_txs: int,
+            no_of_asgns: int,
+            list_of_prev_2_hashes: list,
+            list_of_maximum_prob: list,
+            prev_hash: str
+    ):
         self.set_block_no(block_number=1)
         self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
         self.set_shuffled_hex_values()
@@ -269,6 +282,7 @@ class RegularBlockHeader(BaseBlockHeader):
         self.set_no_txs(no_txs=no_of_txs)
         self.set_no_asgns(no_asgns=no_of_asgns)
         self.set_previous_2_hashes(list_of_prev_2_hashes=list_of_prev_2_hashes)
+        self.set_prev_hash(prev_block_hash=prev_hash)
 
     def set_no_txs(self, no_txs: int):
         self.no_txs = no_txs
@@ -283,7 +297,14 @@ class BlockOneHeader(BaseBlockHeader):
         self.no_txs = 0  # number of transactions misc messages and txs is given
         self.no_asgns = 0  # the sum of assignment statements represented by wallet hash states saved
 
-    def set_header_before_compete(self, primary_sig_wallet_id, merkle_root, no_of_txs: int, no_of_asgns: int):
+    def set_header_before_compete(
+            self,
+            primary_sig_wallet_id: str,
+            merkle_root: str,
+            no_of_txs: int,
+            no_of_asgns: int,
+            prev_hash: str
+    ):
         self.set_block_no(block_number=1)
         self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
         self.set_shuffled_hex_values()
@@ -291,6 +312,7 @@ class BlockOneHeader(BaseBlockHeader):
         self.set_merkle_root(merkle_root=merkle_root)
         self.set_no_txs(no_txs=no_of_txs)
         self.set_no_asgns(no_asgns=no_of_asgns)
+        self.set_prev_hash(prev_block_hash=prev_hash)
 
     def set_no_txs(self, no_txs: int):
         self.no_txs = no_txs

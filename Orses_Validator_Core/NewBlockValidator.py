@@ -136,11 +136,11 @@ class NewBlockValidator(BaseBlockValidator):
         )
 
         if previous_block_no > 0:
-            start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
-                c.get_new_block_arguments(rsp=self.block)
+            start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
+                prev_hash = c.get_new_block_arguments(rsp=self.block)
         elif previous_block_no == 0:
-            start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
-                c.get_block_one_arguments()
+            start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
+                prev_hash = c.get_block_one_arguments()
         else:
             print("block hash is False")
             return False
@@ -152,12 +152,12 @@ class NewBlockValidator(BaseBlockValidator):
             # turn nonce back to int from hex str
             nonce = int(self.block_header["n"], 16)
 
-            combined_merkle = f'{extra_nonce}{merkle_root}'
+            combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
             is_hash_valid = get_qualified_hashes_func(
                 prime_char=single_prime_char*exp_leading_prime,
                 extra_nonce=None,
                 nonce=None,
-                hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}'.encode()),
+                hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}{prev_hash}'.encode()),
                 len_prime_char=exp_leading_prime,
                 check_if_valid=True
 

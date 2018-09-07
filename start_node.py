@@ -51,7 +51,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: URGENT: Previous Block Hash Is Not Tied to Current Block Hash, in block_header create a prev_block key
+# TODO: First: in blockchainpropagator in message receiver creator, implement for "bc" message
 # todo: decide winning block in check_winning_block_from_network() from blockchainPropagator
 # todo: use this winning block as the current block and get compete_process to start competing
 

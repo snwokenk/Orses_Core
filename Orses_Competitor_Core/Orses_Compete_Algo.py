@@ -51,7 +51,7 @@ def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, nonce, extra_non
 
 
 def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash,  q,
-                     extra_nonce_index, max_nonce_value, end_time):
+                     extra_nonce_index, max_nonce_value, end_time, prev_hash):
     prime_char = single_prime_char.lower() * exp_leading
     nonce = 0
     x_nonce = 0
@@ -59,7 +59,7 @@ def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid
     merkle_root = block_header.mrh
     print("starting nonce", nonce)
     extra_nonce = f"{extra_nonce_index}_{x_nonce}"
-    combined_merkle = f'{extra_nonce}{merkle_root}'
+    combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
     while time.time() < end_time:
 
         # check if nonce greater than max number (which is highest number of unsigned 64 bit integer or ((2**64) - 1)
@@ -68,7 +68,7 @@ def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid
             x_nonce += 1
             extra_nonce = f"{extra_nonce_index}_{x_nonce}"
             # if extra nonce is needed then add in combined merkle
-            combined_merkle = f'{extra_nonce}{merkle_root}'
+            combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
 
         get_qualified_hashes(
             prime_char=prime_char,
@@ -86,7 +86,14 @@ def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid
     return dict_of_valid_nonce_hash
 
 
-def threaded_compete_improved(single_prime_char, addl_chars, exp_leading, block_header, len_competition=60):
+def threaded_compete_improved(
+        single_prime_char,
+        addl_chars,
+        exp_leading,
+        block_header,
+        prev_hash,
+        len_competition=60
+):
     """
 
     :param single_prime_char: the prime character
@@ -126,7 +133,7 @@ def threaded_compete_improved(single_prime_char, addl_chars, exp_leading, block_
         process_list.append(Process(target=compete_improved, args=(single_prime_char,exp_leading, block_header,
                                                                    dict_of_valid_nonce_hash, q,
                                                                    extra_nonce_index, max_nonce_value,
-                                                                   end_time,)))
+                                                                   end_time,prev_hash)))
         starting_nonce += starting_nonce_multiples
 
     for process in process_list:
@@ -191,14 +198,15 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
 
 # run this function to start competing, to run, feed it the prime character, addl_chars, block header_dict,
 # expected leading prime chars and len of competition
-def start_competing(block_header, exp_leading=6, len_competition=30, single_prime_char="f", addl_chars=""):
+def start_competing(block_header, prev_hash, exp_leading=6, len_competition=30, single_prime_char="f", addl_chars=""):
 
     winning_hash = threaded_compete_improved(
         single_prime_char=single_prime_char,
         exp_leading=exp_leading,
         block_header=block_header,
         len_competition=len_competition,
-        addl_chars=addl_chars
+        addl_chars=addl_chars,
+        prev_hash=prev_hash
     )
 
     print(f"The winning hash and nonce is {winning_hash}")
@@ -255,7 +263,7 @@ def get_reward_txs(
 
 def generate_regular_block(block_no: int, admin_inst, combined_list: list,
                            wsh: dict, fees: int, no_of_txs: int, no_of_asgns: int, primary_sig_wallet: str,
-                           addl_chars, len_competiion=60, exp_leading_prime=7, single_prime_char='f',
+                           prev_hash, addl_chars, len_competiion=60, exp_leading_prime=7, single_prime_char='f',
                            should_save=False, include_foundation=True):
 
     # primary wallet_for test"W884c07be004ee2a8bc14fb89201bbc607e75258d"
@@ -273,7 +281,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
             exp_leading_prime=exp_leading_prime,
             single_prime_char=single_prime_char,
             should_save=should_save,
-            include_foundation=include_foundation
+            include_foundation=include_foundation,
+            genesis_block_hash=prev_hash
 
 
 
@@ -321,7 +330,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
             no_of_txs=no_of_txs,
             no_of_asgns=no_of_asgns,
             list_of_prev_2_hashes=list_of_prev_2_hashes,  # todo: this list should get
-            list_of_maximum_prob=['p6+0', "p7+0", "p6+0", "p7+0", "p6+0"]
+            list_of_maximum_prob=['p6+0', "p7+0", "p6+0", "p7+0", "p6+0"],
+            prev_hash=prev_hash
         )
 
         final_block_header = start_competing(
@@ -329,7 +339,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
             len_competition=len_competiion,
             exp_leading=exp_leading_prime,
             single_prime_char=single_prime_char,
-            addl_chars=addl_chars
+            addl_chars=addl_chars,
+            prev_hash=prev_hash
         )
 
         block_object = new_block_creator_inst.get_block()
@@ -351,8 +362,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
 
 
 def generate_block_one(admin_inst, combined_list: list,  wsh: dict, fees: int, no_of_txs,
-                       no_of_asgns, primary_sig_wallet: str, len_competiion=60, exp_leading_prime=7, single_prime_char='f',
-                       should_save=False, include_foundation=True):
+                       no_of_asgns, primary_sig_wallet: str, genesis_block_hash, len_competiion=60, exp_leading_prime=7,
+                       single_prime_char='f',should_save=False, include_foundation=True):
     """
 
     1 Orses Token = 10,000,000,000 ntakiri
@@ -421,14 +432,16 @@ def generate_block_one(admin_inst, combined_list: list,  wsh: dict, fees: int, n
         primary_sig_wallet_id=block_one_creator_inst.primary_sig_wallet_id,
         merkle_root=block_one_creator_inst.merkle_root,
         no_of_txs=no_of_txs,
-        no_of_asgns=no_of_asgns
+        no_of_asgns=no_of_asgns,
+        prev_hash=genesis_block_hash
     )
 
     final_block_header = start_competing(
         block_header=block_header,
         len_competition=len_competiion,
         exp_leading=exp_leading_prime,
-        single_prime_char=single_prime_char
+        single_prime_char=single_prime_char,
+        prev_hash=genesis_block_hash
     )
 
     block_object = block_one_creator_inst.get_block()
@@ -625,7 +638,7 @@ class Competitor:
         )
         return time_len
 
-    def get_block_before_recent_block(self, block_before_recent_block_no):
+    def competitor_get_block(self, block_no):
         """
         get recent block fromm CompetitorDataloading.py
         This should have been updated and being updated by Blockchainpropagator
@@ -633,7 +646,7 @@ class Competitor:
         """
         return BlockChainData.get_block(
             admin_instance=self.admin_inst,
-            block_no=block_before_recent_block_no
+            block_no=block_no
         )
 
     def create_empty_tx_dict(self):
@@ -653,8 +666,8 @@ class Competitor:
 
         # get single prime, exp leading prime, addl chars, len of competition from block before recent
         block_before_recent_block_no = int(block_header["block_no"]) - 1
-        block_before_recent = self.get_block_before_recent_block(
-            block_before_recent_block_no=block_before_recent_block_no
+        block_before_recent = self.competitor_get_block(
+            block_no=block_before_recent_block_no
         )
         block_before_recent_block_header = block_before_recent["bh"]
         len_competition = self.determine_competition_len(
@@ -674,7 +687,7 @@ class Competitor:
 
 
         return start_time, len_competition, single_prime_char, exp_leading_prime, block_before_recent_block_no + 2, \
-               addl_chars
+               addl_chars, block_header["block_hash"]
 
     def get_block_one_arguments(self):
         start_time = int(time.time())  # start immediately for block one but 2 second pause
@@ -682,7 +695,10 @@ class Competitor:
         single_prime_char = get_prime_char_for_block_one()
         exp_leading_prime, addl_chars = get_addl_chars_exp_leading_block_one()
         new_block_no = 1
-        return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars
+        gen_block_header = self.competitor_get_block(block_no=0)["bh"]
+
+        return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
+               gen_block_header["block_hash"]
 
 
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
@@ -695,7 +711,8 @@ class Competitor:
         # todo: receive any extra messages and add to appropriated dict before start time
         # todo: while generating block, allow for receiving of transactions/msgs for next competition
 
-        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no = None, None, None, None, None
+        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, prev_hash = \
+            None, None, None, None, None, None
         addl_chars = None
         tx_misc_wsh = None
 
@@ -719,8 +736,8 @@ class Competitor:
                     if rsp[0] == "bcb":  # new block! new arguments  ['bcb', block, class_holding tx_misc, wsh]
 
                         has_received_new_block.set()
-                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
-                            self.get_new_block_arguments(rsp=rsp, pause_time=pause_time)
+                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no,\
+                        addl_chars, prev_hash = self.get_new_block_arguments(rsp=rsp, pause_time=pause_time)
 
                         tx_misc_wsh = rsp[2]
 
@@ -739,8 +756,8 @@ class Competitor:
                         pass
 
                     elif rsp[0] == "bk0":  # sending genesis block, network just launched
-                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars = \
-                            self.get_block_one_arguments()
+                        start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, \
+                        addl_chars, prev_hash = self.get_block_one_arguments()
                         tx_misc_wsh = rsp[2]
                         has_received_new_block.set()
 
@@ -777,7 +794,8 @@ class Competitor:
                         primary_sig_wallet=self.reward_wallet,
                         addl_chars=addl_chars,
                         no_of_txs=tx_misc_wsh.number_of_transactions,
-                        no_of_asgns=tx_misc_wsh.number_of_assignment_statements
+                        no_of_asgns=tx_misc_wsh.number_of_assignment_statements,
+                        prev_hash=prev_hash
                     )
 
                     # once done clear event object (becomes false) to notify compete_process
@@ -789,10 +807,10 @@ class Competitor:
 
                     print(f"just created block: {new_block}, is generating block: {is_generating_block.is_set()}")
 
-                    # this goes to block initiator method process of BlockchainPropagator
-
                     reason_msg = "nb" if new_block_no > 1 else "nb1"
                     end_time = time.time() + 30
+
+                    # this goes to block initiator method process of BlockchainPropagator
                     q_for_block_validator.put([reason_msg, end_time, new_block])
             except TypeError as e:
                 print(f"in Orses Compete error: {e}")
