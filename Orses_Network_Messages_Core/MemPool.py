@@ -25,32 +25,53 @@ class MemPool:
 
         self.next_block_no = None
 
-    def update_next_block_no(self, new_block_no):
+    def update_mempool(self, winning_block: dict) -> bool:
+        """
+        Use this to update mempool.
+        this includes moving transactions in unconfirmed to confirmed that have been included in the last block
+        updating block number and pruning
+        :param winning_block:
+        :return:
+        """
+
+        block_activities = winning_block["block_activity"]
+        for active_list in block_activities:
+            # hash of activity is always index 0 (first element)
+            # will move to confirmed, if hash is not in confirmed will do nothing
+            self.move_from_unconfirmed_to_confirmed(msg_hash=active_list[0])
+            self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"])+1)
+
+        return True
+
+    def update_next_block_no(self, new_block_no: int) -> None:
         self.next_block_no = new_block_no
         block_no_mempool_data_to_delete = new_block_no - self.blocks_before_delete
         if block_no_mempool_data_to_delete in self.valid_msg_with_preview_hash:
             del self.valid_msg_with_preview_hash[block_no_mempool_data_to_delete]
         if block_no_mempool_data_to_delete in self.invalid_msg_with_preview_hash:
-            del self.valid_msg_with_preview_hash[block_no_mempool_data_to_delete]
+            del self.invalid_msg_with_preview_hash[block_no_mempool_data_to_delete]
 
         self.valid_msg_with_preview_hash[new_block_no] = dict()
         self.invalid_msg_with_preview_hash[new_block_no] = dict()
 
-    def insert_valid_into_unconfirmed(self, msg_hash, msg):
+    def insert_valid_into_unconfirmed(self, msg_hash: str, msg):
         """
         insert transaction into valid block
         :param msg:
         :return:
         """
 
-    def insert_into_confirmed(self, msg_hash, msg):
+    def move_from_unconfirmed_to_confirmed(self, msg_hash):
         """
-        insert into confirmed
+        insert into confirmed dict
+        if msg_hash is not in uncofirmed will do nothing
         :return:
         """
 
-        self.confirmed[msg_hash] = self.uncomfirmed[msg_hash]
-        del self.uncomfirmed[msg_hash]
+        try:
+            self.confirmed[msg_hash] = self.uncomfirmed.pop(msg_hash)
+        except KeyError:
+            pass
 
     def insert_into_valid_msg_preview_hash(self, hash_prev, msg):
         """

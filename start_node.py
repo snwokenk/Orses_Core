@@ -51,10 +51,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# TODO: First: in blockchainpropagator in message receiver creator, implement for "bc" message
-# todo: decide winning block in check_winning_block_from_network() from blockchainPropagator
-# todo: use this winning block as the current block and get compete_process to start competing
-
+# todo: implement a message receiver class that ends an end message when no matching reason
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 
@@ -112,7 +109,7 @@ file used to start node
 
 
 # loads or, if not yet created, creates new admin details. Also Creates the necessary database for running node
-def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet=None,*args, **kwargs):
+def send_stop_to_reactor(reactor_instance, q_object_to_each_node, is_program_running, dummy_internet=None, *args, **kwargs):
     """
     runs once the reactor is running, opens another thread that runs local function temp().
     This function waits for an exit signal, it then sends exit signal to other threads running, using the queue objects
@@ -121,6 +118,9 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
 
     :param reactor_instance, reactor instance from twisted reactor
     :param q_object_to_each_node: Queue object to send "exit" signal to each created node
+    :param is_program_running: a multiprocessing.Event object which is set to true at beginning of program
+            and set to false by this function. This event is used by while loops (mining loops etc) that do not use a
+            queue object or do but with a timeout
     :param args: should be list of blocking objects: in this case q objects
     :param kwargs: option keywork argument of "number_of_nodes" can be passed
     :return:
@@ -138,6 +138,7 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
                 ans = input("cmd: ").lower()
 
                 if ans in {"exit", "quit"}:
+                    is_program_running.clear()
                     for i in args:
                         if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
                             i.put(ans)
@@ -160,7 +161,7 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, dummy_internet
     response_thread.addErrback(lambda x: print(x))
 
 
-def create_node_instances(dummy_internet, number_of_nodes_to_create: int, preferred_no_of_mining_nodes=0, ):
+def create_node_instances(dummy_internet, number_of_nodes_to_create: int, is_program_running, preferred_no_of_mining_nodes=0, ):
     """
 
     :param dummy_internet:
@@ -189,11 +190,13 @@ def create_node_instances(dummy_internet, number_of_nodes_to_create: int, prefer
         admin.isCompetitor = True
 
         # create DummyAdminNode this automatically receives addr from dummy internet
-        node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
+        node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor,
+                              is_program_running=is_program_running)
         nodes_dict["competing"].append(node)
 
     for admin in admins_list:
-        node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
+        node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor,
+                              is_program_running=is_program_running)
         nodes_dict["non-competing"].append(node)
 
     return nodes_dict
@@ -208,6 +211,9 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     :param just_launched: tells node just launched and to start immediately mining
     :return:
     """
+    is_program_running = multiprocessing.Event()
+    is_program_running.set()
+    print("program is running?", is_program_running.is_set())
 
     assert number_of_nodes >= preferred_no_of_mining_nodes, "number of mining nodes should be less than or equal " \
                                                             "to number of created nodes"
@@ -259,11 +265,14 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     else:
         compete = 'n'
 
+
+
     # instantiated Dummy Internet
     dummy_internet = DummyInternet()
 
     # instantiate main node
-    main_node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor)
+    main_node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor,
+                               is_program_running=is_program_running)
 
     # *** instantiate queue variables ***
     q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and compete == 'y') else None
@@ -290,7 +299,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         competitor = Competitor(
             reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
             admin_inst=admin,
-            just_launched=just_launched
+            is_program_running=is_program_running,
+            just_launched=just_launched,
         )
 
         # start compete thread using twisted reactor's thread
@@ -310,7 +320,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
                 "q_object_from_compete_process_to_mining": q_object_from_compete_process_to_mining,
                 "q_for_block_validator": q_for_block_validator,
                 "is_generating_block": is_generating_block,
-                "has_received_new_block": has_received_new_block
+                "has_received_new_block": has_received_new_block,
+                "is_program_running": is_program_running
 
             }
 
@@ -328,7 +339,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         q_for_bk_propagate=q_for_bk_propagate,
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         reactor_instance=main_node.reactor,  # use DummyReactor which implements real reactor.CallFromThread
-        admin_instance=admin
+        admin_instance=admin,
+        is_program_running=is_program_running
 
     )
 
@@ -408,6 +420,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         send_stop_to_reactor,
         reactor,
         q_object_to_each_node,
+        is_program_running,
         dummy_internet,
         q_for_propagate,
         q_for_bk_propagate,
@@ -426,7 +439,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     node_dict = create_node_instances(
         dummy_internet=dummy_internet,
         number_of_nodes_to_create=number_of_nodes,
-        preferred_no_of_mining_nodes=preferred_no_of_mining_nodes
+        preferred_no_of_mining_nodes=preferred_no_of_mining_nodes,
+        is_program_running=is_program_running
     )
 
     # separate processes are created for competing nodes in the Main thread, these processes will wait for most
@@ -468,6 +482,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
 
 def main(just_launched=False):
+    is_program_running = multiprocessing.Event()
+    is_program_running.set()
 
     # input admin name and password
     admin_name = input("admin name: ")
@@ -533,7 +549,8 @@ def main(just_launched=False):
         competitor = Competitor(
             reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
             admin_inst=admin,
-            just_launched=just_launched
+            just_launched=just_launched,
+            is_program_running=is_program_running
         )
 
         # start compete thread using twisted reactor's thread
@@ -553,7 +570,8 @@ def main(just_launched=False):
                 "q_object_from_compete_process_to_mining": q_object_from_compete_process_to_mining,
                 "q_for_block_validator": q_for_block_validator,
                 "is_generating_block": is_generating_block,
-                "has_received_new_block": has_received_new_block
+                "has_received_new_block": has_received_new_block,
+                "is_program_running": is_program_running
 
             }
 
@@ -571,6 +589,7 @@ def main(just_launched=False):
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         reactor_instance=reactor,
         admin_instance=admin,
+        is_program_running=is_program_running
 
 
     )
@@ -647,6 +666,7 @@ def main(just_launched=False):
         send_stop_to_reactor,
         reactor,
         None,  # q object to each node is None
+        is_program_running,
         None,  # DummyInternet is None
         q_for_propagate,
         q_for_bk_propagate,

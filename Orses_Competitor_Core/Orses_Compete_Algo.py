@@ -51,16 +51,17 @@ def get_qualified_hashes(prime_char,  hash_hex, len_prime_char, nonce, extra_non
 
 
 def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid_nonce_hash,  q,
-                     extra_nonce_index, max_nonce_value, end_time, prev_hash):
+                     extra_nonce_index, max_nonce_value, end_time, prev_hash, is_program_running):
     prime_char = single_prime_char.lower() * exp_leading
     nonce = 0
     x_nonce = 0
-    primary_signatory = block_header.p_s
     merkle_root = block_header.mrh
     print("starting nonce", nonce)
     extra_nonce = f"{extra_nonce_index}_{x_nonce}"
     combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
-    while time.time() < end_time:
+
+    print("In compete program is running", is_program_running.is_set())
+    while is_program_running.is_set() and time.time() < end_time:
 
         # check if nonce greater than max number (which is highest number of unsigned 64 bit integer or ((2**64) - 1)
         if nonce > max_nonce_value:
@@ -92,6 +93,7 @@ def threaded_compete_improved(
         exp_leading,
         block_header,
         prev_hash,
+        is_program_running,
         len_competition=60
 ):
     """
@@ -133,7 +135,7 @@ def threaded_compete_improved(
         process_list.append(Process(target=compete_improved, args=(single_prime_char,exp_leading, block_header,
                                                                    dict_of_valid_nonce_hash, q,
                                                                    extra_nonce_index, max_nonce_value,
-                                                                   end_time,prev_hash)))
+                                                                   end_time,prev_hash, is_program_running)))
         starting_nonce += starting_nonce_multiples
 
     for process in process_list:
@@ -198,7 +200,8 @@ def choose_top_scoring_hash(prime_char, addl_chars, dict_of_valid_hashes, exp_le
 
 # run this function to start competing, to run, feed it the prime character, addl_chars, block header_dict,
 # expected leading prime chars and len of competition
-def start_competing(block_header, prev_hash, exp_leading=6, len_competition=30, single_prime_char="f", addl_chars=""):
+def start_competing(block_header, prev_hash, is_program_running, exp_leading=6, len_competition=30,
+                    single_prime_char="f", addl_chars=""):
 
     winning_hash = threaded_compete_improved(
         single_prime_char=single_prime_char,
@@ -206,7 +209,9 @@ def start_competing(block_header, prev_hash, exp_leading=6, len_competition=30, 
         block_header=block_header,
         len_competition=len_competition,
         addl_chars=addl_chars,
-        prev_hash=prev_hash
+        prev_hash=prev_hash,
+        is_program_running=is_program_running
+
     )
 
     print(f"The winning hash and nonce is {winning_hash}")
@@ -263,8 +268,8 @@ def get_reward_txs(
 
 def generate_regular_block(block_no: int, admin_inst, combined_list: list,
                            wsh: dict, fees: int, no_of_txs: int, no_of_asgns: int, primary_sig_wallet: str,
-                           prev_hash, addl_chars, len_competiion=60, exp_leading_prime=7, single_prime_char='f',
-                           should_save=False, include_foundation=True):
+                           prev_hash, addl_chars, is_program_running, len_competiion=60, exp_leading_prime=7,
+                           single_prime_char='f', should_save=False, include_foundation=True):
 
     # primary wallet_for test"W884c07be004ee2a8bc14fb89201bbc607e75258d"
     if block_no == 1:
@@ -282,7 +287,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
             single_prime_char=single_prime_char,
             should_save=should_save,
             include_foundation=include_foundation,
-            genesis_block_hash=prev_hash
+            genesis_block_hash=prev_hash,
+            is_program_running=is_program_running
 
 
 
@@ -340,7 +346,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
             exp_leading=exp_leading_prime,
             single_prime_char=single_prime_char,
             addl_chars=addl_chars,
-            prev_hash=prev_hash
+            prev_hash=prev_hash,
+            is_program_running=is_program_running
         )
 
         block_object = new_block_creator_inst.get_block()
@@ -362,7 +369,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
 
 
 def generate_block_one(admin_inst, combined_list: list,  wsh: dict, fees: int, no_of_txs,
-                       no_of_asgns, primary_sig_wallet: str, genesis_block_hash, len_competiion=60, exp_leading_prime=7,
+                       no_of_asgns, primary_sig_wallet: str, genesis_block_hash, is_program_running, len_competiion=60, exp_leading_prime=7,
                        single_prime_char='f',should_save=False, include_foundation=True):
     """
 
@@ -441,7 +448,8 @@ def generate_block_one(admin_inst, combined_list: list,  wsh: dict, fees: int, n
         len_competition=len_competiion,
         exp_leading=exp_leading_prime,
         single_prime_char=single_prime_char,
-        prev_hash=genesis_block_hash
+        prev_hash=genesis_block_hash,
+        is_program_running=is_program_running
     )
 
     block_object = block_one_creator_inst.get_block()
@@ -581,12 +589,13 @@ class TxMiscWsh:
 
 
 class Competitor:
-    def __init__(self, reward_wallet, admin_inst, just_launched=False):
+    def __init__(self, reward_wallet, admin_inst, is_program_running, just_launched=False):
         self.admin_inst = admin_inst
         self.just_launched = just_launched
         self.reward_wallet = reward_wallet
         self.block_creator = None
         self.hex_value_to_time = self.set_hex_value_to_seconds()
+        self.is_program_running = is_program_running
 
     @staticmethod
     def set_hex_value_to_seconds():
@@ -700,10 +709,9 @@ class Competitor:
         return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
                gen_block_header["block_hash"]
 
-
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
                          is_generating_block: multiprocessing.synchronize.Event,
-                         has_received_new_block: multiprocessing.synchronize.Event, pause_time=1):
+                         has_received_new_block: multiprocessing.synchronize.Event, is_program_running, pause_time=0.25):
 
         # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
         # todo: for now q object will wait for 7 seconds
@@ -720,7 +728,7 @@ class Competitor:
         # False == received a recent block and is waiting for start time, during will received random signed bytes
         # True means
 
-        while True:
+        while is_program_running:
             try:
                 rsp = q_object_from_compete_process_to_mining.get(timeout=pause_time)
                 print("received rsp in Handle new block")
@@ -795,7 +803,8 @@ class Competitor:
                         addl_chars=addl_chars,
                         no_of_txs=tx_misc_wsh.number_of_transactions,
                         no_of_asgns=tx_misc_wsh.number_of_assignment_statements,
-                        prev_hash=prev_hash
+                        prev_hash=prev_hash,
+                        is_program_running=is_program_running
                     )
 
                     # once done clear event object (becomes false) to notify compete_process
@@ -808,6 +817,8 @@ class Competitor:
                     print(f"just created block: {new_block}, is generating block: {is_generating_block.is_set()}")
 
                     reason_msg = "nb" if new_block_no > 1 else "nb1"
+
+                    # how long the time to receive blocks from other nodes should last
                     end_time = time.time() + 30
 
                     # this goes to block initiator method process of BlockchainPropagator
@@ -852,94 +863,98 @@ class Competitor:
             print(f"Not mining {recent_blk}, {recent_block_no}")
 
         msg_count = 0
-        while True:
+        while self.is_program_running.is_set():
             rsp = q_for_compete.get()  # [reason letter, main tx dict OR main block dict]
-            msg_count += 1
 
-            print(f"in Orses_compete, msg sent, msg count is {msg_count}: {rsp}")
+            if self.is_program_running.is_set():
+                msg_count += 1
 
-            # rsp should be dictionary of transaction ie
-            if isinstance(rsp, str) and rsp in {"exit", "quit"}:
-                q_object_from_compete_process_to_mining.put(rsp)
-                if is_generating_block:
-                    print("Currently Generating Block. Program Will End After")
-                break
+                print(f"in Orses_compete, msg sent, msg count is {msg_count}: {rsp}")
 
-            elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block]
-                received_block_no = int(rsp[1]['bh']["block_no"])
-                try:
-                    assert received_block_no == recent_block_no+1
-                except AssertionError as e:
-                    print(f'error in compete(): {e}')
+                # rsp should be dictionary of transaction ie
+                if isinstance(rsp, str) and rsp in {"exit", "quit"}:
+                    q_object_from_compete_process_to_mining.put(rsp)
+                    if is_generating_block:
+                        print("Currently Generating Block. Program Will End After")
                     break
 
-                recent_block_no = received_block_no
-
-                # add previous tx_misc_wsh
-                rsp.append(tx_misc_wsh)  # rsp == ['bcb', block, tx_misc_wsh]
-
-                #  has_received_new_block is set to true in mining process
-                q_object_from_compete_process_to_mining.put(rsp)
-
-                # instantiate a new  tx_misc_wsh
-                tx_misc_wsh = TxMiscWsh(
-                    txs=self.create_empty_tx_dict(),
-                    fees=0
-                )
-
-            else:
-                if rsp[0] == "a":  # assignment statements are not included directly
-
-                    print(f"received an assignment statement in compete, SHOULD NOT RECEIVE IN COMPETE\n{rsp}")
-                    pass
-
-                elif rsp[0] == "m":  # misc messages
-
-                    misc_m = [rsp[1]['msg'], rsp[1]['sig'], rsp[1]['pubkey'], rsp[1]["time"],
-                                                     rsp[1]['purp'], rsp[1]["fee"]]
-
-                    # if new block has been received but next block not being generated,
-                    if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
-                        q_object_from_compete_process_to_mining.put(['m', rsp[1]['msg_hash'], misc_m])
-
-                    else:
-
-                        tx_misc_wsh.add_to_misc_msg(
-                            msg_hash=rsp[1]['msg_hash'],
-                            msg=misc_m,
-                            fees=misc_m[-1]
-                        )
-
-                elif rsp[0] == "wh":  # wallet hash states
-                    pass
-
-                else:  # transaction message
-                    # todo: when checking transaction messages, check for fees
-
+                elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block]
+                    received_block_no = int(rsp[1]['bh']["block_no"])
                     try:
-                        # rsp[0] either b,c,d
-                        # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req'
-                        tx_dict_key = reason_dict[rsp[0]]
-                        main_msg = rsp[1][tx_dict_key]
-                        sig = rsp[1]['sig']
+                        assert received_block_no == recent_block_no+1
+                    except AssertionError as e:
+                        print(f'error in compete(): {e}')
+                        break
 
+                    recent_block_no = received_block_no
+
+                    # add previous tx_misc_wsh
+                    rsp.append(tx_misc_wsh)  # rsp == ['bcb', block, tx_misc_wsh]
+
+                    #  has_received_new_block is set to true in mining process
+                    q_object_from_compete_process_to_mining.put(rsp)
+
+                    # instantiate a new  tx_misc_wsh
+                    tx_misc_wsh = TxMiscWsh(
+                        txs=self.create_empty_tx_dict(),
+                        fees=0
+                    )
+
+                else:
+                    if rsp[0] == "a":  # assignment statements are not included directly
+
+                        print(f"received an assignment statement in compete, SHOULD NOT RECEIVE IN COMPETE\n{rsp}")
+                        pass
+
+                    elif rsp[0] == "m":  # misc messages
+
+                        misc_m = [rsp[1]['msg'], rsp[1]['sig'], rsp[1]['pubkey'], rsp[1]["time"],
+                                                         rsp[1]['purp'], rsp[1]["fee"]]
+
+                        # if new block has been received but next block not being generated,
                         if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
 
-                            # print("is here 111")
-                            q_object_from_compete_process_to_mining.put(
-                                [tx_dict_key, rsp[1]["tx_hash"], [main_msg, sig]]
-                            )
+                            # this goes to process being run self.handle_new_block Competitor method
+                            q_object_from_compete_process_to_mining.put(['m', rsp[1]['msg_hash'], misc_m])
+
                         else:
 
-                            tx_misc_wsh.add_to_txs(
-                                type_of_tx=tx_dict_key,
-                                tx_hash=rsp[1]["tx_hash"],
-                                tx=[main_msg, sig],
-                                fees=main_msg['fee']
+                            tx_misc_wsh.add_to_misc_msg(
+                                msg_hash=rsp[1]['msg_hash'],
+                                msg=misc_m,
+                                fees=misc_m[-1]
                             )
-                    except KeyError as e:
-                        print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
-                        continue
+
+                    elif rsp[0] == "wh":  # wallet hash states
+                        pass
+
+                    else:  # transaction message
+                        # todo: when checking transaction messages, check for fees
+
+                        try:
+                            # rsp[0] either b,c,d
+                            # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req'
+                            tx_dict_key = reason_dict[rsp[0]]
+                            main_msg = rsp[1][tx_dict_key]
+                            sig = rsp[1]['sig']
+
+                            if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
+
+                                # print("is here 111")
+                                q_object_from_compete_process_to_mining.put(
+                                    [tx_dict_key, rsp[1]["tx_hash"], [main_msg, sig]]
+                                )
+                            else:
+
+                                tx_misc_wsh.add_to_txs(
+                                    type_of_tx=tx_dict_key,
+                                    tx_hash=rsp[1]["tx_hash"],
+                                    tx=[main_msg, sig],
+                                    fees=main_msg['fee']
+                                )
+                        except KeyError as e:
+                            print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
+                            continue
 
         print("in Orses_Compete_Algo: Compete, process done")
 

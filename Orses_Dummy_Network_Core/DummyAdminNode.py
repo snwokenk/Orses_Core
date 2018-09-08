@@ -19,7 +19,7 @@ class DummyAdminNode(DummyNode):
 
     nodeID = 0
 
-    def __init__(self, admin,  dummy_internet, real_reactor_instance):
+    def __init__(self, admin,  dummy_internet, real_reactor_instance, is_program_running):
 
         super().__init__(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=real_reactor_instance)
         self.node_id = DummyAdminNode.nodeID
@@ -34,7 +34,12 @@ class DummyAdminNode(DummyNode):
         self.q_for_block_validator = multiprocessing.Queue()
         self.is_generating_block = multiprocessing.Event()
         self.has_received_new_block = multiprocessing.Event()
-        self.competitor = Competitor(reward_wallet="Wf693c7655fa6c49b3b28e2ac3394944c43d369cc", admin_inst=self.admin)
+        self.is_program_running = is_program_running
+        self.competitor = Competitor(
+            reward_wallet="Wf693c7655fa6c49b3b28e2ac3394944c43d369cc",
+            admin_inst=self.admin,
+            is_program_running=is_program_running
+        )
 
     def copy_important_files(self):
         path_of_main = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Default_Addresses_Sandbox")
@@ -144,6 +149,7 @@ class DummyAdminNode(DummyNode):
             q_object_between_initial_setup_propagators=q_for_initial_setup,
             reactor_instance=self.reactor,  # use DummyReactor which implements real reactor.CallFromThread
             admin_instance=self.admin,
+            is_program_running=self.is_program_running
 
         )
 
