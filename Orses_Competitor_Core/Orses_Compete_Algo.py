@@ -711,7 +711,7 @@ class Competitor:
 
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
                          is_generating_block: multiprocessing.synchronize.Event,
-                         has_received_new_block: multiprocessing.synchronize.Event, is_program_running, pause_time=0.25):
+                         has_received_new_block: multiprocessing.synchronize.Event, is_program_running, pause_time=1):
 
         # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
         # todo: for now q object will wait for 7 seconds
@@ -728,11 +728,13 @@ class Competitor:
         # False == received a recent block and is waiting for start time, during will received random signed bytes
         # True means
 
-        while is_program_running:
+        while is_program_running.is_set():
             try:
-                rsp = q_object_from_compete_process_to_mining.get(timeout=pause_time)
+                rsp = q_object_from_compete_process_to_mining.get(timeout=0.25)
                 print("received rsp in Handle new block")
             except Empty:
+                if is_program_running.is_set() is False:
+                    print("Program should end")
                 pass
             else:
 
