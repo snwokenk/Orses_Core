@@ -669,15 +669,16 @@ class BlockChainPropagator:
 
         # todo: get block from indirect if not in dict_of_potential_blocks
         block_of_winner = self.dict_of_potential_blocks["full_hash"].get(block_winner_hash, None)
+
         counter = -1
         while self.is_program_running.is_set():
 
             if block_of_winner:
-                self.winning_block_choice = winning_block
+                self.locally_known_block = block_of_winner
 
                 # todo: update mempool to move transactions from unconfirmed to confirmed that were included in block
-                self.mempool.update_mempool(winning_block=self.winning_block_choice)
-                self.q_object_compete.put(['bcb', self.winning_block_choice])
+                self.mempool.update_mempool(winning_block=self.locally_known_block)
+                self.q_object_compete.put(['bcb', self.locally_known_block])
 
                 break
             elif block_winner_hash in self.dict_of_potential_indirect_blocks:
@@ -699,7 +700,8 @@ class BlockChainPropagator:
                 is_validated = validator.validate()
 
                 if is_validated:
-                    self.locally_known_block = self.dict_of_potential_indirect_blocks[block_winner_hash]
+                    block_of_winner = self.dict_of_potential_indirect_blocks[block_winner_hash]
+                    self.locally_known_block = block_of_winner
                     self.q_object_compete.put(
                         ['bcb', self.locally_known_block])
                     break
@@ -716,30 +718,20 @@ class BlockChainPropagator:
                     else:
                         # no more blocks from indirectly received so. The winning block from directly received
                         # and validated blocks is chosen
-                        self.locally_known_block = self.dict_of_potential_blocks[direct_winner]
+                        block_of_winner = self.dict_of_potential_blocks[direct_winner]
+                        self.locally_known_block = block_of_winner
                         self.q_object_compete.put(['bcb', self.locally_known_block])
                         break
+            else:
+                print(f"in check_winning_block_from_network, BlockchainPropagator. Error, no block winner")
 
-
-
-                # # defer validation to thread
-                # # if indirect block is valid use it
-                # # if it is not, use the
-                # response_thread = threads.deferToThread(validator.validate)
-                # response_thread.addCallback(lambda is_valid: self.q_object_compete.put(
-                #     ['bcb', self.dict_of_potential_indirect_blocks[block_winner_hash]]) if is_valid else
-                # self.q_object_compete.put(['bcb', self.dict_of_potential_blocks[direct_winner]]))
-
-                # if block winner was received indirectly
-
-
-
-        # todo: decide the winning block and add to local blockchain
-        # todo: if winner is an indirect block
-        # send winning block to other processes (no need to check network) If winning block has more than
-        print(f"in check_winning_network, Final block_winner {block_of_winner}")
-        self.q_object_compete.put(['bcb', block_of_winner])
-
+        if block_of_winner:
+            folder = self.admin_instance.fl.get_block_data_folder_path()
+            self.admin_instance.fl.save_json_into_file(
+                filename=str(block_no),
+                python_json_serializable_object=block_of_winner,
+                in_folder=folder
+            )
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
                                  exp_leading: int, current_winning_score=0) -> list:  # return a list
@@ -774,7 +766,6 @@ def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_
             temp_score = 16 ** ini_pr_ch
             temp_score += temp_extra
             break
-    # print("temp_score", temp_score, "score", score, "\n---")
     if temp_score > current_winning_score:
         current_winning_score = temp_score
         curr_winning_hash = hash_of_new_block

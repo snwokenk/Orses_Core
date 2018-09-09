@@ -60,31 +60,31 @@ def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid
     extra_nonce = f"{extra_nonce_index}_{x_nonce}"
     combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
 
-    print("In compete program is running", is_program_running.is_set())
-    while is_program_running.is_set() and time.time() < end_time:
+    if is_program_running.is_set():
+        while time.time() < end_time:
 
-        # check if nonce greater than max number (which is highest number of unsigned 64 bit integer or ((2**64) - 1)
-        if nonce > max_nonce_value:
-            nonce = 0
-            x_nonce += 1
-            extra_nonce = f"{extra_nonce_index}_{x_nonce}"
-            # if extra nonce is needed then add in combined merkle
-            combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
+            # check if nonce greater than max number (which is highest number of unsigned 64 bit integer or ((2**64) - 1)
+            if nonce > max_nonce_value:
+                nonce = 0
+                x_nonce += 1
+                extra_nonce = f"{extra_nonce_index}_{x_nonce}"
+                # if extra nonce is needed then add in combined merkle
+                combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
 
-        get_qualified_hashes(
-            prime_char=prime_char,
-            hash_hex=competitive_hasher(f'{combined_merkle}{nonce}'.encode()),
-            dict_of_valid_hash=dict_of_valid_nonce_hash,
-            len_prime_char=exp_leading,
-            nonce=nonce,
-            extra_nonce=extra_nonce
-        )
-        nonce += 1
+            get_qualified_hashes(
+                prime_char=prime_char,
+                hash_hex=competitive_hasher(f'{combined_merkle}{nonce}'.encode()),
+                dict_of_valid_hash=dict_of_valid_nonce_hash,
+                len_prime_char=exp_leading,
+                nonce=nonce,
+                extra_nonce=extra_nonce
+            )
+            nonce += 1
 
-    total_hashes = nonce if x_nonce is None else nonce + (max_nonce_value * x_nonce)
-    print("done", os.getpid())
-    q.put(total_hashes)
-    return dict_of_valid_nonce_hash
+        total_hashes = nonce if x_nonce is None else nonce + (max_nonce_value * x_nonce)
+        print("done", os.getpid())
+        q.put(total_hashes)
+        return dict_of_valid_nonce_hash
 
 
 def threaded_compete_improved(
@@ -273,6 +273,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
 
     # primary wallet_for test"W884c07be004ee2a8bc14fb89201bbc607e75258d"
     if block_no == 1:
+
+        print("in Generate_regular_block, Orses_compete_algo, block is block 1")
         # pass
         new_block = generate_block_one(
             admin_inst=admin_inst,
@@ -295,6 +297,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
         )
     else:
 
+        print("in Generate_regular_block, Orses_compete_algo, block is not block 1 it is {block_no}")
+
         # todo: get list of previous 2 hashes. have a way of getting previous 2 blocks hashes probably using fileaction
         list_of_prev_2_hashes=None
 
@@ -308,7 +312,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
         # insert reward transactions into transaction dict
         list_of_hashes = get_reward_txs(
             primary_sig_wallet=new_block_creator_inst.primary_sig_wallet_id,
-            block_no=1,
+            block_no=block_no,
             fees=fees,
             len_of_comp=len_competiion,
             include_foundation_reward=include_foundation,
@@ -330,6 +334,10 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
         )
 
         block_header = new_block_creator_inst.block_header_callable()
+
+        print(f"in Orses compete, generate_regula_block:\n"
+              f"block header {block_header}\n"
+              f"new_block_creator {new_block_creator_inst}")
         block_header.set_header_before_compete(
             primary_sig_wallet_id=primary_sig_wallet,
             merkle_root=new_block_creator_inst.merkle_root,
@@ -337,7 +345,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
             no_of_asgns=no_of_asgns,
             list_of_prev_2_hashes=list_of_prev_2_hashes,  # todo: this list should get
             list_of_maximum_prob=['p6+0', "p7+0", "p6+0", "p7+0", "p6+0"],
-            prev_hash=prev_hash
+            prev_hash=prev_hash,
+            block_no=block_no
         )
 
         final_block_header = start_competing(
@@ -694,7 +703,6 @@ class Competitor:
             block_header=block_before_recent_block_header
         )
 
-
         return start_time, len_competition, single_prime_char, exp_leading_prime, block_before_recent_block_no + 2, \
                addl_chars, block_header["block_hash"]
 
@@ -786,7 +794,10 @@ class Competitor:
             try:
                 if is_generating_block.is_set() is False and has_received_new_block.is_set() is True and time.time() >= start_time:
 
-                    print("Bout To Start Competing")
+                    print("in handle_new_block, Orses_Compete_Algo.py, Bout To Start Competing")
+                    print("These Are The Block Generating Argumants")
+                    print(start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no,
+                          addl_chars, prev_hash)
 
                     # generating block is and instance of multiprocessing.Event()
                     is_generating_block.set()

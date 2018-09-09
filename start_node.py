@@ -51,8 +51,15 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: check check_winning_block_from_network method in BLockchainPropagator. It hangs. use print statements to debug
+
+# TODO; DO THESE TWO first
+# todo: create an Event Object that keeps track when actual mining is to take place. If it is, then it tells the
+# todo: user to wait for the program to be done, the event could be is_not_mining and should wait till its true
 # todo: implement a message receiver class that ends an end message when no matching reason
+# todo: allow non-competitors to still run run_block_winner_chooser_process and check_winning_block_from_network
+
+
+
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
 

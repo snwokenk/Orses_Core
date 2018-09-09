@@ -272,9 +272,10 @@ class RegularBlockHeader(BaseBlockHeader):
             no_of_asgns: int,
             list_of_prev_2_hashes: list,
             list_of_maximum_prob: list,
-            prev_hash: str
+            prev_hash: str,
+            block_no: int
     ):
-        self.set_block_no(block_number=1)
+        self.set_block_no(block_number=block_no)
         self.set_primary_signatory(primary_signatory=primary_sig_wallet_id)
         self.set_shuffled_hex_values()
         self.set_maximum_probability_target(list_of_maximum_prob)

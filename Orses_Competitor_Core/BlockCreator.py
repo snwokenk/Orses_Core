@@ -67,7 +67,7 @@ class RegularBlockCreator(NonGenesisBlockCreator):
         super().__init__(primary_sig_wallet_id=primary_sig_wallet_id, combined_list=combined_list)
 
         self.block = RegularBlock()
-        self.block_header_callable = RegularBlockHeader()
+        self.block_header_callable = RegularBlockHeader
 
     def set_block_before_competing(self, combined_list, secondary_signatories, wsh):
         self.block.set_before_competing(
