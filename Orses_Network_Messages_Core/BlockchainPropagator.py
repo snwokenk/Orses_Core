@@ -726,11 +726,11 @@ class BlockChainPropagator:
                 print(f"in check_winning_block_from_network, BlockchainPropagator. Error, no block winner")
 
         if block_of_winner and self.is_program_running.is_set():
-            folder = self.admin_instance.fl.get_block_data_folder_path()
-            self.admin_instance.fl.save_json_into_file(
-                filename=str(block_no),
-                python_json_serializable_object=block_of_winner,
-                in_folder=folder
+
+            BlockChainData.save_a_newly_created_block(
+                block_no=block_no,
+                block=block_of_winner,
+                admin_instance=self.admin_instance
             )
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,

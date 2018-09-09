@@ -80,15 +80,23 @@ class BlockChainData:
         pass
 
     @staticmethod
-    def save_a_newly_created_block(block_no, block, admin_instance):
+    def save_a_newly_created_block(block_no: int, block: dict, admin_instance):
 
-        last_known_block
+        last_known_block = BlockChainData.get_current_known_block(admin_instance=admin_instance)
+
         folder = admin_instance.fl.get_block_data_folder_path()
         admin_instance.fl.save_json_into_file(
             filename=str(block_no),
             python_json_serializable_object=block,
             in_folder=folder
         )
+
+        if int(last_known_block[0]) < block_no: # block number
+            last_known_filename = os.path.join(admin_instance.fl.get_block_data_folder_path(), "last_block_number")
+            admin_instance.fl.save_json_into_file(
+                filename=last_known_filename,
+                python_json_serializable_object=block_no
+            )
 
     @staticmethod
     def save_a_propagated_block(block_no, block, admin_instance):
