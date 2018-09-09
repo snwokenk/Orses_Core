@@ -36,7 +36,7 @@ class NonGenesisBlockCreator(BaseBlockCreator):
 
         print("combine list in compute_merkle", combined_list)
         merkle_root_list = [tx_list[0] for tx_list in combined_list]  # get hash at index 0 of each list
-        print("merkle root list in compute_merkle", merkle_root_list)
+        print("in BlockCreator.py merkle root list in compute_merkle", merkle_root_list)
 
         o = OrsesMerkleRootTree(items=merkle_root_list)
         o.create_merkle_tree()

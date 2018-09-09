@@ -396,6 +396,7 @@ class BlockChainPropagator:
 
                             # rsp == ["nb', end_time_for_winner chooser process, block]
                             # startup winner chooser process
+                            # the data is received from handle_new_block of Orses_Compete_Algo.py
                             self.reactor_instance.callInThread(
                                 self.run_block_winner_chooser_process,
                                 block=rsp[-1],
@@ -582,9 +583,9 @@ class BlockChainPropagator:
 
         # start accepting block choices
         self.is_accepting_block_choices.set()
+
         winning_block = self.dict_of_potential_blocks["full_hash"][winning_hash]
         self.winning_block_choice = winning_block
-
 
         self.dict_of_endorsed_hash[winning_hash] = 1
 
@@ -626,6 +627,7 @@ class BlockChainPropagator:
             try:
                 winning_hash_rsp = self.q_object_for_winning_block_process.get(timeout=0.2)
             except Empty:
+                print(f"in check_winning_network {time.time()} - len_to_wait {len_of_check}")
                 pass
             else:
                 if isinstance(winning_hash_rsp, str) and winning_hash_rsp in {'exit', 'quit'}:
@@ -636,7 +638,7 @@ class BlockChainPropagator:
                     # todo: use absolute number of endorsements. Later endorsements will be based on tokens represented
                     block_hash = winning_hash_rsp[0]
                     signature = winning_hash_rsp[1]
-                    if block_hash in self.dict_of_potential_blocks:
+                    if block_hash in self.dict_of_potential_blocks["full_hash"]:
                         try:
                             self.dict_of_endorsed_hash[winning_hash_rsp[0]] += 1
                         except KeyError:
@@ -649,8 +651,6 @@ class BlockChainPropagator:
                             self.dict_of_indirect_endorsed_hash[winning_hash_rsp[0]] = 1
 
                     total_endorsements += 1
-
-        print(f"")
 
         # stop accepting block choices
         self.is_accepting_block_choices.clear()
@@ -668,7 +668,7 @@ class BlockChainPropagator:
         # get block winner from potential blocks (direct), if not then from indirect
 
         # todo: get block from indirect if not in dict_of_potential_blocks
-        block_of_winner = self.dict_of_potential_blocks.get(block_winner_hash, None)
+        block_of_winner = self.dict_of_potential_blocks["full_hash"].get(block_winner_hash, None)
         counter = -1
         while self.is_program_running.is_set():
 
@@ -737,6 +737,7 @@ class BlockChainPropagator:
         # todo: decide the winning block and add to local blockchain
         # todo: if winner is an indirect block
         # send winning block to other processes (no need to check network) If winning block has more than
+        print(f"in check_winning_network, Final block_winner {block_of_winner}")
         self.q_object_compete.put(['bcb', block_of_winner])
 
 

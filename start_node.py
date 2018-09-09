@@ -51,6 +51,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: check check_winning_block_from_network method in BLockchainPropagator. It hangs. use print statements to debug
 # todo: implement a message receiver class that ends an end message when no matching reason
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs

@@ -883,9 +883,10 @@ class Competitor:
                 elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block]
                     received_block_no = int(rsp[1]['bh']["block_no"])
                     try:
+                        print(f"received block no {received_block_no}")
                         assert received_block_no == recent_block_no+1
                     except AssertionError as e:
-                        print(f'error in compete(): {e}')
+                        print(f'Assertion_error in compete(), Orses_compete_algo.py')
                         break
 
                     recent_block_no = received_block_no
