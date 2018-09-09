@@ -302,16 +302,9 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
         # todo: get list of previous 2 hashes. have a way of getting previous 2 blocks hashes probably using fileaction
         list_of_prev_2_hashes=None
 
-        # instantiate block one creator
-        new_block_creator_inst = RegularBlockCreator(
-            primary_sig_wallet_id=primary_sig_wallet,
-            combined_list=combined_list
-        )
-
-
         # insert reward transactions into transaction dict
         list_of_hashes = get_reward_txs(
-            primary_sig_wallet=new_block_creator_inst.primary_sig_wallet_id,
+            primary_sig_wallet=primary_sig_wallet,
             block_no=block_no,
             fees=fees,
             len_of_comp=len_competiion,
@@ -322,6 +315,15 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
 
         # insert reward transactions hash into combined hash list [prim signatory rwd hash, foundation reward hash]
         combined_list.extend(list_of_hashes)
+
+        # instantiate block one creator
+        new_block_creator_inst = RegularBlockCreator(
+            primary_sig_wallet_id=primary_sig_wallet,
+            combined_list=combined_list
+        )
+
+
+
 
 
         # set misc messages with top 10 signatories
@@ -337,7 +339,8 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
 
         print(f"in Orses compete, generate_regula_block:\n"
               f"block header {block_header}\n"
-              f"new_block_creator {new_block_creator_inst}")
+              f"new_block_creator {new_block_creator_inst}"
+              f"merkle root fo block {block_no}: {new_block_creator_inst.merkle_root}")
         block_header.set_header_before_compete(
             primary_sig_wallet_id=primary_sig_wallet,
             merkle_root=new_block_creator_inst.merkle_root,

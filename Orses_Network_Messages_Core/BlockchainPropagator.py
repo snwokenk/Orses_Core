@@ -725,7 +725,7 @@ class BlockChainPropagator:
             else:
                 print(f"in check_winning_block_from_network, BlockchainPropagator. Error, no block winner")
 
-        if block_of_winner:
+        if block_of_winner and self.is_program_running.is_set():
             folder = self.admin_instance.fl.get_block_data_folder_path()
             self.admin_instance.fl.save_json_into_file(
                 filename=str(block_no),

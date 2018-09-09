@@ -80,6 +80,17 @@ class BlockChainData:
         pass
 
     @staticmethod
+    def save_a_newly_created_block(block_no, block, admin_instance):
+
+        last_known_block
+        folder = admin_instance.fl.get_block_data_folder_path()
+        admin_instance.fl.save_json_into_file(
+            filename=str(block_no),
+            python_json_serializable_object=block,
+            in_folder=folder
+        )
+
+    @staticmethod
     def save_a_propagated_block(block_no, block, admin_instance):
 
         # verify that we don't already have block:
