@@ -221,6 +221,7 @@ def start_competing(block_header, prev_hash, is_program_running, exp_leading=6, 
         block_header.block_hash = winning_hash["nonce"][1]
         block_header.n = format(winning_hash["nonce"][0][0], "x")
         block_header.x_n = winning_hash["nonce"][0][1]
+        block_header.set_block_time()
         print(block_header.get_block_header())
 
     return block_header.get_block_header()
@@ -679,10 +680,11 @@ class Competitor:
 
         return transactions
 
-    def get_new_block_arguments(self, rsp, pause_time=7):
+    def get_new_block_arguments(self, rsp, pause_time=60):
         recent_blk = rsp[1]
         block_header = recent_blk["bh"]
         last_block_time = block_header["time"]
+        # start_time = time.time() + pause_time  # 7 second proxy window
         start_time = last_block_time + pause_time  # 7 second proxy window
 
         # get single prime, exp leading prime, addl chars, len of competition from block before recent
@@ -722,7 +724,9 @@ class Competitor:
 
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
                          is_generating_block: multiprocessing.synchronize.Event,
-                         has_received_new_block: multiprocessing.synchronize.Event, is_program_running, pause_time=1):
+                         has_received_new_block: multiprocessing.synchronize.Event,
+                         is_not_in_process_of_creating_new_block: multiprocessing.synchronize.Event,
+                         is_program_running, pause_time=60):
 
         # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
         # todo: for now q object will wait for 7 seconds
@@ -762,6 +766,8 @@ class Competitor:
 
                         tx_misc_wsh = rsp[2]
 
+                        print(f"In Handle blocks, {start_time}, {time.time()}")
+
                     elif rsp[0] == 'm':  # rsp == ['m', msg hash, misc_msg_list]
                         try:
                             tx_misc_wsh.add_to_misc_msg(
@@ -796,6 +802,11 @@ class Competitor:
             # todo: if 5 random bytes already received changed to and (time.time() >= start_time or random_received => 5)
             try:
                 if is_generating_block.is_set() is False and has_received_new_block.is_set() is True and time.time() >= start_time:
+
+                    # set this to false
+                    # at compete it is set to true, when a new block has been received
+                    # used by exit process to determine when to exit, it waits for process not to be creating blocks
+                    is_not_in_process_of_creating_new_block.clear()
 
                     print("in handle_new_block, Orses_Compete_Algo.py, Bout To Start Competing")
                     print("These Are The Block Generating Argumants")
@@ -835,10 +846,13 @@ class Competitor:
                     reason_msg = "nb" if new_block_no > 1 else "nb1"
 
                     # how long the time to receive blocks from other nodes should last
-                    end_time = time.time() + 30
+                    end_time = time.time() + (pause_time/2)
 
-                    # this goes to block initiator method process of BlockchainPropagator
-                    q_for_block_validator.put([reason_msg, end_time, new_block])
+                    # To account for the fact that there might not be a valid
+
+                    if new_block["bh"]["block_hash"]:
+                        # this goes to block initiator method process of BlockchainPropagator
+                        q_for_block_validator.put([reason_msg, end_time, new_block])
             except TypeError as e:
                 print(f"in Orses Compete error: {e}")
                 continue
@@ -849,6 +863,7 @@ class Competitor:
             q_object_from_compete_process_to_mining: (multiprocessing.queues.Queue, queue.Queue),
             is_generating_block: multiprocessing.synchronize.Event,
             has_received_new_block: multiprocessing.synchronize.Event,
+            is_not_in_process_of_creating_new_block: multiprocessing.synchronize.Event
     ):
 
         print(f"in Orses_compete_alog, Started Compete Process For admin: {self.admin_inst.admin_name}")
@@ -907,6 +922,10 @@ class Competitor:
 
                     # add previous tx_misc_wsh
                     rsp.append(tx_misc_wsh)  # rsp == ['bcb', block, tx_misc_wsh]
+
+
+                    # this is set to True, if exit process waiting for when not creating block to exit
+                    is_not_in_process_of_creating_new_block.set()
 
                     #  has_received_new_block is set to true in mining process
                     q_object_from_compete_process_to_mining.put(rsp)

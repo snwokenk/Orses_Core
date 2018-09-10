@@ -622,7 +622,7 @@ class BlockChainPropagator:
 
         # check for response
         no_of_protocols = len(self.connected_protocols_dict)
-        len_of_check = time.time() + 10
+        len_of_check = time.time() + 20
         while self.is_program_running.is_set() and no_of_protocols > 0 and time.time() <= len_of_check:
             try:
                 winning_hash_rsp = self.q_object_for_winning_block_process.get(timeout=0.2)
@@ -971,6 +971,14 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
         print(f"in {__file__}: get_message_receiver, reason msg {reason_msg}")
         msg_rcv = None
 
+    if msg_rcv is None:
+
+        DefaultMessageReceiver(
+            protocol=protocol,
+            convo_id=convo_id,
+            propagator_inst=propagator_inst
+        )
+
     return msg_rcv
 
 
@@ -1060,6 +1068,21 @@ class BlockChainMessageReceiver:
             self.protocol.transport.write,
             json.dumps([self.prop_type, self.convo_id, msg]).encode()
         )
+
+
+class DefaultMessageReceiver(BlockChainMessageReceiver):
+    """
+    Use to send an end message,
+    this is done when reason msg from peer node does not have a corresponding message receiver class
+    """
+
+    def listen(self, msg):
+        if self.end_convo is False:
+            self.speak()
+
+    def speak(self):
+        self.end_convo = True
+        self.speaker(msg=self.last_msg)
 
 
 class RequestMostRecentBlockKnown(BlockChainMessageSender):

@@ -27,6 +27,7 @@ from twisted.internet import reactor, defer, threads
 from pkg_resources import DistributionNotFound, VersionConflict
 
 import sys, multiprocessing, queue, getopt, time, pkg_resources
+from multiprocessing import synchronize
 from multiprocessing.queues import Queue
 
 p_version = sys.version_info
@@ -52,13 +53,7 @@ else:
     print("All Required Packages Installed")
 
 
-# TODO; DO THESE TWO first
-# todo: create an Event Object that keeps track when actual mining is to take place. If it is, then it tells the
-# todo: user to wait for the program to be done, the event could be is_not_mining and should wait till its true
-# todo: implement a message receiver class that ends an end message when no matching reason
 # todo: allow non-competitors to still run run_block_winner_chooser_process and check_winning_block_from_network
-
-
 
 
 # todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
@@ -117,7 +112,8 @@ file used to start node
 
 
 # loads or, if not yet created, creates new admin details. Also Creates the necessary database for running node
-def send_stop_to_reactor(reactor_instance, q_object_to_each_node, is_program_running, dummy_internet=None, *args, **kwargs):
+def send_stop_to_reactor(reactor_instance, q_object_to_each_node, is_program_running: multiprocessing.synchronize.Event,
+                         is_not_in_process_of_creating_new_block: multiprocessing.synchronize.Event, dummy_internet=None, *args, **kwargs):
     """
     runs once the reactor is running, opens another thread that runs local function temp().
     This function waits for an exit signal, it then sends exit signal to other threads running, using the queue objects
@@ -129,6 +125,8 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, is_program_run
     :param is_program_running: a multiprocessing.Event object which is set to true at beginning of program
             and set to false by this function. This event is used by while loops (mining loops etc) that do not use a
             queue object or do but with a timeout
+    :param is_in_process_of_creating_new_block: used to check if local node is in process of creating block
+            This is used to exit the program after a choice of new block has been made and before new mining
     :param args: should be list of blocking objects: in this case q objects
     :param kwargs: option keywork argument of "number_of_nodes" can be passed
     :return:
@@ -145,7 +143,15 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, is_program_run
             while True:
                 ans = input("cmd: ").lower()
 
+                print(f"is_not_in_process_of_creating_new_block {is_not_in_process_of_creating_new_block.is_set()}")
+
                 if ans in {"exit", "quit"}:
+
+                    if not is_not_in_process_of_creating_new_block.is_set():
+                        print(f"*** Node Currently In New Block Creation Process ***")
+                        print(f"Waiting For Block Winner To Be Chosen")
+                        is_not_in_process_of_creating_new_block.wait()
+
                     is_program_running.clear()
                     for i in args:
                         if isinstance(i, (multiprocessing.queues.Queue, queue.Queue)):
@@ -219,9 +225,18 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     :param just_launched: tells node just launched and to start immediately mining
     :return:
     """
+
+    # set to false by exit process, which signals other processes to end (exit also sends an 'exit' or 'quit'
     is_program_running = multiprocessing.Event()
     is_program_running.set()
     print("program is running?", is_program_running.is_set())
+
+    # used set to true when block mining and then to false after block winner has been chosen
+    # used by exit process, to avoid stopping program in the middle of this process.
+    # which can result in a loss of value
+    is_not_in_process_of_creating_new_block = multiprocessing.Event()
+
+
 
     assert number_of_nodes >= preferred_no_of_mining_nodes, "number of mining nodes should be less than or equal " \
                                                             "to number of created nodes"
@@ -317,7 +332,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
             q_for_compete=q_for_compete,
             q_object_from_compete_process_to_mining=q_object_from_compete_process_to_mining,
             is_generating_block=is_generating_block,
-            has_received_new_block=has_received_new_block
+            has_received_new_block=has_received_new_block,
+            is_not_in_process_of_creating_new_block=is_not_in_process_of_creating_new_block
 
         )
 
@@ -329,7 +345,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
                 "q_for_block_validator": q_for_block_validator,
                 "is_generating_block": is_generating_block,
                 "has_received_new_block": has_received_new_block,
-                "is_program_running": is_program_running
+                "is_program_running": is_program_running,
+                "is_not_in_process_of_creating_new_block": is_not_in_process_of_creating_new_block
 
             }
 
@@ -429,6 +446,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         reactor,
         q_object_to_each_node,
         is_program_running,
+        is_not_in_process_of_creating_new_block,
         dummy_internet,
         q_for_propagate,
         q_for_bk_propagate,
@@ -490,8 +508,15 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
 
 def main(just_launched=False):
+    # set to false by exit process, which signals other processes to end (exit also sends an 'exit' or 'quit'
     is_program_running = multiprocessing.Event()
     is_program_running.set()
+    print("program is running?", is_program_running.is_set())
+
+    # used set to true when block mining and then to false after block winner has been chosen
+    # used by exit process, to avoid stopping program in the middle of this process.
+    # which can result in a loss of value
+    is_not_in_process_of_creating_new_block = multiprocessing.Event()
 
     # input admin name and password
     admin_name = input("admin name: ")
@@ -567,7 +592,8 @@ def main(just_launched=False):
             q_for_compete=q_for_compete,
             q_object_from_compete_process_to_mining=q_object_from_compete_process_to_mining,
             is_generating_block=is_generating_block,
-            has_received_new_block=has_received_new_block
+            has_received_new_block=has_received_new_block,
+            is_not_in_process_of_creating_new_block=is_not_in_process_of_creating_new_block
 
         )
 
@@ -579,7 +605,8 @@ def main(just_launched=False):
                 "q_for_block_validator": q_for_block_validator,
                 "is_generating_block": is_generating_block,
                 "has_received_new_block": has_received_new_block,
-                "is_program_running": is_program_running
+                "is_program_running": is_program_running,
+                "is_not_in_process_of_creating_new_block": is_not_in_process_of_creating_new_block
 
             }
 
@@ -674,7 +701,8 @@ def main(just_launched=False):
         send_stop_to_reactor,
         reactor,
         None,  # q object to each node is None
-        is_program_running,
+        is_program_running,  # Event object to set to true or false
+        is_not_in_process_of_creating_new_block,  # Event object used to wait for best time to exit
         None,  # DummyInternet is None
         q_for_propagate,
         q_for_bk_propagate,

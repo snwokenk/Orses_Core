@@ -83,13 +83,16 @@ class BaseBlockHeader:
 
         self.mpt = None  # maximum probability target
         self.shv = None  # shuffled hex values
-        self.time = int(time.time())  # time in hex value
+        self.time = None  # time in hex value
 
     def __call__(self, *args, **kwargs):
         pass
 
     def get_block_header(self):
         return self.__dict__
+
+    def set_block_time(self):
+        self.time = int(time.time())
 
     def set_block_no(self, block_number: int):
         self.block_no = format(block_number, "x")

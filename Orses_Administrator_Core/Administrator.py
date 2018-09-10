@@ -14,7 +14,7 @@ import time, os, pathlib, json
 
 class Admin:
 
-    def __init__(self, admin_name, password, newAdmin=False, isCompetitor=None, is_sandbox=False):
+    def __init__(self, admin_name: str, password: str, newAdmin=False, isCompetitor=None, is_sandbox=False):
         """
         class representing the admin.
         This class should allow for an admin to:
@@ -124,7 +124,6 @@ class Admin:
 
             # returns imported key
             return self.pki.load_pub_key(importedKey=True, x_y_only=False)
-
 
     def save_admin(self):
         # todo: STOPPED HERE direct from segregated folder
