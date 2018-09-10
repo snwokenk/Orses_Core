@@ -53,6 +53,8 @@ else:
     print("All Required Packages Installed")
 
 
+# todo: implement a class that is used to check the balance of a wallet, using the blockchain
+# todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
 # todo: allow non-competitors to still run run_block_winner_chooser_process and check_winning_block_from_network
 
 
