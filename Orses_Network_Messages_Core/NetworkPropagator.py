@@ -109,7 +109,7 @@ class NetworkPropagator:
                 # rsp['reason(a, b,c,d)+8charhashprev', snd_wallet_pubkey, main_message_dict, if valid(True or False)]
                 # reason a=assignment statement, b=TokenTransfer, c=TokenReservationRequest, D=TokenReservationRevoke
                 rsp = self.q_object_validator.get()
-                print("in compete, convo initiator: ")
+                print("in NetworkPropagator.py, convo initiator: ")
                 [print(i) for i in rsp]
 
                 try:
@@ -129,6 +129,7 @@ class NetworkPropagator:
                         # send to compete process, if node is competing
                         # assignment statements are not included in block so no need to send to compete process
                         if is_competing and reason_msg != 'a':
+                            print(f"in Networkpropagator, should be sending to compete process")
                             # rsp[0][0] = 0 index of reason msg which is either a, b, c or d
                             self.q_object_compete.put([reason_msg,rsp[2]]) if rsp[3] is True else None
                         elif reason_msg == "a":

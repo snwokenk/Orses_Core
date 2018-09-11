@@ -60,11 +60,11 @@ bk_validator_dict["nb1"] = NewBlockOneValidator
 blockchain_msg_reasons = {
     "knw_blk",  # request most recent block
     "req_block",
+    "pb", # propagated block
     "nb",  # a newly created block
     "nb1",
     "bc" # block choice
 }
-
 
 
 class BlockChainPropagator:
@@ -350,7 +350,7 @@ class BlockChainPropagator:
 
             return prop_inst.protocol_with_most_recent_block
 
-        def send_response_to_other_threads(has_setup: bool, prop_inst: BlockChainPropagator, recent_block=None):
+        def send_response_to_other_threads(has_setup: bool, prop_inst: BlockChainPropagator, recent_block=None) -> None:
             """
             Used to send signal for other processes to start
             :param has_setup:
@@ -361,10 +361,11 @@ class BlockChainPropagator:
             for i in range(5):  # four other threads to start and 1 process to end, sends signal
                 prop_inst.q_object_between_initial_setup_propagators.put(has_setup)
 
-            if (prop_inst.admin_instance.isCompetitor is True and
-                    isinstance(prop_inst.q_object_compete, multiprocessing.queues.Queue) and
-                    recent_block):
-                prop_inst.q_object_compete.put(recent_block)
+            if recent_block:
+                self.mempool.update_mempool(winning_block=recent_block)
+                if (prop_inst.admin_instance.isCompetitor is True and
+                        isinstance(prop_inst.q_object_compete, multiprocessing.queues.Queue)):
+                    prop_inst.q_object_compete.put(recent_block)
 
         # START INITiAL SETUP
         self.reactor_instance.callInThread(
@@ -741,6 +742,7 @@ class BlockChainPropagator:
                 block=block_of_winner,
                 admin_instance=self.admin_instance
             )
+
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
                                  exp_leading: int, current_winning_score=0) -> list:  # return a list

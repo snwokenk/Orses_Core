@@ -812,6 +812,8 @@ class Competitor:
                     print(start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no,
                           addl_chars, prev_hash)
 
+                    print(f"tx_misc_wsh is {vars(tx_misc_wsh)}")
+
                     # generating block is and instance of multiprocessing.Event()
                     is_generating_block.set()
 
@@ -997,6 +999,8 @@ class Competitor:
                         except KeyError as e:
                             print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
                             continue
+
+                        print(f"In Orses_Compete_Algo.py, this is tx_misc_wsh {vars(tx_misc_wsh)}")
 
         print("in Orses_Compete_Algo: Compete, process done")
 

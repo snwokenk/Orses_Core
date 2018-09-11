@@ -34,13 +34,18 @@ class MemPool:
         :param winning_block:
         :return:
         """
+        try:
+            block_activities = winning_block["block_activity"]
+        except KeyError:
+            # specifically for block 0 no key called "block activity" in genesis block
+            pass
+        else:
+            for active_list in block_activities:
+                # hash of activity is always index 0 (first element)
+                # will move to confirmed, if hash is not in confirmed will do nothing
+                self.move_from_unconfirmed_to_confirmed(msg_hash=active_list[0])
 
-        block_activities = winning_block["block_activity"]
-        for active_list in block_activities:
-            # hash of activity is always index 0 (first element)
-            # will move to confirmed, if hash is not in confirmed will do nothing
-            self.move_from_unconfirmed_to_confirmed(msg_hash=active_list[0])
-            self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"])+1)
+        self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"])+1)
 
         return True
 
@@ -52,8 +57,8 @@ class MemPool:
         if block_no_mempool_data_to_delete in self.invalid_msg_with_preview_hash:
             del self.invalid_msg_with_preview_hash[block_no_mempool_data_to_delete]
 
-        self.valid_msg_with_preview_hash[new_block_no] = dict()
-        self.invalid_msg_with_preview_hash[new_block_no] = dict()
+        self.valid_msg_with_preview_hash[self.next_block_no] = dict()
+        self.invalid_msg_with_preview_hash[self.next_block_no] = dict()
 
     def insert_valid_into_unconfirmed(self, msg_hash: str, msg):
         """
@@ -95,16 +100,21 @@ class MemPool:
 
         print(f"mempool debuging\n"
               f"next_block_no {self.next_block_no}\n"
-              f"blocks_before_delete {self.blocks_before_delete}"
-              f"valid_msg_with_preview_hash")
+              f"blocks_before_delete {self.blocks_before_delete}\n"
+              f"valid_msg_with_preview_hash {self.valid_msg_with_preview_hash}\n"
+              f"admin {self.admin_inst.admin_name}\n\n")
 
         if self.next_block_no is None:
             # load current known l
             self.next_block_no = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)[0]+1
 
         for block_no_index in range(self.next_block_no, self.next_block_no - self.blocks_before_delete, -1):
-            if hash_prev in self.valid_msg_with_preview_hash[block_no_index]:
-                return True
+            try:
+                if hash_prev in self.valid_msg_with_preview_hash[block_no_index]:
+                    return True
+            except KeyError:
+                print(f"in Mempool check valid, key not in dict key: {block_no_index}")
+                pass
 
         return False
 
@@ -130,8 +140,12 @@ class MemPool:
             self.next_block_no = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)[0]+1
         # will loop from current_block_no to current_block_no minus number of blocks hash prev is kep
         for block_no_index in range(self.next_block_no, self.next_block_no - self.blocks_before_delete, -1):
-            if hash_prev in self.invalid_msg_with_preview_hash[block_no_index]:
-                return True
+            try:
+                if hash_prev in self.invalid_msg_with_preview_hash[block_no_index]:
+                    return True
+            except KeyError:
+                print(f"in Mempool.py check invalid, key not in dict key: {block_no_index}")
+                pass
 
         return False
 
