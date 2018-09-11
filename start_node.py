@@ -12,6 +12,13 @@ from twisted.internet.error import CannotListenError
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyInternet
 from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 
+# Github, Readme links
+
+# https://help.github.com/articles/basic-writing-and-formatting-syntax/#links
+# https://gist.github.com/PurpleBooth/109311bb0361f32d87a2  readme template
+
+
+
 # https://superuser.com/questions/127863/manually-closing-a-port-from-commandline
 # 'sudo netstat -ap | grep :<port_number>' to get process id owning port then 'kill <pid>' to kill process
 
@@ -769,8 +776,7 @@ if __name__ == '__main__':
                 just_launched=True if "--new" in option_dict else False
             )
         else:
-            print(f" to run live node use: 'python start_node.py -l' OR\n"
-                  f"'python start_node.py --live'\n")
+            print(f" to run live node use: 'python start_node.py --live'")
             print(f"to run sandbox node use: 'python start_node.py --sandbox (no_nodes)' no_nodes should be how "
                   f"fake nodes to create.\nie 'python start_node.py --sandbox 2' will create 2 extra fake nodes\n"
                   f"you can also use 'python start_node.py -s (no_nodes)'  to create nodes")
