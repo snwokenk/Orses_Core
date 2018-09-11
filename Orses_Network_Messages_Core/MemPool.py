@@ -1,5 +1,6 @@
 """
 This class holds all the transactions/messages waiting to be included in block.
+It also cfeates and manages files needed to verify a wallet's token balance
 
 It also includes transaction/messages already in block (last 10 blocks)
 """
@@ -60,6 +61,12 @@ class MemPool:
         self.valid_msg_with_preview_hash[self.next_block_no] = dict()
         self.invalid_msg_with_preview_hash[self.next_block_no] = dict()
 
+    def update_helper_files(self):
+        """
+        several files
+        :return:
+        """
+
     def insert_valid_into_unconfirmed(self, msg_hash: str, msg):
         """
         insert transaction into valid block
@@ -73,9 +80,10 @@ class MemPool:
         if msg_hash is not in uncofirmed will do nothing
         :return:
         """
-
+        print(f"in Mempool: confirmed dict {self.confirmed},  hash is {msg_hash}, unconfirmed is {self.uncomfirmed}")
         try:
             self.confirmed[msg_hash] = self.uncomfirmed.pop(msg_hash)
+            # print(f"in Mempool: confirmed dict {self.confirmed}")
         except KeyError:
             pass
 
@@ -88,9 +96,17 @@ class MemPool:
         """
         try:
             self.valid_msg_with_preview_hash[self.next_block_no][hash_prev] = msg
+            print(f"in Mempool, msg in valid_msg_prev: {msg}")
+            try:
+                msg_hash = msg["tx_hash"]
+            except KeyError:
+                msg_hash = msg["msg_hash"]
+
         except KeyError:
             print(f"Error, tried to insert using new block number, but has not been blockNo: {self.next_block_no}")
             return False
+        else:
+            self.uncomfirmed[msg_hash] = msg
 
         return True
 

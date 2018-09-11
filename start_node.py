@@ -27,6 +27,7 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 # https://docs.quantifiedcode.com/python-anti-patterns/index.html
 # https://opensource.guide/starting-a-project/
 # https://bitcoin.stackexchange.com/questions/10821/how-long-does-it-take-to-propagate-a-newly-created-block-to-the-entire-bitcoin-n
+# https://en.bitcoin.it/wiki/Bitcoin_Core_0.11_(ch_2):_Data_Storage
 
 from getpass import getpass
 from twisted.internet import reactor, defer, threads
@@ -60,7 +61,13 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: debug mempool, transactions should be stored in mempool and added to the next available block
+# todo: refactor mempool to move unconfirmed to confirmed
+# todo: Also when moved to confirmed create or update files that allows for ease
+# todo: using the format of bitcoin data storage, create several helper files
+# todo: 1, create a file that stores each data for each wallet currently or previously managed by the blockchain
+# todo: 2, create a file that stores each BCW wallet metadata, metada can include:
+# todo:     client id, wallet id, tokens reserved, tokens managed, timestamp of reservation, length of reservation,
+# todo:     last hash state
 
 # todo: implement a class that is used to check the balance of a wallet, using the blockchain
 # todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
