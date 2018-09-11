@@ -103,6 +103,52 @@ class Admin:
         step1 = SHA256.new(self.pubkey).digest()
         return "VID-" + RIPEMD160.new(step1).hexdigest()
 
+    def load_startup_files(self):
+        # todo: implement a way to change startup file settings when it's already been set
+
+        try:
+            startup_file = self.fl.load_startup_file()
+        except AttributeError:
+            return 'n'  # iscompetitor
+        else:
+            try:
+                self.isCompetitor = startup_file["is_competitor"]
+                always_compete = startup_file["always_compete"]
+            except TypeError:
+                always_compete = False
+
+        if self.isCompetitor is True and always_compete is False:
+            compete = input("Start Competing? Y/n(default is Y)").lower()
+            if compete in {"y", ""}:
+                compete = "y"
+        elif always_compete is True and self.isCompetitor is True:
+            compete = 'y'
+
+        elif self.isCompetitor is None:
+            compete = input("Would You like to compete to create blocks on the Orses Network?\n"
+                            "press enter to skip, y for yes or n for no: ").lower()
+            compete_everytime = input("\nWould You Like To Save This Choice? y for yes and any other key for no").lower()
+            if compete_everytime == "y":
+                always_compete = True
+
+            if compete == "y":
+                # print("\n a new competitor message will be sent to the network and included in the blockchain. \n"
+                #       "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other "
+                #       "competitors and proxy nodes")
+                self.isCompetitor = True
+                # todo: add logic to create new competitor network message for inclusion into the blockchain
+            elif compete == "n":
+                self.isCompetitor = False
+
+            else:  # sets compete to n for now and skps setting admin competitor status
+                compete = 'n'
+            self.fl.save_startup_file(is_competitor=self.isCompetitor, always_compete=always_compete)
+        else:
+            compete = 'n'
+
+        return compete
+
+
     def get_privkey(self, as_dict=False):
 
         if self.privkey:

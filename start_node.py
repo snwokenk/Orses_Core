@@ -60,6 +60,8 @@ else:
     print("All Required Packages Installed")
 
 
+# todo: debug mempool, transactions should be stored in mempool and added to the next available block
+
 # todo: implement a class that is used to check the balance of a wallet, using the blockchain
 # todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
 # todo: allow non-competitors to still run run_block_winner_chooser_process and check_winning_block_from_network
@@ -238,13 +240,12 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     # set to false by exit process, which signals other processes to end (exit also sends an 'exit' or 'quit'
     is_program_running = multiprocessing.Event()
     is_program_running.set()
-    print("program is running?", is_program_running.is_set())
 
     # used set to true when block mining and then to false after block winner has been chosen
     # used by exit process, to avoid stopping program in the middle of this process.
     # which can result in a loss of value
     is_not_in_process_of_creating_new_block = multiprocessing.Event()
-
+    is_not_in_process_of_creating_new_block.set()
 
 
     assert number_of_nodes >= preferred_no_of_mining_nodes, "number of mining nodes should be less than or equal " \
@@ -260,44 +261,20 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         reg_network_sandbox is False else \
         print("You will not be able to connect to the sandbox network and can only view automated interactions\n")
 
-    admin_name = input("admin name: ")
-    password = getpass("password: ")
+    admin_name = input("Type your admin name: ")
+    password = getpass("Type your password: ")
 
     # admin loaded, if no admin by username, offer to create admin
     admin = Admin(admin_name=admin_name, password=password, newAdmin=False, is_sandbox=True).load_user()
     assert admin is not False, "Wrong Password"
     if admin is None:
-        ans = input("No admin id under that admin name, would you like to create a new admin id? y/N ")
+        ans = input("\nNo admin id under that admin name, would you like to create a new admin id? y/N ")
         if ans.lower() == "y":
             admin = Admin(admin_name=admin_name, password=password, newAdmin=True, is_sandbox=True)
         else:
             exit(0)
-    print(admin)
-    print(vars(admin))
 
-    if admin.isCompetitor is True:
-        compete = input("Start Competing? Y/n(default is Y)").lower()
-        if compete in {"y", ""}:
-            print("Competing Process Started...")
-    elif admin.isCompetitor is None:
-        compete = input("Would You like to compete to create blocks on the Orses Network?\n"
-                        "press enter to skip, y for yes or n for no: ").lower()
-
-        if compete == "y":
-            print("\n a new competitor message will be sent to the network and included in the blockchain. \n"
-                  "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other "
-                  "competitors and proxy nodes")
-            admin.isCompetitor = True
-            # todo: add logic to create new competitor network message for inclusion into the blockchain
-        elif compete == "n":
-            admin.isCompetitor = False
-
-        else:  # sets compete to n for now and skps setting admin competitor status
-            compete = 'n'
-    else:
-        compete = 'n'
-
-
+    compete = admin.load_startup_files()
 
     # instantiated Dummy Internet
     dummy_internet = DummyInternet()
@@ -520,12 +497,12 @@ def main(just_launched=False):
     # set to false by exit process, which signals other processes to end (exit also sends an 'exit' or 'quit'
     is_program_running = multiprocessing.Event()
     is_program_running.set()
-    print("program is running?", is_program_running.is_set())
 
     # used set to true when block mining and then to false after block winner has been chosen
     # used by exit process, to avoid stopping program in the middle of this process.
     # which can result in a loss of value
     is_not_in_process_of_creating_new_block = multiprocessing.Event()
+    is_not_in_process_of_creating_new_block.set()
 
     # input admin name and password
     admin_name = input("admin name: ")
@@ -544,28 +521,8 @@ def main(just_launched=False):
     print(admin)
     print(vars(admin))
 
-    # Start competing process if admin.isCompetitor == True
-    if admin.isCompetitor is True:
-        compete = input("Start Competing? Y/n(default is Y)").lower()
-        if compete in {"y", ""}:
-            print("Competing Process Started...")
-    elif admin.isCompetitor is None:
-        compete = input("Would You like to compete to create blocks on the Orses Network?\n"
-                        "press enter to skip, y for yes or n for no: ").lower()
+    compete = admin.load_startup_files()
 
-        if compete == "y":
-            print("\n a new competitor message will be sent to the network and included in the blockchain. \n"
-                  "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other "
-                  "competitors and proxy nodes")
-            admin.isCompetitor = True
-            # todo: add logic to create new competitor network message for inclusion into the blockchain
-        elif compete == "n":
-            admin.isCompetitor = False
-
-        else:  # sets compete to n for now and skps setting admin competitor status
-            compete = 'n'
-    else:
-        compete = 'n'
 
     # *** instantiate queue variables ***
     q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and compete == 'y') else None

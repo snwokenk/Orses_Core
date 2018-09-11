@@ -7,6 +7,7 @@ class FileAction:
     def __init__(self, admin=None):
         self.admin = admin
         self.username = admin.admin_name if admin is not None else None
+        self.start_up_filename = "startup_file"
         self.__folders_created = False
         self.__project_path = FileAction.get_main_folder()
         self.__sandbox_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.sandbox_folder)
@@ -57,6 +58,26 @@ class FileAction:
         self.__folders_created = True if (is_created and is_created1) else False
 
         return self.__folders_created
+
+    def load_startup_file(self):
+
+        start_file = self.open_file_from_json(filename=self.start_up_filename, in_folder=self.__username_folder_path)
+
+        return start_file
+
+    def save_startup_file(self, is_competitor: bool, always_compete: bool):
+
+        temp_dict = dict()
+        temp_dict["is_competitor"] = is_competitor
+        temp_dict["always_compete"] = always_compete
+
+        self.save_json_into_file(
+            filename=self.start_up_filename,
+            python_json_serializable_object=temp_dict,
+            in_folder=self.__username_folder_path
+        )
+
+        return True
 
     def get_address_file_path(self):
         return os.path.join(self.get_username_folder_path(), Filenames_VariableNames.default_addr_list_sandbox) if (

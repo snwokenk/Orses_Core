@@ -60,7 +60,7 @@ def compete_improved(single_prime_char, exp_leading, block_header, dict_of_valid
     extra_nonce = f"{extra_nonce_index}_{x_nonce}"
     combined_merkle = f'{extra_nonce}{merkle_root}{prev_hash}'
 
-    if is_program_running.is_set():
+    if is_program_running is None or is_program_running.is_set():
         while time.time() < end_time:
 
             # check if nonce greater than max number (which is highest number of unsigned 64 bit integer or ((2**64) - 1)
@@ -497,16 +497,15 @@ def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_pr
         merkle_root=merkle_root
     )
 
-    print(f"in Orses_compete_algo: merkle root:  {merkle_root}")
-    print(f"in Orses_compete_algo: block: {gen_block_obj.get_block()}")
 
-    print(f"in Orses_compete_algo: block_header: {block_header.get_block_header()}")
 
     final_block_header = start_competing(
         block_header=block_header,
         len_competition=len_of_competition,
         exp_leading=exp_leading_prime,
-        single_prime_char=single_prime_char
+        single_prime_char=single_prime_char,
+        is_program_running=None,
+        prev_hash='0'
     )
 
     gen_block_obj.set_after_compete(
@@ -853,6 +852,13 @@ class Competitor:
                     if new_block["bh"]["block_hash"]:
                         # this goes to block initiator method process of BlockchainPropagator
                         q_for_block_validator.put([reason_msg, end_time, new_block])
+                    else:
+
+                        # todo: if local node has no valid block, it can still receive blocks and participate in
+                        # todo: choosing the winner, set it up for this, might be done when running test net on
+                        # todo: multiple computers
+                        is_not_in_process_of_creating_new_block.set()
+
             except TypeError as e:
                 print(f"in Orses Compete error: {e}")
                 continue

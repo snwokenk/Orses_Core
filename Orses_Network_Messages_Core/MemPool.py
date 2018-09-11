@@ -5,6 +5,7 @@ It also includes transaction/messages already in block (last 10 blocks)
 """
 
 import gc
+from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
 
 class MemPool:
@@ -91,6 +92,16 @@ class MemPool:
     def check_valid_msg_hash_prev_dict(self, hash_prev):
 
         # will loop from current_block_no to current_block_no minus number of blocks hash prev is kep
+
+        print(f"mempool debuging\n"
+              f"next_block_no {self.next_block_no}\n"
+              f"blocks_before_delete {self.blocks_before_delete}"
+              f"valid_msg_with_preview_hash")
+
+        if self.next_block_no is None:
+            # load current known l
+            self.next_block_no = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)[0]+1
+
         for block_no_index in range(self.next_block_no, self.next_block_no - self.blocks_before_delete, -1):
             if hash_prev in self.valid_msg_with_preview_hash[block_no_index]:
                 return True
@@ -114,6 +125,9 @@ class MemPool:
 
     def check_invalid_msg_hash_prev_dict(self, hash_prev):
 
+        if self.next_block_no is None:
+            # load current known l
+            self.next_block_no = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)[0]+1
         # will loop from current_block_no to current_block_no minus number of blocks hash prev is kep
         for block_no_index in range(self.next_block_no, self.next_block_no - self.blocks_before_delete, -1):
             if hash_prev in self.invalid_msg_with_preview_hash[block_no_index]:

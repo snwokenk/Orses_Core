@@ -351,6 +351,13 @@ class BlockChainPropagator:
             return prop_inst.protocol_with_most_recent_block
 
         def send_response_to_other_threads(has_setup: bool, prop_inst: BlockChainPropagator, recent_block=None):
+            """
+            Used to send signal for other processes to start
+            :param has_setup:
+            :param prop_inst:
+            :param recent_block:
+            :return:
+            """
             for i in range(5):  # four other threads to start and 1 process to end, sends signal
                 prop_inst.q_object_between_initial_setup_propagators.put(has_setup)
 
@@ -702,6 +709,7 @@ class BlockChainPropagator:
                 if is_validated:
                     block_of_winner = self.dict_of_potential_indirect_blocks[block_winner_hash]
                     self.locally_known_block = block_of_winner
+                    self.mempool.update_mempool(winning_block=self.locally_known_block)
                     self.q_object_compete.put(
                         ['bcb', self.locally_known_block])
                     break
@@ -720,6 +728,7 @@ class BlockChainPropagator:
                         # and validated blocks is chosen
                         block_of_winner = self.dict_of_potential_blocks[direct_winner]
                         self.locally_known_block = block_of_winner
+                        self.mempool.update_mempool(winning_block=self.locally_known_block)
                         self.q_object_compete.put(['bcb', self.locally_known_block])
                         break
             else:
