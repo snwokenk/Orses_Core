@@ -95,7 +95,7 @@ class ListenerForSendingTokens(ListenerMessages):
                 rsp = validator_dict_callable[self.msg_type](
                     json.loads(self.messages_heard[2].decode()),
                     q_object=self.q_object,
-                    admin_instance=self.admin_instance
+                    admin_instance=self.admin_instance,
                 ).check_validity()
 
                 print("in ListenerMessages.py, rsp: ", rsp)
@@ -122,7 +122,7 @@ class ListenerForSendingTokens(ListenerMessages):
                         # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}
                         wallet_pubkey=self.messages_heard[-1].decode(),
                         q_object=self.q_object,
-                        admin_instance=self.admin_instance
+                        admin_instance=self.admin_instance,
                     ).check_validity()
 
                     print("in ListenerMessages.py rsp2: ", rsp)

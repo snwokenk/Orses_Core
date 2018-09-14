@@ -50,7 +50,13 @@ class Admin:
         self.is_sandbox = is_sandbox
         self.compatible_hashes = None  # set compatible hashes
         self.known_addresses = None
+
+        # if db manager is used, then method self.load_db_manager() is used to laod db manager instance
         self.db_manager = None
+
+        # if mempool is used then self.load_mempool_instance() is used
+        self.mempool = None
+
 
         self.__set_or_create_pki_pair()
 
@@ -171,6 +177,21 @@ class Admin:
         :return:
         """
         self.db_manager = db_manager
+
+    def get_db_manager(self):
+        return self.db_manager
+
+    def load_mempool_instance(self, mempool_inst):
+        """
+        used to load mempool inst into Administrator class
+        this is convenient since admin instance is in every class/process in program
+        :param mempool_inst:
+        :return: No
+        """
+        self.mempool = mempool_inst
+
+    def get_mempool(self):
+        return self.mempool
 
     def get_pubkey(self, x_y_only=True):
         if x_y_only:

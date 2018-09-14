@@ -62,6 +62,9 @@ else:
     print("All Required Packages Installed")
 
 
+# todo: finish up OrsesLevelDBManagement and TokenTransfervalidator
+# todo: generate balances of wallets found on genesis block and store in the long term db of wallets "wallet_balances"
+
 # todo: using the new Orses DB Manager, update wallet balances after every new block, in mempool.
 # todo: Also when moved to confirmed create or update files that allows for ease
 # todo: using the format of bitcoin data storage, create several helper files
@@ -309,6 +312,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
     # instantiate mempool object
     mempool = MemPool(admin_inst=admin)
+    admin.load_mempool_instance(mempool_inst=mempool)
+
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and compete == 'y':
@@ -555,6 +560,7 @@ def main(just_launched=False):
 
     # instantiate mempool object
     mempool = MemPool(admin_inst=admin)
+    admin.load_mempool_instance(mempool_inst=mempool)
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and compete == 'y':

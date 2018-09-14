@@ -139,7 +139,10 @@ class DummyAdminNode(DummyNode):
 
         # start compete(mining) process, if admin.isCompetitor is True. No need to check compete for virtual node
         print(f"in DummyAdminNode, is admin competitor {self.admin.isCompetitor}")
+
         mempool = MemPool(admin_inst=self.admin)
+        self.admin.load_mempool_instance(mempool_inst=mempool)
+
         if self.admin.isCompetitor is True:
             try:
                 is_alive = compete_process.is_alive()

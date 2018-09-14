@@ -9,6 +9,7 @@ import time, json
 class TokenReservationRevokeValidator:
     def __init__(self, tkn_rvk_dict, admin_instance, wallet_pubkey=None, q_object=None):
         self.admin_instance = admin_instance
+        self.mempool = admin_instance.get_mempool()
         self.tkn_rvk_dict = tkn_rvk_dict
         self.wallet_pubkey = wallet_pubkey
         self.non_json_wallet_pubkey = None

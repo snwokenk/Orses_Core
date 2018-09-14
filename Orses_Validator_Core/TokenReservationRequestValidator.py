@@ -11,6 +11,7 @@ class TokenReservationRequestValidator:
 
     def __init__(self, tkn_rsv_dict, admin_instance, wallet_pubkey=None, q_object=None):
         self.admin_instance = admin_instance
+        self.mempool = admin_instance.get_mempool()
         self.tkn_rsv_dict = tkn_rsv_dict
         self.rsv_req_json = json.dumps(tkn_rsv_dict["rsv_req"])
         self.amount = tkn_rsv_dict["rsv_req"]["amt"]

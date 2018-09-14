@@ -35,6 +35,7 @@ class AssignmentStatementValidator:
         :param q_object: a queue.Queue instance (or similar)
         """
         self.admin_instance = admin_instance
+        self.mempool = admin_instance.get_mempool()
         self.asgn_stmt_dict = asgn_stmt_dict
         self.asgn_stmt= asgn_stmt_dict["asgn_stmt"]
         self.asgn_stmt_list = asgn_stmt_dict["asgn_stmt"].split(sep='|')

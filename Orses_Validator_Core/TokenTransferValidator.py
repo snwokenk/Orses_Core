@@ -9,6 +9,7 @@ import time, json
 class TokenTransferValidator:
     def __init__(self, transfer_tx_dict, admin_instance, wallet_pubkey=None,  timelimit=300, q_object=None):
         self.admin_instance = admin_instance
+        self.mempool = admin_instance.get_mempool()
         self.transfer_tx_dict = transfer_tx_dict
         self.transfer_tx_dict_json = json.dumps(transfer_tx_dict["ttx"])
         self.sending_wallet_pubkey = wallet_pubkey
@@ -20,7 +21,9 @@ class TokenTransferValidator:
         self.tx_hash = transfer_tx_dict["tx_hash"]
         self.timestamp = transfer_tx_dict["ttx"]["time"]
         self.amt = transfer_tx_dict["ttx"]["amt"]
+        self.ntakri_amount = int(float(self.amt) * 10_000_000_000)
         self.fee = transfer_tx_dict["ttx"]["fee"]
+        self.ntakri_fee = int(float(self.fee) * 10_000_000_000)
         self.timelimit = timelimit
         self.unknown_wallet = True if wallet_pubkey else False
         self.q_object = q_object
@@ -136,3 +139,55 @@ class TokenTransferValidator:
             else:
                 print("inputs Check: ", False)
                 return False
+
+    def verify_and_modify_wallet_balance(self):
+        """
+        used to verify token sent has enough balance and then to update temp wallet balances
+        these balances move into the main wallet balances when
+
+        :param amount:
+        :param fee:
+        :return:
+        """
+
+        # get wallet balance
+        db_manager = self.admin_instance.get_db_manager()
+
+        # wallet balance [int, int, int] = [free token balance, reserved_token_balance, total token]
+        # balance in ntakiri ie 1 orses token = 10,000,000,000 (10 billion) ntakiris
+        available_tokens, reserved, total = db_manager.get_from_wallet_balances_db(
+            wallet_id=self.sending_wid,
+            only_value=True
+        )
+
+        # check if any for any intermediate balances, and use the lesser of the two
+        # this tries to stop double spending of tokens before it is included in the blockchain
+
+        recent_avail_bal, reserved_p, total_p = db_manager.get_from_temp_wallet_balances_prefixed_db(
+            wallet_id=self.sending_wid,
+            prefix=f'{self.admin_instance.get_mempool.next_block_no}-',
+            only_value=True
+        )
+
+        # use the less of
+
+        balance_to_use = recent_avail_bal if recent_avail_bal is not None and \
+                                             recent_avail_bal < available_tokens else available_tokens
+
+        if balance_to_use >= (self.ntakri_amount+self.ntakri_fee):
+            if recent_avail_bal:
+                db_manager.insert_into_wallet_balances_prefixed_db(
+                    wallet_id=self.sending_wid,
+                    wallet_data=[recent_avail_bal - self.ntakri_amount - self.ntakri_fee, reserved_p, total_p],
+                    prefix=f'{self.admin_instance.get_mempool.next_block_no}-'
+                )
+
+            return True
+        else:
+            return False
+
+    def calculate_unconfirmed_balance(self, balance_from_blockchain, db_manager):
+
+        db_manager
+
+

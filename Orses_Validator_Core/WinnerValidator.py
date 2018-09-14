@@ -1,5 +1,7 @@
 """
 used to getting competitor hashes and validate
+
+****** NOT BEING USED, WILL BE DELETED *********
 """
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
