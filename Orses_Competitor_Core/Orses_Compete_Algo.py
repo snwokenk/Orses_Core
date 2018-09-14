@@ -794,7 +794,8 @@ class Competitor:
                         tx_misc_wsh.add_to_txs(
                             type_of_tx=rsp[0],
                             tx_hash=rsp[1],
-                            tx=rsp[2]
+                            tx=rsp[2],
+                            fees=rsp[2][0]['fee']  # rsp[2] = [main_msg, sig] in main_msg 'fee' key
                         )
 
             # todo: implement this later:

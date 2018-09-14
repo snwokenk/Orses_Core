@@ -1,4 +1,4 @@
-import time, random, pickle, json, enum
+import time, random, pickle, json, enum, timeit
 
 """
 holds BinarySearchTree
@@ -36,7 +36,7 @@ def compare_hex_string(hex1, hex2, compare: BoolChoice):
 
 
 class BinarySearchTree:
-    def __init__(self, root_value: (int, float), blockNumber, blockForestInstance,saveToDatabase=False, forHash=True,
+    def __init__(self, root_value: (int, float), blockNumber, blockForestInstance=None,saveToDatabase=False, forHash=True,
                  keepListRepr=True):
         """
 
@@ -44,7 +44,7 @@ class BinarySearchTree:
         :param saveToDatabase: if it is true, then a separate daemon process is created that saves data to database
         """
         self.block_number = blockNumber
-        self.forest_instance = blockForestInstance
+        # self.forest_instance = blockForestInstance
         self.forHash = forHash
         if self.forHash is True:
             assert isinstance(root_value, str), "must be a hex string"
@@ -56,13 +56,57 @@ class BinarySearchTree:
             assert isinstance(root_value, int)
         self.curr_index = 0
         self.root = self.TreeNode(root_value, search_tree=self)
-        self.list_repr = self.forest_instance.list_repr
+        # self.list_repr = self.forest_instance.list_repr
+        self.list_repr = [root_value]
         self.keep_list_repr = keepListRepr
         self.sorted_repr = {self.root: {"left": self.root.left, "right": self.root.right},
                             "max": self.root.value,
                             "min": self.root.value,
                             }
+
         self.saveToDatabase = saveToDatabase
+
+
+    def get_min_value(self, a_root=None, get_node=False):
+        min1 = self.root if a_root is None else a_root
+
+        while True:
+            if min1.left == None:
+                return min1.value if not get_node else min1
+            else:
+                min1 = min1.left
+                continue
+
+    def max(self, get_node=False):
+        max1 = self.root
+
+        while True:
+            if max1.right == None:
+                return max1.value if not get_node else max1
+            else:
+                max1 = max1.right
+                continue
+
+    def get_sorted_repr(self):
+        """
+        First, check minimum
+        second: append minimum and it's master's value only if minimum == master.left
+        THen, check min minimum's master's right
+        :return:
+        """
+        cur_node = self.get_min_value(get_node=True)
+        tmp_list = [cur_node.value]
+
+        while True:
+            try:
+                cur_node = cur_node.higher_valued_node
+                tmp_list.append(cur_node.value)
+                continue
+            except AttributeError:
+                break
+
+        return tmp_list
+
 
 
     def insert_hash(self, val: str):
@@ -122,6 +166,7 @@ class BinarySearchTree:
     def insert(self, val):
         assert not self.forHash, "insert() Not For Trees Storing Hashes, instead use instance method: insert_hash()\n" \
                                  "if You would like to store INTS, set forhash parameter of BinarySearchTree to False"
+
         current_node = self.root
         while True:
             if val == current_node.value:
@@ -129,7 +174,16 @@ class BinarySearchTree:
             if val > current_node.value:
                 if current_node.right is None:
                     current_node.insert_right(val)
+                    if current_node.higher_valued_node is None:
+                        current_node.higher_valued_node = current_node.right
+                    else:
+                        if current_node.higher_valued_node.value > current_node.right.value:
+                            current_node.right.higher_valued_node,  current_node.higher_valued_node = \
+                                current_node.higher_valued_node, current_node.right
+                        else:
+                            current_node.higher_valued_node = current_node.right
                     self.list_repr.append(val)
+
                     return
                 else:
                     current_node = current_node.right
@@ -137,6 +191,7 @@ class BinarySearchTree:
             elif val < current_node.value:
                 if current_node.left is None:
                     current_node.insert_left(val)
+                    current_node.left.higher_valued_node = current_node
                     self.list_repr.append(val)
                     return
                 else:
@@ -144,7 +199,7 @@ class BinarySearchTree:
                     continue
 
     def check_val(self, val):
-        assert not self.forHash, "check_val() Not For Trees Storing Hashes, instead use instance method: check_hash()"
+        # assert not self.forHash, "check_val() Not For Trees Storing Hashes, instead use instance method: check_hash()"
         current_node = self.root
         while True:
             if val == current_node.value:
@@ -195,13 +250,18 @@ class BinarySearchTree:
             self.SearchTree = search_tree
             self.index = self.SearchTree.curr_index
             self.SearchTree.curr_index += 1
+            self.lower_valued_node = None
+            self.higher_valued_node = None
 
         def insert_left(self, val):
 
             self.left = self.SearchTree.TreeNode(val=val, master=self, search_tree=self.SearchTree)
+            self.set_lower_or_higher(a_tree_node=self.left)
 
         def insert_right(self, val):
             self.right = self.SearchTree.TreeNode(val=val, master=self, search_tree=self.SearchTree)
+
+            self.set_lower_or_higher(a_tree_node=self.right)
 
         def insert(self, val):  # recursive insert
             if val == self.value:
@@ -218,6 +278,45 @@ class BinarySearchTree:
                 return self.left.value_in_tree if self.left else False
             elif val > self.value:
                 return self.right.value_in_tree if self.right else False
+
+        def set_lower_or_higher(self, a_tree_node):
+            current = self
+            high = None
+            low = None
+            while True:
+                if a_tree_node.value < current.value:
+                    if current.lower_valued_node is None:
+                        current.lower_valued_node = a_tree_node
+                        a_tree_node.higher_valued_node = current
+                        break
+                    elif a_tree_node.value < current.lower_valued_node.value:
+                        current = current.lower_valued_node
+                        continue
+                    else:  # if new node less than current but higher than current.lower_valued node
+                        # assign current.lower to new nodes
+                        # assign current as higher of new node
+                        a_tree_node.lower_valued_node = current.lower_valued_node
+                        a_tree_node.lower_valued_node.higher_valued_node = a_tree_node
+                        a_tree_node.higher_valued_node = current
+                        current.lower_valued_node = a_tree_node
+                        break
+
+                elif a_tree_node.value > current.value:
+
+                    if current.higher_valued_node is None:
+                        current.higher_valued_node = a_tree_node
+                        a_tree_node.lower_valued_node = current
+                        break
+                    elif a_tree_node.value < current.higher_valued_node.value:
+                        current = current.higher_valued_node
+                        continue
+
+                    else:  # new node is higher than current but lower than current.higher
+                        a_tree_node.higher_valued_node = current.higher_valued_node
+                        a_tree_node.higher_valued_node.lower_valued_node = a_tree_node
+                        a_tree_node.lower_valued_node = current
+                        current.higher_valued_node = a_tree_node
+                        break
 
 
 class BlockForest:
@@ -274,5 +373,57 @@ class BlockForest:
         self.isAccepting = False
         return self.list_repr
 
+
+
 if __name__ == '__main__':
-    pass
+
+    import pickle
+
+    with open("binary_pickled", "rb") as infile:
+        tree = pickle.load(infile)
+    # with open("json_file", "r") as injson:
+    #     list1 = json.load(injson)
+    #
+    #     print(list1)
+
+
+#     import pickle
+#     the_tree = BinarySearchTree(
+#         blockNumber=False,
+#         root_value=3750000,
+#         forHash=False
+#     )
+#     list1 = [3750000]
+#
+#     for i in range(500000):
+#         value = random.randint(0, 7500000)
+#         list1.append(value)
+#         the_tree.insert(value)
+#
+#     with open("binary_pickled", 'wb') as pickleOutfile:
+#         pickle.dump(the_tree, pickleOutfile)
+#
+#     with open("json_file", "w") as jsonoutfile:
+#         json.dump(list1, jsonoutfile)
+#
+#     # print(the_tree.get_sorted_repr())
+#     # print(list1)
+#     # print(set(list1))
+#     print("Started TIming")
+#     bSearch_str = \
+#     """
+# the_tree.get_sorted_repr()
+#         """
+#
+#     set_str = \
+#         """
+# sorted(list1)
+#             """
+#
+#     timer = timeit.Timer(bSearch_str, "import random\nfrom __main__ import the_tree")
+#
+#     timer1 = timeit.Timer(set_str, "import random\nfrom __main__ import the_tree, list1")
+#
+#
+#     print(timer.timeit(50))
+#     print(timer1.timeit(50))

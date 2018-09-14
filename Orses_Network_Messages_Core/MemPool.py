@@ -27,6 +27,8 @@ class MemPool:
 
         self.next_block_no = None
 
+
+
     def update_mempool(self, winning_block: dict) -> bool:
         """
         Use this to update mempool.
@@ -61,6 +63,12 @@ class MemPool:
         self.valid_msg_with_preview_hash[self.next_block_no] = dict()
         self.invalid_msg_with_preview_hash[self.next_block_no] = dict()
 
+    def load_helper_files(self):
+        """
+
+        :return:
+        """
+
     def update_helper_files(self):
         """
         several files
@@ -83,7 +91,7 @@ class MemPool:
         print(f"in Mempool: confirmed dict {self.confirmed},  hash is {msg_hash}, unconfirmed is {self.uncomfirmed}")
         try:
             self.confirmed[msg_hash] = self.uncomfirmed.pop(msg_hash)
-            # print(f"in Mempool: confirmed dict {self.confirmed}")
+            print(f"in Mempool: confirmed dict {self.confirmed}")
         except KeyError:
             pass
 

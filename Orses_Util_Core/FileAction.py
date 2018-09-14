@@ -8,6 +8,7 @@ class FileAction:
         self.admin = admin
         self.username = admin.admin_name if admin is not None else None
         self.start_up_filename = "startup_file"
+        self.network_wallets_data_filename = "Wallets_Data"
         self.__folders_created = False
         self.__project_path = FileAction.get_main_folder()
         self.__sandbox_folder_path = os.path.join(self.__project_path, Filenames_VariableNames.sandbox_folder)
@@ -22,7 +23,7 @@ class FileAction:
     """
 
     def check_if_admin_folder_exist(self, is_sandbox=False):
-        if is_sandbox:
+        if self.admin.is_sandbox:
             return os.path.isdir(self.__sandbox_folder_path)
         else:
             return os.path.isdir(self.__live_folder_path)

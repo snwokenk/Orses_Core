@@ -7,6 +7,7 @@ from Orses_Network_Core.NetworkManager import NetworkManager
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
+from Orses_Database_Core.OrsesLevelDBManagement import OrsesLevelDBManager
 
 
 import multiprocessing, queue, shutil, os, time, threading
@@ -128,6 +129,13 @@ class DummyAdminNode(DummyNode):
         q_for_initial_setup = multiprocessing.Queue()  # goes to initial setup
         q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
         q_object_from_compete_process_to_mining = self.q_object_from_compete_process_to_mining
+
+        # instantiate a levelDB manager class,
+        # add to admin (easier to do since admin instance is found in almost every class and process)
+        db_manager = OrsesLevelDBManager(admin_inst=self.admin)
+        db_manager.load_required_databases()
+
+        self.admin.load_db_manager(db_manager=db_manager)
 
         # start compete(mining) process, if admin.isCompetitor is True. No need to check compete for virtual node
         print(f"in DummyAdminNode, is admin competitor {self.admin.isCompetitor}")

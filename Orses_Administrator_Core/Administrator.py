@@ -50,6 +50,7 @@ class Admin:
         self.is_sandbox = is_sandbox
         self.compatible_hashes = None  # set compatible hashes
         self.known_addresses = None
+        self.db_manager = None
 
         self.__set_or_create_pki_pair()
 
@@ -162,6 +163,14 @@ class Admin:
                 return self.privkey
         else:
             return None
+
+    def load_db_manager(self, db_manager):
+        """
+        used to load an already instantiated leveldb into Administrator class
+        :param db: instance
+        :return:
+        """
+        self.db_manager = db_manager
 
     def get_pubkey(self, x_y_only=True):
         if x_y_only:

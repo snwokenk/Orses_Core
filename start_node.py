@@ -5,6 +5,7 @@ from Orses_Network_Messages_Core.BlockchainPropagator import BlockChainPropagato
 from Orses_Network_Messages_Core.MemPool import MemPool
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
+from Orses_Database_Core.OrsesLevelDBManagement import OrsesLevelDBManager
 
 from twisted.internet.error import CannotListenError
 
@@ -61,7 +62,7 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: refactor mempool to move unconfirmed to confirmed
+# todo: using the new Orses DB Manager, update wallet balances after every new block, in mempool.
 # todo: Also when moved to confirmed create or update files that allows for ease
 # todo: using the format of bitcoin data storage, create several helper files
 # todo: 1, create a file that stores each data for each wallet currently or previously managed by the blockchain
@@ -282,6 +283,11 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
             exit(0)
 
     compete = admin.load_startup_files()
+
+    # instantiate a levelDB manager class
+    db_manager = OrsesLevelDBManager(admin_inst=admin)
+    db_manager.load_required_databases()
+    admin.load_db_manager(db_manager=db_manager)
 
     # instantiated Dummy Internet
     dummy_internet = DummyInternet()
@@ -529,6 +535,11 @@ def main(just_launched=False):
     print(vars(admin))
 
     compete = admin.load_startup_files()
+
+    # instantiate a levelDB manager class
+    db_manager = OrsesLevelDBManager(admin_inst=admin)
+    db_manager.load_required_databases()
+    admin.load_db_manager(db_manager=db_manager)
 
 
     # *** instantiate queue variables ***
