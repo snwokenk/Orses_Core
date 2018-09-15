@@ -21,9 +21,9 @@ class TokenTransferValidator:
         self.tx_hash = transfer_tx_dict["tx_hash"]
         self.timestamp = transfer_tx_dict["ttx"]["time"]
         self.amt = transfer_tx_dict["ttx"]["amt"]
-        self.ntakri_amount = int(float(self.amt) * 10_000_000_000)
+        self.ntakiri_amount = int(float(self.amt) * 10_000_000_000)
         self.fee = transfer_tx_dict["ttx"]["fee"]
-        self.ntakri_fee = int(float(self.fee) * 10_000_000_000)
+        self.ntakiri_fee = int(float(self.fee) * 10_000_000_000)
         self.timelimit = timelimit
         self.unknown_wallet = True if wallet_pubkey else False
         self.q_object = q_object
@@ -169,16 +169,14 @@ class TokenTransferValidator:
             only_value=True
         )
 
-        # use the less of
-
         balance_to_use = recent_avail_bal if recent_avail_bal is not None and \
                                              recent_avail_bal < available_tokens else available_tokens
 
-        if balance_to_use >= (self.ntakri_amount+self.ntakri_fee):
+        if balance_to_use >= (self.ntakiri_amount + self.ntakiri_fee):
             if recent_avail_bal:
                 db_manager.insert_into_wallet_balances_prefixed_db(
                     wallet_id=self.sending_wid,
-                    wallet_data=[recent_avail_bal - self.ntakri_amount - self.ntakri_fee, reserved_p, total_p],
+                    wallet_data=[recent_avail_bal - self.ntakiri_amount - self.ntakiri_fee, reserved_p, total_p],
                     prefix=f'{self.admin_instance.get_mempool.next_block_no}-'
                 )
 
@@ -186,8 +184,25 @@ class TokenTransferValidator:
         else:
             return False
 
-    def calculate_unconfirmed_balance(self, balance_from_blockchain, db_manager):
+    def calculate_unconfirmed_balance(self, wallet_id,  blockchain_bal, reserved_bal,  db_manager):
 
-        db_manager
+        # [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash, amt_tokens(sender=neg., receiver=pos. ], ....]
+        recent_activity = db_manager.get_from_unconfirmed_db_wid(
+            wallet_id=wallet_id,
+            only_value=True
+        )
+        for snd_act in recent_activity:
+            if snd_act[0] == "ttx":
+
+                # if not "sender" negate negative with a -, this will mean bal is added to not taken away from
+                blockchain_bal += (snd_act[-1]+snd_act[-2]) if snd_act[1] == "sender" else -(snd_act[-1]+snd_act[-2])
+
+            elif snd_act[0] in {"rvk_req", "rsv_req"}:
+                blockchain_bal += (snd_act[-1]+snd_act[-2]) if snd_act[0] == "rsv_req" else -snd_act[-1]
+                reserved_bal += -snd
+
+
+        return blockchain_bal
+
 
 

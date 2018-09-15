@@ -26,7 +26,8 @@ class OrsesLevelDBManager:
 
         :param wallet_id:
         :param only_value:
-        :return: list of list [[tx_type, "sender" or "receiver, main_tx, signature, tx_hash], ....]
+        :return: list of lists:
+            [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash, amt_tokens(sender=neg., receiver=pos. ], ....]
         """
 
         try:
@@ -44,20 +45,22 @@ class OrsesLevelDBManager:
             if wallet_activity and only_value:
                 wallet_activity = json.loads(wallet_activity[1].decode())
             elif wallet_activity:
-                wallet_activity = [wallet_activity[0].decode(),json.loads(wallet_activity[1].decode())]
+                wallet_activity = [wallet_activity[0].decode(), json.loads(wallet_activity[1].decode())]
             else:
                 wallet_activity = []
 
             return wallet_activity
 
     def insert_into_unconfirmed_db_wid(self, tx_type: str, sending_wid: str, tx_hash: str, signature: str,
-                                       main_tx: dict, rcv_wid=None):
+                                       main_tx: dict, amt: int, fee: int, rcv_wid=None):
         """
         Insert into db using wallet id as key
         :param sending_wid:
-        :param tx_hash:
-        :param signature:
-        :param main_tx:
+        :param tx_hash: hash
+        :param signature: signature of transaction
+        :param main_tx: dict containting the main details of a msg
+        :param amt: amount involved tx is for, if it is a ttx or rvk_req or rsv_req then it should be > 0
+        :param fee: amount to be paid to administrators/blockcreators. should always be (fee > 0)
         :return:
         """
 
@@ -67,10 +70,13 @@ class OrsesLevelDBManager:
             None
 
         if snd_prev_activity:
-            snd_prev_activity.append([tx_type, 'sender', main_tx, signature, tx_hash])
+            # number to subtract is fees and amount
+            snd_prev_activity.append([tx_type, 'sender', main_tx, signature, tx_hash, -fee, -amt])
             value = json.dumps(snd_prev_activity)
         else:
-            value = json.dumps([[tx_type, 'sender', main_tx, signature, tx_hash]])
+
+            # number to add is amt, fees are taken by block creator
+            value = json.dumps([[tx_type, 'sender', main_tx, signature, tx_hash, amt]])
 
         if rcv_prev_activity:
             rcv_prev_activity.append([tx_type, 'receiver', main_tx, signature, tx_hash])
@@ -93,13 +99,15 @@ class OrsesLevelDBManager:
                 tx_hash=tx_hash,
                 signature=signature,
                 main_tx=main_tx,
-                tx_type=tx_type
+                tx_type=tx_type,
+                amt=amt,
+                fee=fee
             )
         else:
             return True
 
     def insert_into_unconfirmed_db(self, tx_type: str, sending_wid: str, tx_hash: str, signature: str,
-                                   main_tx: dict, rcv_wid=None):
+                                   main_tx: dict, amt: int, fee: int, rcv_wid=None):
         """
         This inserts hash of message
         :param sending_wid:
@@ -123,7 +131,9 @@ class OrsesLevelDBManager:
                 signature=signature,
                 main_tx=main_tx,
                 tx_type=tx_type,
-                rcv_wid=rcv_wid
+                rcv_wid=rcv_wid,
+                amt=amt,
+                fee=fee
             )
         else:
             is_inserted = self.insert_into_unconfirmed_db_wid(
@@ -131,7 +141,9 @@ class OrsesLevelDBManager:
                 tx_hash=tx_hash,
                 signature=signature,
                 main_tx=main_tx,
-                tx_type=tx_type
+                tx_type=tx_type,
+                amt=amt,
+                fee=fee
             )
         if is_inserted:
             return True
