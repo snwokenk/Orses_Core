@@ -62,6 +62,11 @@ else:
     print("All Required Packages Installed")
 
 
+
+# todo: generate wallet_balances leveldb from genesis block. This db can then be added to. wallets are deleted when
+# todo: they fall to 0 or send tokens lower than threshold (see how Orses deals with this)
+
+# todo: after generating this, test out tokentransfervalidator to make sure it validates token balance.
 # todo: finish up OrsesLevelDBManagement and TokenTransfervalidator
 # todo: generate balances of wallets found on genesis block and store in the long term db of wallets "wallet_balances"
 

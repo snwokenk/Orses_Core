@@ -27,7 +27,7 @@ class OrsesLevelDBManager:
         :param wallet_id:
         :param only_value:
         :return: list of lists:
-            [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash, amt_tokens(sender=neg., receiver=pos. ], ....]
+            [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash,fee,  amt_tokens(sender=neg., receiver=pos. ], ....]
         """
 
         try:
@@ -51,11 +51,12 @@ class OrsesLevelDBManager:
 
             return wallet_activity
 
-    def insert_into_unconfirmed_db_wid(self, tx_type: str, sending_wid: str, tx_hash: str, signature: str,
-                                       main_tx: dict, amt: int, fee: int, rcv_wid=None):
+    def insert_into_unconfirmed_db_wid(self, tx_type: str, wallet_id: str, tx_hash: str, signature: str,
+                                       main_tx: dict, amt: int, fee: int, sender=True):
         """
         Insert into db using wallet id as key
-        :param sending_wid:
+        :param tx_type: This is can ttx, rvk_req, rsv_req or misc_msgs
+        :param wallet_id:
         :param tx_hash: hash
         :param signature: signature of transaction
         :param main_tx: dict containting the main details of a msg
@@ -64,44 +65,54 @@ class OrsesLevelDBManager:
         :return:
         """
 
-        # get previous activities if any and add to it
-        snd_prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=sending_wid, only_value=True)
-        rcv_prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=sending_wid, only_value=True) if rcv_wid else \
-            None
+        # todo: clarify reservation revoke, make sure reservation revoke waits the appropriate amount of blocks
+        # todo: before it is valid
 
-        if snd_prev_activity:
+        # get previous activities if any and add to it
+        # dict at index 0 of activity, tells the net of avail and reserved.
+        # when
+        prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id, only_value=True)
+
+        fee = -fee
+        # set amount
+        if sender is True:  # then receiver
+            snd_or_rcv ="sender"
+            amt = -amt if tx_type != "rvk_req" else 0
+
+        else:
+            snd_or_rcv = "receiver"
+
+        if prev_activity:
             # number to subtract is fees and amount
-            snd_prev_activity.append([tx_type, 'sender', main_tx, signature, tx_hash, -fee, -amt])
-            value = json.dumps(snd_prev_activity)
+            prev_activity.append(
+                [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt]
+            )
+            value = json.dumps(prev_activity)
         else:
 
             # number to add is amt, fees are taken by block creator
-            value = json.dumps([[tx_type, 'sender', main_tx, signature, tx_hash, amt]])
-
-        if rcv_prev_activity:
-            rcv_prev_activity.append([tx_type, 'receiver', main_tx, signature, tx_hash])
-            value1 = json.dumps(rcv_prev_activity)
-        else:
-            value1 = None
-
+            value = json.dumps(
+                [
+                    [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt],
+                ]
+            )
 
         try:
             with self.databases["unconfirmed_msgs_wid"].write_batch(transaction=True) as wb:
-                wb.put(key=sending_wid.encode(), value=value.encode())
-                if value1:
-                    wb.put(key=rcv_wid.encode(), value=value1.encode())
+                wb.put(key=wallet_id.encode(), value=value.encode())
 
         except KeyError:
             # print(f"in OrsesLevelDBManagement: keyerror occured, Loading db called 'wallet_balances'")
             self.load_db(name="unconfirmed_msgs_wid")
             return self.insert_into_unconfirmed_db_wid(
-                sending_wid=sending_wid,
+                wallet_id=wallet_id,
                 tx_hash=tx_hash,
                 signature=signature,
                 main_tx=main_tx,
                 tx_type=tx_type,
                 amt=amt,
-                fee=fee
+                fee=fee,
+                sender=sender
             )
         else:
             return True
@@ -137,18 +148,34 @@ class OrsesLevelDBManager:
             )
         else:
             is_inserted = self.insert_into_unconfirmed_db_wid(
-                sending_wid=sending_wid,
+                wallet_id=sending_wid,
                 tx_hash=tx_hash,
                 signature=signature,
                 main_tx=main_tx,
                 tx_type=tx_type,
                 amt=amt,
-                fee=fee
+                fee=fee,
+                sender=True
             )
+
         if is_inserted:
-            return True
-        else:
-            return False
+            if rcv_wid is not None:
+                rcv_inserted = self.insert_into_unconfirmed_db_wid(
+                    wallet_id=rcv_wid,
+                    tx_hash=tx_hash,
+                    signature=signature,
+                    main_tx=main_tx,
+                    tx_type=tx_type,
+                    amt=amt,
+                    fee=fee,
+                    sender=False
+                )
+                if rcv_inserted:
+                    return True
+            else:
+                return True
+
+        return False
 
     def get_a_prefixed_db(self, db_name: str, prefix: str, create_if_not_exist=True):
         """
