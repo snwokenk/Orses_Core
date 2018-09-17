@@ -238,6 +238,9 @@ class DummyAdminNode(DummyNode):
 
         # *** set propagator's network manager variable to network manager instance ***
         propagator.network_manager = network_manager
+
+        db_manager.create_load_wallet_balances_from_genesis_block()
+
         self.reactor.run()
 
         self.reactor.callInThread(

@@ -8,13 +8,58 @@ class OrsesLevelDBManager:
         self.databases = dict()
         self.prefix_db = dict()
 
+    def create_load_wallet_balances_from_genesis_block(self, overwrite=False):
+        """
+
+        :param overwrite: create a new wallet_balances database even if one exists
+        :return:
+        """
+
+        print("In OrsesLevelDBManager: Creating wallet balance db from genesis block, if not exist")
+
+        blockchain_path = self.admin_inst.fl.get_block_data_folder_path()
+
+        # check if already created
+        if self.load_db(name="wallet_balances", create_if_missing=False) and overwrite is False:
+            return True
+
+        # load block 0 ie genesis block
+        block0 = self.admin_inst.fl.open_file_from_json(filename="0", in_folder=blockchain_path)
+        block0_TATs = block0["tats"] if block0 else {}
+        block0_BCWs = block0["bcws"] if block0 else {}
+
+        db = self.load_db(name="wallet_balances", create_if_missing=True)
+        if block0_TATs:
+            with db.write_batch(transaction=True) as b:
+                for tat_hash in block0_TATs:
+                    # similar [('W3c8135240da9d25d3905aa7aca64c98ca6b1fede', 850000000)]
+                    tmp = list(block0_TATs[tat_hash].items())
+                    wid = tmp[0][0]
+                    print(f"in OrsesLevelDB, Tat: {tmp}")
+                    reserved_bal = block0_BCWs[wid] if wid in block0_BCWs else 0
+                    avail_bal = tmp[0][1] - reserved_bal
+                    b.put(
+                        wid.encode(),
+                        json.dumps([avail_bal, reserved_bal, avail_bal+reserved_bal]).encode()  # [avail bal, rsv_balance, total bal]
+                    )
+
+            return True
+
+        else:
+            print(f"in OrsesLevelDBMangement: Block 0 not found admin: {self.admin_inst.admin_name}")
+            print(f"file paths {blockchain_path}")
+
+            return False
+
     def load_required_databases(self):
+
+        # create (if not exist) and load "wallet_balances"
+        # self.create_load_wallet_balances_from_genesis_block()
         req_db_list = [
-            "wallet_balances",
-            "wallet_pubkeys"
-            "temp_wallet_balances"
-            "unconfirmed_msgs_hashes"
-            "unconfirmed_msgs_wid"
+            "wallet_pubkeys",
+            "temp_wallet_balances",
+            "unconfirmed_msgs_hashes",
+            "unconfirmed_msgs_wid",
 
         ]
 
@@ -41,7 +86,7 @@ class OrsesLevelDBManager:
             print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
             return False
         else:
-
+            print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity}")
             if wallet_activity and only_value:
                 wallet_activity = json.loads(wallet_activity[1].decode())
             elif wallet_activity:
@@ -211,20 +256,28 @@ class OrsesLevelDBManager:
         else:
             return tmp
 
-
     def load_db(self, name: str, create_if_missing=True):
         """
-        loads
-        :param name:
+        some databases are crated in data_client_wallet folder of user folder
+        others are created in data_mempool
+        :param name: the name of the database
+        :param create_if_missing: create a database if not exist
         :return:
         """
-        filename = os.path.join(self.admin_inst.fl.get_clients_wallet_folder_path(), name)
+        if name in {"wallet_balances",
+                    "wallet_pubkeys",
+                    "temp_wallet_balances"}:
+            filename = os.path.join(self.admin_inst.fl.get_clients_wallet_folder_path(), name)
+        else:
+            filename = os.path.join(self.admin_inst.fl.get_mempool_data_folder_path(), name)
         try:
             db = plyvel.DB(filename, create_if_missing=create_if_missing)
         except plyvel.Error as e:
             print(f"in CreateALevelDB, error occured: {e}")
         else:
             self.databases[name] = db
+
+            return db
 
     def insert_into_wallet_balances_prefixed_db(self, wallet_id: str, wallet_data: list, prefix: str):
         """
@@ -287,7 +340,7 @@ class OrsesLevelDBManager:
         else:
             return True
 
-    def get_from_wallet_balances_db(self, wallet_id: str, only_value=True):
+    def get_from_wallet_balances_db(self, wallet_id: str, recursive_count=0):
         """
         use to retrieve wallet balance data
         :param wallet_id:
@@ -299,22 +352,29 @@ class OrsesLevelDBManager:
             # wallet balance = [b'wallet id', b'[free token amount, reserved token amount]'
             wallet_balance = self.databases["wallet_balances"].get(key=wallet_id.encode())
 
-        except KeyError:
+            print(f"self.databases {self.databases}")
+
+        except KeyError as e:
+            print(f"error in get_from_wallet_balances_db(), error msg: {e}")
             # load up db
             self.load_db(name="wallet_balances", create_if_missing=False)
-            return self.get_from_wallet_balances_db(wallet_id=wallet_id)
+            if recursive_count < 2:
+                recursive_count += 1
+                return self.get_from_wallet_balances_db(wallet_id=wallet_id, recursive_count=recursive_count)
+            else:
+                print(f"error in get_from_wallet_balances_db(), recursive limit")
+                return [0,0,0]
         except plyvel.Error:
             print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
-            return False
+            return [0,0,0]
         else:
+            print(f"in OrsesLevelDBManagement: This is wallet balance before {wallet_balance}")
             if wallet_balance:
-                wallet_balance = [wallet_balance.decode(), json.loads(wallet_balance[1].decode())]
+                wallet_balance = json.loads(wallet_balance.decode())
             else:
                 wallet_balance = [0,0,0]  # available, reserved, total
 
-            if wallet_balance and only_value:
-                wallet_balance = wallet_balance[1]
-
+            print(f"wallet_balance of {wallet_id} in OrsesLevelDBManagement is {wallet_balance}")
             return wallet_balance
 
 
@@ -326,13 +386,6 @@ if __name__ == '__main__':
     else:
 
 
-        db_0_pref = db.prefixed_db(b"0-")
+        db.put(b"s", b"1")
 
-        db_0_pref.put(b"sam", b"Is great")
-        db.put(b'sam', b"is handsome")
-
-        for i in db:
-            print(i)
-
-
-        db.close()
+        print(db.get(b"s"))

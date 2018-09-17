@@ -22,9 +22,9 @@ class TokenTransferValidator:
         self.tx_hash = transfer_tx_dict["tx_hash"]
         self.timestamp = transfer_tx_dict["ttx"]["time"]
         self.amt = transfer_tx_dict["ttx"]["amt"]
-        self.ntakiri_amount = int(float(self.amt) * 10_000_000_000)
+        self.ntakiri_amount = int(float(self.amt) * 1e10)
         self.fee = transfer_tx_dict["ttx"]["fee"]
-        self.ntakiri_fee = int(float(self.fee) * 10_000_000_000)
+        self.ntakiri_fee = int(float(self.fee) * 1e10)
         self.timelimit = timelimit
         self.unknown_wallet = True if wallet_pubkey else False
         self.q_object = q_object
@@ -166,17 +166,19 @@ class TokenTransferValidator:
         # balance gotten from blockchain
         available_bal, reserved, total = self.db_manager.get_from_wallet_balances_db(
             wallet_id=self.sending_wid,
-            only_value=True
         )
 
         unconfirmed_bal = available_bal + self.get_token_change_from_unconfirmed()
+        bal_to_use = int(
+            (unconfirmed_bal if unconfirmed_bal < available_bal else available_bal) * 1e10)
 
         # will choose the less of the balance
-        if self.ntakiri_amount >= (unconfirmed_bal if unconfirmed_bal < available_bal else available_bal):
-            print("in TokenTransfer, Balance Validated")
+        if self.ntakiri_amount+self.ntakiri_fee <= bal_to_use:
+            print(f"in TokenTransferValidator, Balance Validated, ntakiris: {self.ntakiri_amount/1e10}"
+                  f"balance being used {bal_to_use}")
             return True
         else:
-            print("in TokenTransfer, Balance NOT Validated")
+            print("in TokenTransferValidator, Balance NOT Validated")
             return False
 
     def get_token_change_from_unconfirmed(self):

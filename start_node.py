@@ -63,6 +63,7 @@ else:
 
 
 
+# todo: find out why blockchain_data is empty when create_load_wallet_balances_from_genesis_block()
 # todo: generate wallet_balances leveldb from genesis block. This db can then be added to. wallets are deleted when
 # todo: they fall to 0 or send tokens lower than threshold (see how Orses deals with this)
 
@@ -506,6 +507,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         )
 
 
+    # create wallet_balance
+    db_manager.create_load_wallet_balances_from_genesis_block()
     # *** start reactor ***
     reactor.run()
 
@@ -711,6 +714,9 @@ def main(just_launched=False):
 
     # *** set propagator's network manager variable to network manager instance ***
     propagator.network_manager = network_manager
+
+    # create wallets balance db with genesis block, if does not exist
+    db_manager.create_load_wallet_balances_from_genesis_block()
 
     # *** start reactor ***
     reactor.run()
