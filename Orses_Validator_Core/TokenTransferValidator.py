@@ -22,9 +22,9 @@ class TokenTransferValidator:
         self.tx_hash = transfer_tx_dict["tx_hash"]
         self.timestamp = transfer_tx_dict["ttx"]["time"]
         self.amt = transfer_tx_dict["ttx"]["amt"]
-        self.ntakiri_amount = int(float(self.amt) * 1e10)
+        self.ntakiri_amount = int(round(float(self.amt), 10) * 1e10)
         self.fee = transfer_tx_dict["ttx"]["fee"]
-        self.ntakiri_fee = int(float(self.fee) * 1e10)
+        self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
         self.timelimit = timelimit
         self.unknown_wallet = True if wallet_pubkey else False
         self.q_object = q_object
@@ -150,12 +150,16 @@ class TokenTransferValidator:
             print("inputs Check: ", False)
             return False
         else:
-            if amt > 0.0 and fee > 0.0: # verify amt and fee is not negative
-                print("inputs Check: ", True)
-                return True
-            else:
-                print("inputs Check: ", False)
-                return False
+            if amt > 0.0 and fee > 0.0:  # verify amt and fee is not negative
+                if (round(amt, 10) == amt) and (round(fee, 10) == fee):
+                    print("inputs Check: ", True)
+                    return True
+                else:
+                    print("inputs fee and amount are more than 10 decimal places.\n"
+                          "Orses native tokens are divisible by a max 10 billion places")
+
+            print("inputs Check: ", False)
+            return False
 
     def check_wallet_balance(self):
 
@@ -174,11 +178,12 @@ class TokenTransferValidator:
 
         # will choose the less of the balance
         if self.ntakiri_amount+self.ntakiri_fee <= bal_to_use:
-            print(f"in TokenTransferValidator, Balance Validated, ntakiris: {self.ntakiri_amount/1e10}"
-                  f"balance being used {bal_to_use}")
+            print(f"in TokenTransferValidator, Balance Validated, ntakiris: {self.ntakiri_amount/1e10} Orses Tokens"
+                  f"balance being used {bal_to_use/1e10} Orses Tokens, admin {self.admin_instance.admin_name}")
             return True
         else:
-            print("in TokenTransferValidator, Balance NOT Validated")
+            print(f"in TokenTransferValidator, Balance NOT Validated ntakiris: {self.ntakiri_amount/1e10}"
+                  f"balance being used {bal_to_use/1e10} Orses Tokens, admin {self.admin_instance.admin_name}")
             return False
 
     def get_token_change_from_unconfirmed(self):
@@ -187,7 +192,6 @@ class TokenTransferValidator:
         # [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash,fee,  amt_tokens(sender=neg., receiver=pos. ],...]
         unconfirmed_wallet_activities = self.db_manager.get_from_unconfirmed_db_wid(
             wallet_id=self.sending_wid,
-            only_value=True
         )
 
         for activity in unconfirmed_wallet_activities:

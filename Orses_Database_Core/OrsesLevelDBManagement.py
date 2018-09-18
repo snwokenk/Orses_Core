@@ -36,8 +36,8 @@ class OrsesLevelDBManager:
                     tmp = list(block0_TATs[tat_hash].items())
                     wid = tmp[0][0]
                     print(f"in OrsesLevelDB, Tat: {tmp}")
-                    reserved_bal = block0_BCWs[wid] if wid in block0_BCWs else 0
-                    avail_bal = tmp[0][1] - reserved_bal
+                    reserved_bal = block0_BCWs[wid] * 1e10 if wid in block0_BCWs else 0
+                    avail_bal = (tmp[0][1]*1e10) - reserved_bal
                     b.put(
                         wid.encode(),
                         json.dumps([avail_bal, reserved_bal, avail_bal+reserved_bal]).encode()  # [avail bal, rsv_balance, total bal]
@@ -66,7 +66,7 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
-    def get_from_unconfirmed_db_wid(self, wallet_id: str, only_value=True):
+    def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0):
         """
 
         :param wallet_id:
@@ -76,21 +76,21 @@ class OrsesLevelDBManager:
         """
 
         try:
-            # wallet balance = [b'wallet id', b'[free token amount, reserved token amount]'
+            # wallet balance = [[tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt], ...]
             wallet_activity = self.databases["unconfirmed_msgs_wid"].get(key=wallet_id.encode())
         except KeyError:
             # load up db
-            self.load_db(name="unconfirmed_msgs_wid", create_if_missing=False)
-            return self.get_from_unconfirmed_db_wid(wallet_id=wallet_id)
+            if recursive_count < 2:
+                recursive_count += 1
+                self.load_db(name="unconfirmed_msgs_wid", create_if_missing=False)
+                return self.get_from_unconfirmed_db_wid(wallet_id=wallet_id, recursive_count=recursive_count)
         except plyvel.Error:
             print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
             return False
         else:
-            print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity}")
-            if wallet_activity and only_value:
-                wallet_activity = json.loads(wallet_activity[1].decode())
-            elif wallet_activity:
-                wallet_activity = [wallet_activity[0].decode(), json.loads(wallet_activity[1].decode())]
+            print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity} admin {self.admin_inst.admin_name}")
+            if wallet_activity:
+                wallet_activity = json.loads(wallet_activity.decode())
             else:
                 wallet_activity = []
 
@@ -116,7 +116,7 @@ class OrsesLevelDBManager:
         # get previous activities if any and add to it
         # dict at index 0 of activity, tells the net of avail and reserved.
         # when
-        prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id, only_value=True)
+        prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id)
 
         fee = -fee
         # set amount

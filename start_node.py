@@ -63,13 +63,16 @@ else:
 
 
 
-# todo: find out why blockchain_data is empty when create_load_wallet_balances_from_genesis_block()
-# todo: generate wallet_balances leveldb from genesis block. This db can then be added to. wallets are deleted when
-# todo: they fall to 0 or send tokens lower than threshold (see how Orses deals with this)
+# todo: TokenTransferValidator checks the blockchain and unconfirmed for balances.
+# todo: when a block is created update the main wallet balance and unconfirmed by adding to receivers wallet balance
+# todo: and subtracting from senders wallet balance.
+# todo: delete transactions that are confirmed (in the blockchain) or
+# todo: move to a newly confirmed database  which keeps for at least 50 blocks
+# todo: the goal is to have wallet balances and unconfirmed tx net amount to reflect acurately
 
-# todo: after generating this, test out tokentransfervalidator to make sure it validates token balance.
-# todo: finish up OrsesLevelDBManagement and TokenTransfervalidator
-# todo: generate balances of wallets found on genesis block and store in the long term db of wallets "wallet_balances"
+
+# todo: refactor token reservation and token reservation revoke validators to also validate balances according
+
 
 # todo: using the new Orses DB Manager, update wallet balances after every new block, in mempool.
 # todo: Also when moved to confirmed create or update files that allows for ease
