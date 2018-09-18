@@ -12,10 +12,13 @@ class TokenReservationRequestValidator:
     def __init__(self, tkn_rsv_dict, admin_instance, wallet_pubkey=None, q_object=None):
         self.admin_instance = admin_instance
         self.mempool = admin_instance.get_mempool()
+        self.db_manager = self.admin_instance.get_db_manager()
         self.tkn_rsv_dict = tkn_rsv_dict
         self.rsv_req_json = json.dumps(tkn_rsv_dict["rsv_req"])
         self.amount = tkn_rsv_dict["rsv_req"]["amt"]
+        self.ntakiri_amount = int(round(float(self.amount), 10) * 1e10)
         self.fee = tkn_rsv_dict["rsv_req"]["fee"]
+        self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
         self.timestamp = tkn_rsv_dict["rsv_req"]["time"]
         self.resevation_expiration = tkn_rsv_dict["rsv_req"]["exp"]
         self.wallet_pubkey = wallet_pubkey
@@ -34,12 +37,25 @@ class TokenReservationRequestValidator:
         if self.wallet_pubkey == "":
             return None
 
-        elif (self.check_client_id_owner_of_wallet() is True and
+        elif (self.check_wallet_balance() is True and
+              self.check_client_id_owner_of_wallet() is True and
               self.check_signature_valid() is True and
               self.check_inputs() is True and
               self.check_minimum_time() is True and
               self.check_if_wallet_has_enough_token() is True
               ):
+
+            # store info into unconfirmed leveldb
+            rsp = self.db_manager.insert_into_unconfirmed_db(
+                tx_type="rsv_req",
+                sending_wid=self.wallet_id,
+                tx_hash=self.tx_hash,
+                signature=self.signature,
+                main_tx=self.tkn_rsv_dict,
+                amt=self.ntakiri_amount,
+                fee=self.ntakiri_fee,
+                rcv_wid=None
+            )
 
             print("In Validity, TknResReqValidator. Its valid")
             if self.unknown_wallet:
@@ -151,10 +167,52 @@ class TokenReservationRequestValidator:
             print("inputs Check: ", False)
             return False
         else:
-            if amt >= 250000.00 and fee >= 1.00: # verify amt and fee is not negative
-                print("inputs Check: ", True)
-                return True
-            else:
-                print("inputs Check: ", False)
-                return False
+            if amt >= 250000.00 and fee >= 1.00:  # verify amt and fee is not negative
+                if (round(amt, 10) == amt) and (round(fee, 10) == fee):
+                    print("inputs Check: ", True)
+                    return True
+                else:
+                    print("inputs fee and amount are more than 10 decimal places.\n"
+                          "Orses native tokens are divisible by a max 10 billion places")
+
+            print("inputs Check: ", False)
+            return False
+
+    def check_wallet_balance(self):
+
+        # get wallet balance
+
+        # wallet balance [int, int, int] = [free token balance, reserved_token_balance, total token]
+        # balance in ntakiri ie 1 orses token = 10,000,000,000 (10 billion) ntakiris
+        # balance gotten from blockchain
+        available_bal, reserved, total = self.db_manager.get_from_wallet_balances_db(
+            wallet_id=self.wallet_id,
+        )
+
+        unconfirmed_bal = available_bal + self.get_token_change_from_unconfirmed()
+        bal_to_use = unconfirmed_bal if unconfirmed_bal < available_bal else available_bal
+
+        # will choose the less of the balance
+        if self.ntakiri_amount+self.ntakiri_fee <= bal_to_use:
+            print(f"in TokenTransferValidator, Balance Validated, ntakiris: {self.ntakiri_amount/1e10} Orses Tokens"
+                  f"balance being used {bal_to_use/1e10} Orses Tokens, admin {self.admin_instance.admin_name}")
+            return True
+        else:
+            print(f"in TokenTransferValidator, Balance NOT Validated ntakiris: {self.ntakiri_amount/1e10}"
+                  f"balance being used {bal_to_use/1e10} Orses Tokens, admin {self.admin_instance.admin_name}")
+            return False
+
+    def get_token_change_from_unconfirmed(self):
+
+        token_change = 0
+        # [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash,fee,  amt_tokens(sender=neg., receiver=pos. ],...]
+        unconfirmed_wallet_activities = self.db_manager.get_from_unconfirmed_db_wid(
+            wallet_id=self.wallet_id,
+        )
+
+        for activity in unconfirmed_wallet_activities:
+            #              tkn amount     fee  These will be negative if wallet_id was sender and positive if receiver
+            token_change += activity[-1]+activity[-2]
+
+        return token_change
 

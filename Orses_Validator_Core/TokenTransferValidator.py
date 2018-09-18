@@ -173,12 +173,12 @@ class TokenTransferValidator:
         )
 
         unconfirmed_bal = available_bal + self.get_token_change_from_unconfirmed()
-        bal_to_use = int(
-            (unconfirmed_bal if unconfirmed_bal < available_bal else available_bal) * 1e10)
+        bal_to_use = unconfirmed_bal if unconfirmed_bal < available_bal else available_bal
 
         # will choose the less of the balance
         if self.ntakiri_amount+self.ntakiri_fee <= bal_to_use:
-            print(f"in TokenTransferValidator, Balance Validated, ntakiris: {self.ntakiri_amount/1e10} Orses Tokens"
+            print(f"in TokenTransferValidator, Balance Validated, amt ntakiris: {self.ntakiri_amount/1e10} Orses Tokens"
+                  f"amt fees: {self.ntakiri_fee/1e10}"
                   f"balance being used {bal_to_use/1e10} Orses Tokens, admin {self.admin_instance.admin_name}")
             return True
         else:

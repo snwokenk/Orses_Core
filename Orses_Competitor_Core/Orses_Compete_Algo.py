@@ -298,7 +298,7 @@ def generate_regular_block(block_no: int, admin_inst, combined_list: list,
         )
     else:
 
-        print("in Generate_regular_block, Orses_compete_algo, block is not block 1 it is {block_no}")
+        print(f"in Generate_regular_block, Orses_compete_algo, block is not block 1 it is {block_no}")
 
         # todo: get list of previous 2 hashes. have a way of getting previous 2 blocks hashes probably using fileaction
         list_of_prev_2_hashes=None

@@ -80,13 +80,17 @@ class OrsesLevelDBManager:
             wallet_activity = self.databases["unconfirmed_msgs_wid"].get(key=wallet_id.encode())
         except KeyError:
             # load up db
-            if recursive_count < 2:
+            if recursive_count < 1:
                 recursive_count += 1
                 self.load_db(name="unconfirmed_msgs_wid", create_if_missing=False)
                 return self.get_from_unconfirmed_db_wid(wallet_id=wallet_id, recursive_count=recursive_count)
+            else:
+                print(f"in get_from_unconfirmed_db_wid, unconfirmed_msgs_wid could not be loaded")
+                return []
+
         except plyvel.Error:
             print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
-            return False
+            return []
         else:
             print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity} admin {self.admin_inst.admin_name}")
             if wallet_activity:
@@ -97,7 +101,7 @@ class OrsesLevelDBManager:
             return wallet_activity
 
     def insert_into_unconfirmed_db_wid(self, tx_type: str, wallet_id: str, tx_hash: str, signature: str,
-                                       main_tx: dict, amt: int, fee: int, sender=True):
+                                       main_tx: dict, amt: int, fee: int, recursive_count=0, sender=True):
         """
         Insert into db using wallet id as key
         :param tx_type: This is can ttx, rvk_req, rsv_req or misc_msgs
@@ -149,21 +153,27 @@ class OrsesLevelDBManager:
         except KeyError:
             # print(f"in OrsesLevelDBManagement: keyerror occured, Loading db called 'wallet_balances'")
             self.load_db(name="unconfirmed_msgs_wid")
-            return self.insert_into_unconfirmed_db_wid(
-                wallet_id=wallet_id,
-                tx_hash=tx_hash,
-                signature=signature,
-                main_tx=main_tx,
-                tx_type=tx_type,
-                amt=amt,
-                fee=fee,
-                sender=sender
-            )
+
+            if recursive_count < 1:
+                recursive_count += 1
+                return self.insert_into_unconfirmed_db_wid(
+                    wallet_id=wallet_id,
+                    tx_hash=tx_hash,
+                    signature=signature,
+                    main_tx=main_tx,
+                    tx_type=tx_type,
+                    amt=amt,
+                    fee=fee,
+                    sender=sender
+                )
+            else:
+                print(f"in insert_into_unconfirmed_db_wid, unconfirmed_msgs_wid could not be created")
+                return False
         else:
             return True
 
     def insert_into_unconfirmed_db(self, tx_type: str, sending_wid: str, tx_hash: str, signature: str,
-                                   main_tx: dict, amt: int, fee: int, rcv_wid=None):
+                                   main_tx: dict, amt: int, fee: int, rcv_wid=None, recursive_count=0):
         """
         This inserts hash of message
         :param sending_wid:
@@ -179,18 +189,26 @@ class OrsesLevelDBManager:
         try:
             self.databases["unconfirmed_msgs_hashes"].put(key=tx_hash.encode(), value=value.encode())
         except KeyError:
+            print(f"in insert_into_unconfirmed_db() unconfirmed_msgs_hashes db not created")
             # print(f"in OrsesLevelDBManagement: keyerror occured, Loading db called 'wallet_balances'")
-            self.load_db(name="unconfirmed_msgs_hashes")
-            return self.insert_into_unconfirmed_db(
-                sending_wid=sending_wid,
-                tx_hash=tx_hash,
-                signature=signature,
-                main_tx=main_tx,
-                tx_type=tx_type,
-                rcv_wid=rcv_wid,
-                amt=amt,
-                fee=fee
-            )
+            self.load_db(name="unconfirmed_msgs_hashes", create_if_missing=True)
+
+            if recursive_count < 1:
+                recursive_count += 1
+                return self.insert_into_unconfirmed_db(
+                    sending_wid=sending_wid,
+                    tx_hash=tx_hash,
+                    signature=signature,
+                    main_tx=main_tx,
+                    tx_type=tx_type,
+                    rcv_wid=rcv_wid,
+                    amt=amt,
+                    fee=fee,
+                    recursive_count=recursive_count
+                )
+            else:
+                print(f"error in insert_into_unconfirmed_db(): unconfirmed_msgs_hashes db can not be created")
+                return False
         else:
             is_inserted = self.insert_into_unconfirmed_db_wid(
                 wallet_id=sending_wid,
@@ -358,7 +376,7 @@ class OrsesLevelDBManager:
             print(f"error in get_from_wallet_balances_db(), error msg: {e}")
             # load up db
             self.load_db(name="wallet_balances", create_if_missing=False)
-            if recursive_count < 2:
+            if recursive_count < 1:
                 recursive_count += 1
                 return self.get_from_wallet_balances_db(wallet_id=wallet_id, recursive_count=recursive_count)
             else:

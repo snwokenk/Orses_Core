@@ -10,11 +10,13 @@ class TokenReservationRevokeValidator:
     def __init__(self, tkn_rvk_dict, admin_instance, wallet_pubkey=None, q_object=None):
         self.admin_instance = admin_instance
         self.mempool = admin_instance.get_mempool()
+        self.db_manager = self.admin_instance.get_db_manager()
         self.tkn_rvk_dict = tkn_rvk_dict
         self.wallet_pubkey = wallet_pubkey
         self.non_json_wallet_pubkey = None
         self.rvk_req_json = json.dumps(tkn_rvk_dict["rvk_req"])
         self.fee = tkn_rvk_dict["rvk_req"]["fee"]
+        self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
         self.timestamp = tkn_rvk_dict["rvk_req"]["time"]
         self.client_id = tkn_rvk_dict["client_id"]
         self.wallet_id = tkn_rvk_dict["rvk_req"]["req_wid"]
