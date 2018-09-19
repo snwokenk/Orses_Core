@@ -5,7 +5,7 @@ It also cfeates and manages files needed to verify a wallet's token balance
 It also includes transaction/messages already in block (last 10 blocks)
 """
 
-import gc
+import json
 from Orses_Competitor_Core.CompetitorDataLoading import BlockChainData
 
 
@@ -27,8 +27,6 @@ class MemPool:
 
         self.next_block_no = None
 
-
-
     def update_mempool(self, winning_block: dict) -> bool:
         """
         Use this to update mempool.
@@ -39,6 +37,7 @@ class MemPool:
         """
         try:
             block_activities = winning_block["block_activity"]
+            db_manager = self.admin_inst.get_db_manager()
         except KeyError:
             # specifically for block 0 no key called "block activity" in genesis block
             pass
@@ -46,13 +45,13 @@ class MemPool:
             for active_list in block_activities:
                 # hash of activity is always index 0 (first element)
                 # will move to confirmed, if hash is not in confirmed will do nothing
-                self.move_from_unconfirmed_to_confirmed(msg_hash=active_list[0])
+                self.move_from_unconfirmed_to_confirmed(msg_hash=active_list[0], db_manager=db_manager)
 
-        self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"])+1)
+        self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"])+1, new_block=winning_block)
 
         return True
 
-    def update_next_block_no(self, new_block_no: int) -> None:
+    def update_next_block_no(self, new_block_no: int, new_block: dict) -> None:
         self.next_block_no = new_block_no
         block_no_mempool_data_to_delete = new_block_no - self.blocks_before_delete
         if block_no_mempool_data_to_delete in self.valid_msg_with_preview_hash:
@@ -62,6 +61,33 @@ class MemPool:
 
         self.valid_msg_with_preview_hash[self.next_block_no] = dict()
         self.invalid_msg_with_preview_hash[self.next_block_no] = dict()
+
+        # start a process that updates wallet balance
+        if new_block_no > 1:  # means old block is at least block 1
+
+            # todo: run in another thread
+            self.update_wallet_balances_bcw_db(new_block=new_block)
+
+    def update_wallet_balances_bcw_db(self, new_block):
+        """
+        This updates the permanent wallet balances db;
+
+        It also adds
+        :param new_block:
+        :return:
+        """
+
+        # todo: refactor
+        block_activities = new_block["block_activity"]
+        db_manager = self.admin_inst.get_db_manager()
+
+        # todo: instantiate leveldb of unconfirmed and unconfirmed_wid, and update balance according to wid
+
+        # loop through each tx hash in block activity, check if it is in unconfirmed dict,
+        # add or subtract balances as need. if a reservation request is found, add to bcw.
+        # Make sure any tx added to blockchain is deleted from unconfirmed
+
+
 
     def load_helper_files(self):
         """
@@ -82,18 +108,34 @@ class MemPool:
         :return:
         """
 
-    def move_from_unconfirmed_to_confirmed(self, msg_hash):
+    def move_from_unconfirmed_to_confirmed(self, msg_hash: str, db_manager):
         """
-        insert into confirmed dict
-        if msg_hash is not in uncofirmed will do nothing
+        insert into confirmed leveldb
+        if msg_hash is not in unconfirmed will do nothing
         :return:
         """
-        print(f"in Mempool: confirmed dict {self.confirmed},  hash is {msg_hash}, unconfirmed is {self.uncomfirmed}")
-        try:
-            self.confirmed[msg_hash] = self.uncomfirmed.pop(msg_hash)
-            print(f"in Mempool: confirmed dict {self.confirmed}")
-        except KeyError:
-            pass
+
+
+        # print(f"in Mempool: confirmed dict {self.confirmed},  hash is {msg_hash}, unconfirmed is {self.uncomfirmed}")
+
+        # pop tx from unconfirmed
+        tx_list = db_manager.get_from_unconfirmed_db(
+            tx_hash=msg_hash,
+            pop_value=True,
+            json_decoded=False
+        )
+
+        # if tx is not empty then insert tx into confirmed
+        if tx_list:
+            db_manager.insert_into_confirmed_db(
+                tx_hash=msg_hash,
+                tx_list=tx_list
+            )
+            tx_list = json.loads(tx_list)
+
+            # todo: update permanent wallet balance
+            snd_wid = tx_list[-1]
+            rcv_wid = tx_list[-2]
 
     def insert_into_valid_msg_preview_hash(self, hash_prev, msg):
         """
@@ -105,18 +147,18 @@ class MemPool:
         try:
             self.valid_msg_with_preview_hash[self.next_block_no][hash_prev] = msg
             print(f"in Mempool, msg in valid_msg_prev: {msg}")
-            try:
-                msg_hash = msg["tx_hash"]
-            except KeyError:
-                msg_hash = msg["msg_hash"]
+            # try:
+            #     msg_hash = msg["tx_hash"]
+            # except KeyError:
+            #     msg_hash = msg["msg_hash"]
 
         except KeyError:
             print(f"Error, tried to insert using new block number, but has not been blockNo: {self.next_block_no}")
             return False
         else:
-            self.uncomfirmed[msg_hash] = msg
+            # self.uncomfirmed[msg_hash] = msg
 
-        return True
+            return True
 
     def check_valid_msg_hash_prev_dict(self, hash_prev):
 

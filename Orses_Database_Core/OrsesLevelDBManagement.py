@@ -8,6 +8,15 @@ class OrsesLevelDBManager:
         self.databases = dict()
         self.prefix_db = dict()
 
+    def insert_into_bcw_db(self, tx_hash, wallet_id):
+        """
+
+        :param tx_hash:
+        :param wallet_id:
+        :return:
+        """
+        pass
+
     def create_load_wallet_balances_from_genesis_block(self, overwrite=False):
         """
 
@@ -57,7 +66,7 @@ class OrsesLevelDBManager:
         # self.create_load_wallet_balances_from_genesis_block()
         req_db_list = [
             "wallet_pubkeys",
-            "temp_wallet_balances",
+            "confirmed_msgs_hashes",
             "unconfirmed_msgs_hashes",
             "unconfirmed_msgs_wid",
 
@@ -66,13 +75,13 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
-    def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0):
+    def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0, pop_value=False):
         """
 
         :param wallet_id:
         :param only_value:
-        :return: list of lists:
-            [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash,fee,  amt_tokens(sender=neg., receiver=pos. ], ....]
+        :return: dictionary with key as tx_hash and value as list:
+            [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos. ]
         """
 
         try:
@@ -86,17 +95,19 @@ class OrsesLevelDBManager:
                 return self.get_from_unconfirmed_db_wid(wallet_id=wallet_id, recursive_count=recursive_count)
             else:
                 print(f"in get_from_unconfirmed_db_wid, unconfirmed_msgs_wid could not be loaded")
-                return []
+                return {}
 
         except plyvel.Error:
             print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
-            return []
+            return {}
         else:
             print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity} admin {self.admin_inst.admin_name}")
             if wallet_activity:
+                if pop_value:
+                    self.databases["unconfirmed_msgs_wid"].delete(key=wallet_id.encode())
                 wallet_activity = json.loads(wallet_activity.decode())
             else:
-                wallet_activity = []
+                wallet_activity = {}
 
             return wallet_activity
 
@@ -132,18 +143,21 @@ class OrsesLevelDBManager:
             snd_or_rcv = "receiver"
 
         if prev_activity:
+
+            # prev_activity dict
+            prev_activity[tx_hash] = [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
             # number to subtract is fees and amount
-            prev_activity.append(
-                [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt]
-            )
+            # prev_activity.append(
+            #     [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt]
+            # )
             value = json.dumps(prev_activity)
         else:
 
             # number to add is amt, fees are taken by block creator
             value = json.dumps(
-                [
-                    [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt],
-                ]
+                {
+                   tx_hash: [tx_type, snd_or_rcv, main_tx, signature, fee, amt],
+                }
             )
 
         try:
@@ -171,6 +185,42 @@ class OrsesLevelDBManager:
                 return False
         else:
             return True
+
+    def get_from_unconfirmed_db(self, tx_hash: str, recursive_count=0, pop_value=False, json_decoded=True):
+        """
+        gets transaction related to tx_hash
+        :param tx_hash: hash of transaction, also the key for leveldb database
+        :param recursive_count: number of times function called recursively. limited to only 1 time before returing
+        :param pop_value: if this is true, tx_hash entry is deleted and then returned
+        :param json_decoded: if this is false then a json encoded string  of python list is returned
+        :return: list if json_decoded is True alse string representation of list if false
+        """
+
+        try:
+            # b'[main_tx, signature, rcv_wid, sending_wid]' decode and json load python object
+            activity_of_hash = self.databases["unconfirmed_msgs_hashes"].get(key=tx_hash.encode())
+
+        except KeyError:
+
+            if recursive_count < 1:
+                recursive_count += 1
+                self.load_db(name="unconfirmed_msgs_hashes", create_if_missing=False)
+                return self.get_from_unconfirmed_db(tx_hash=tx_hash, recursive_count=recursive_count)
+            else:
+                print(f"in get_from_unconfirmed_db, OrsesLevelDBManagement.py,  unconfirmed_msgs_hashes not created")
+        except plyvel.Error:
+            print(f"Error in OrsesLevelDBManager, unconfirmed DB does not exist")
+            return {}
+
+        else:
+            if activity_of_hash:
+                if pop_value:
+                    self.databases["unconfirmed_msgs_hashes"].delete(key=tx_hash.encode())
+                activity_of_hash = json.loads(activity_of_hash.decode()) if json_decoded else activity_of_hash.decode()
+            else:
+                activity_of_hash = [] if json_decoded else ''
+
+            return activity_of_hash
 
     def insert_into_unconfirmed_db(self, tx_type: str, sending_wid: str, tx_hash: str, signature: str,
                                    main_tx: dict, amt: int, fee: int, rcv_wid=None, recursive_count=0):
@@ -239,6 +289,20 @@ class OrsesLevelDBManager:
                 return True
 
         return False
+
+    def insert_into_confirmed_db(self, tx_hash, tx_list, recursive_count=0):
+        try:
+            self.databases["confirmed_msgs_hashes"].put(key=tx_hash.encode(), value=tx_list.encode())
+        except KeyError:
+            if recursive_count < 1:
+                recursive_count += 1
+                self.load_db(name="confirmed_msgs_hashes", create_if_missing=True)
+                return self.insert_into_confirmed_db(tx_hash=tx_hash, tx_list=tx_list, recursive_count=recursive_count)
+            else:
+                print(f"could not created confirmed_msgs_hashes in OrsesLevelDBManagement.py")
+                return False
+        else:
+            return True
 
     def get_a_prefixed_db(self, db_name: str, prefix: str, create_if_not_exist=True):
         """
@@ -402,7 +466,7 @@ if __name__ == '__main__':
     except plyvel.Error as e:
         print(e)
     else:
-
+        db.delete()
 
         db.put(b"s", b"1")
 

@@ -190,11 +190,12 @@ class TokenTransferValidator:
 
         token_change = 0
         # [[tx_type, "sender" or "receiver, main_tx, sig, tx_hash,fee,  amt_tokens(sender=neg., receiver=pos. ],...]
+        # {tx_hash: [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos.]}
         unconfirmed_wallet_activities = self.db_manager.get_from_unconfirmed_db_wid(
             wallet_id=self.sending_wid,
         )
 
-        for activity in unconfirmed_wallet_activities:
+        for activity in unconfirmed_wallet_activities.values():
             #              tkn amount     fee  These will be negative if wallet_id was sender and positive if receiver
             token_change += activity[-1]+activity[-2]
 
