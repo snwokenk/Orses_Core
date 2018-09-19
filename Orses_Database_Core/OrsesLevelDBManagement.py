@@ -75,11 +75,13 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
-    def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0, pop_value=False):
+    def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0, pop_value=False, pop_from_value=None):
         """
 
         :param wallet_id:
         :param only_value:
+        :param pop_value: if wallet_id entry should be deleted and returned
+        :param pop_from_value: if str(should be a hash), hash should be popped from value(value without hash inserted
         :return: dictionary with key as tx_hash and value as list:
             [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos. ]
         """
@@ -103,16 +105,33 @@ class OrsesLevelDBManager:
         else:
             print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity} admin {self.admin_inst.admin_name}")
             if wallet_activity:
+                wallet_activity = json.loads(wallet_activity.decode())
                 if pop_value:
                     self.databases["unconfirmed_msgs_wid"].delete(key=wallet_id.encode())
-                wallet_activity = json.loads(wallet_activity.decode())
+                elif pop_from_value:
+                    activity = wallet_activity.pop(pop_from_value, [])
+
+                    # if activity is empty wallet id will be deleted from db
+                    self.insert_into_unconfirmed_db_wid(
+                        wallet_id=wallet_id,
+                        value=wallet_activity,
+                        tx_hash='',
+                        tx_type='',
+                        amt=0,
+                        fee=0,
+                        main_tx={},
+                        signature=''
+                    )
+                    return activity
+
+
             else:
                 wallet_activity = {}
 
             return wallet_activity
 
     def insert_into_unconfirmed_db_wid(self, tx_type: str, wallet_id: str, tx_hash: str, signature: str,
-                                       main_tx: dict, amt: int, fee: int, recursive_count=0, sender=True):
+                                       main_tx: dict, amt: int, fee: int, recursive_count=0, sender=True, value=None):
         """
         Insert into db using wallet id as key
         :param tx_type: This is can ttx, rvk_req, rsv_req or misc_msgs
@@ -131,34 +150,42 @@ class OrsesLevelDBManager:
         # get previous activities if any and add to it
         # dict at index 0 of activity, tells the net of avail and reserved.
         # when
-        prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id)
 
-        fee = -fee
-        # set amount
-        if sender is True:  # then receiver
-            snd_or_rcv ="sender"
-            amt = -amt if tx_type != "rvk_req" else 0
+        if value is None:
+            prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id)
 
+            fee = -fee
+            # set amount
+            if sender is True:  # then receiver
+                snd_or_rcv ="sender"
+                amt = -amt if tx_type != "rvk_req" else 0
+
+            else:
+                snd_or_rcv = "receiver"
+
+            if prev_activity:
+
+                # prev_activity dict
+                prev_activity[tx_hash] = [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
+                # number to subtract is fees and amount
+                # prev_activity.append(
+                #     [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt]
+                # )
+                value = json.dumps(prev_activity)
+            else:
+
+                # number to add is amt, fees are taken by block creator
+                value = json.dumps(
+                    {
+                       tx_hash: [tx_type, snd_or_rcv, main_tx, signature, fee, amt],
+                    }
+                )
         else:
-            snd_or_rcv = "receiver"
-
-        if prev_activity:
-
-            # prev_activity dict
-            prev_activity[tx_hash] = [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
-            # number to subtract is fees and amount
-            # prev_activity.append(
-            #     [tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt]
-            # )
-            value = json.dumps(prev_activity)
-        else:
-
-            # number to add is amt, fees are taken by block creator
-            value = json.dumps(
-                {
-                   tx_hash: [tx_type, snd_or_rcv, main_tx, signature, fee, amt],
-                }
-            )
+            if value and not isinstance(value, str):
+                value = json.dumps(value)
+            elif not value:
+                self.databases["unconfirmed_msgs_wid"].delete(wallet_id.encode())
+                return None
 
         try:
             with self.databases["unconfirmed_msgs_wid"].write_batch(transaction=True) as wb:
@@ -400,6 +427,25 @@ class OrsesLevelDBManager:
 
             return wallet_balance
 
+    def update_wallet_balance_db(self, wallet_id: str, wallet_data: list):
+        """
+        use this when you're sure database exist.
+        :param wallet_id:
+        :param wallet_data:
+        :return:
+        """
+
+        try:
+            wallet_data = json.dumps(wallet_data)
+            self.databases["wallet_balances"].put(key=wallet_id.encode(), value=wallet_data.encode())
+
+        except KeyError:
+            return False
+
+        except plyvel.Error:
+            return False
+
+        return True
 
     def insert_into_wallet_balances_db(self, wallet_id: str, wallet_data: list):
         """
@@ -426,6 +472,7 @@ class OrsesLevelDBManager:
         """
         use to retrieve wallet balance data
         :param wallet_id:
+        :param recursive_count
         :return: if only_value is True then [free token balance, reserved_token_balance, total token] else
                 [wallet id, [free token balance, reserved_token_balance, total token]]
         """

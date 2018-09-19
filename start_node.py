@@ -61,7 +61,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: update permanent wallet balances in move_from_unconfirmed_to_confirmed() in mempool
+# todo: in move_from_unconfirmed_to_confirmed() mempool, go through flow to make sure no errors
 # todo: TokenTransferValidator checks the blockchain and unconfirmed for balances.
 # todo: when a block is created update the main wallet balance and unconfirmed by adding to receivers wallet balance
 # todo: and subtracting from senders wallet balance.

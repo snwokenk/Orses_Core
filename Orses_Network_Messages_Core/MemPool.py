@@ -63,31 +63,10 @@ class MemPool:
         self.invalid_msg_with_preview_hash[self.next_block_no] = dict()
 
         # start a process that updates wallet balance
-        if new_block_no > 1:  # means old block is at least block 1
-
-            # todo: run in another thread
-            self.update_wallet_balances_bcw_db(new_block=new_block)
-
-    def update_wallet_balances_bcw_db(self, new_block):
-        """
-        This updates the permanent wallet balances db;
-
-        It also adds
-        :param new_block:
-        :return:
-        """
-
-        # todo: refactor
-        block_activities = new_block["block_activity"]
-        db_manager = self.admin_inst.get_db_manager()
-
-        # todo: instantiate leveldb of unconfirmed and unconfirmed_wid, and update balance according to wid
-
-        # loop through each tx hash in block activity, check if it is in unconfirmed dict,
-        # add or subtract balances as need. if a reservation request is found, add to bcw.
-        # Make sure any tx added to blockchain is deleted from unconfirmed
-
-
+        # if new_block_no > 1:  # means old block is at least block 1
+        #
+        #     # todo: run in another thread
+        #     self.update_wallet_balances_bcw_db(new_block=new_block)
 
     def load_helper_files(self):
         """
@@ -107,6 +86,30 @@ class MemPool:
         :param msg:
         :return:
         """
+
+    def update_wallet_balances_bcw_db(self, wallet_id, activity_list, db_manager):
+        """
+        This updates the permanent wallet balances db;
+
+        It also adds
+        :param new_block:
+        :param activity_list: [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
+        :return:
+        """
+        # [avail, reserved, total]
+        wallet_data = db_manager.get_from_wallet_balances_db(wallet_id=wallet_id)
+
+        # update avail bal by adding amt and fee. if index 1 is sender then amt will be neg else positive. fee is neg.
+        wallet_data[0] = wallet_data[0] + activity_list[-1] + activity_list[-2]
+
+        # update reserved balance if tx_type = rsv_req
+        wallet_data[1] = wallet_data[1] + abs(activity_list[-1]) if activity_list[0] == "rsv_req" else wallet_data[1]
+
+        # update total balance
+        wallet_data[2] = wallet_data[0] + wallet_data[1]
+
+        db_manager.update_wallet_balance_db(wallet_id=wallet_id, wallet_data=wallet_data)
+
 
     def move_from_unconfirmed_to_confirmed(self, msg_hash: str, db_manager):
         """
@@ -136,6 +139,25 @@ class MemPool:
             # todo: update permanent wallet balance
             snd_wid = tx_list[-1]
             rcv_wid = tx_list[-2]
+
+            # [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
+            # dictionary with hash and activity list returned pop() gets the specifiy activity list
+            snd_wid_activities = db_manager.get_from_unconfirmed_db_wid(wallet_id=snd_wid, pop_from_value=msg_hash)
+
+            if snd_wid_activities:
+                self.update_wallet_balances_bcw_db(
+                    wallet_id=snd_wid,
+                    activity_list=snd_wid_activities,
+                    db_manager=db_manager
+                )
+            if rcv_wid:
+                rcv_wid_activities = db_manager.get_from_unconfirmed_db_wid(wallet_id=snd_wid, pop_from_value=msg_hash)
+                if rcv_wid_activities:
+                    self.update_wallet_balances_bcw_db(
+                        wallet_id=snd_wid,
+                        activity_list=snd_wid_activities,
+                        db_manager=db_manager
+                    )
 
     def insert_into_valid_msg_preview_hash(self, hash_prev, msg):
         """
