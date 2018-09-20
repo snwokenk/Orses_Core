@@ -721,11 +721,26 @@ class Competitor:
         return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
                gen_block_header["block_hash"]
 
+    def non_compete_process(self, q_for_block_validator, is_program_running: multiprocessing.synchronize.Event):
+        """
+        Will be run if by non competitor
+        :param q_for_block_validator:
+        :param is_program_running:
+        :return:
+        """
+        pass
+
+    def proxy_node_new_block_chooser(self):
+        # used a node that is a proxy node to choose a block. process sends signed bytes, signs valid blocks
+        # process is run by the main proxy node process which deals with receiving and satisfying
+        # valid assignment statements
+        pass
+
     def handle_new_block(self, q_object_from_compete_process_to_mining, q_for_block_validator,
                          is_generating_block: multiprocessing.synchronize.Event,
                          has_received_new_block: multiprocessing.synchronize.Event,
                          is_not_in_process_of_creating_new_block: multiprocessing.synchronize.Event,
-                         is_program_running, pause_time=60):
+                         is_program_running: multiprocessing.synchronize.Event, pause_time=60):
 
         # todo: a queue object should wait for 5 random signed bytes in a beta version, for now not needed
         # todo: for now q object will wait for 7 seconds

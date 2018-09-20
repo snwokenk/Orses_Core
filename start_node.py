@@ -31,11 +31,11 @@ from Orses_Dummy_Network_Core.DummyAdminNode import DummyAdminNode
 # https://en.bitcoin.it/wiki/Bitcoin_Core_0.11_(ch_2):_Data_Storage
 
 from getpass import getpass
-from twisted.internet import reactor, defer, threads
+from twisted.internet import reactor, threads
 
 from pkg_resources import DistributionNotFound, VersionConflict
 
-import sys, multiprocessing, queue, getopt, time, pkg_resources
+import sys, multiprocessing, queue, getopt, pkg_resources
 from multiprocessing import synchronize
 from multiprocessing.queues import Queue
 
@@ -61,8 +61,16 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: using Orses compete non_compete_process() method, allow non competing nodes to be able to validate new blocks
+# todo: this process will keep in synch with the network competition time (using block timestamps) and will then
+# todo: run the run_block_winner_chooser_process() at appropriate times
 # todo: for non competing nodes, Create logic that allows to run validator process. or run
 # todo: blockchain_propagator.run_block_winner_chooser_process()
+
+
+# todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
+# todo: running and maintaining BCWs that the admin node is a proxy of.
+
 
 # todo: implement a class that is used to check the balance of a wallet, using the blockchain
 # todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
@@ -215,6 +223,7 @@ def create_node_instances(dummy_internet, number_of_nodes_to_create: int, is_pro
     for _ in range(preferred_no_of_mining_nodes):  # creating competing nodes
         admin = admins_list.pop()
         admin.isCompetitor = True
+        admin.currenty_competing = True
 
         # create DummyAdminNode this automatically receives addr from dummy internet
         node = DummyAdminNode(admin=admin, dummy_internet=dummy_internet, real_reactor_instance=reactor,
@@ -276,7 +285,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         else:
             exit(0)
 
-    compete = admin.load_startup_files()
+    admin.load_startup_files()
 
     # instantiate a levelDB manager class
     db_manager = OrsesLevelDBManager(admin_inst=admin)
@@ -291,7 +300,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
                                is_program_running=is_program_running)
 
     # *** instantiate queue variables ***
-    q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and compete == 'y') else None
+    q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and admin.currenty_competing is True) else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
     q_for_bk_propagate = multiprocessing.Queue()
@@ -307,7 +316,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
-    if admin.isCompetitor is True and compete == 'y':
+    if admin.isCompetitor is True and admin.currenty_competing is True:
 
         # multiprocessing event objects
         is_generating_block = multiprocessing.Event()
@@ -532,16 +541,15 @@ def main(just_launched=False):
     print(admin)
     print(vars(admin))
 
-    compete = admin.load_startup_files()
+    admin.load_startup_files()
 
     # instantiate a levelDB manager class
     db_manager = OrsesLevelDBManager(admin_inst=admin)
     db_manager.load_required_databases()
     admin.load_db_manager(db_manager=db_manager)
 
-
     # *** instantiate queue variables ***
-    q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and compete == 'y') else None
+    q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and admin.currenty_competing is True) else None
     q_for_validator = multiprocessing.Queue()
     q_for_propagate = multiprocessing.Queue()
     q_for_bk_propagate = multiprocessing.Queue()
@@ -550,13 +558,12 @@ def main(just_launched=False):
     q_object_from_protocol = multiprocessing.Queue()  # goes from protocol to message sorter
     q_object_from_compete_process_to_mining = multiprocessing.Queue()  # q between compete_process and handle_new_block
 
-
     # instantiate mempool object
     mempool = MemPool(admin_inst=admin)
     admin.load_mempool_instance(mempool_inst=mempool)
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
-    if admin.isCompetitor is True and compete == 'y':
+    if admin.isCompetitor is True and admin.currenty_competing is True:
         # multiprocessing event objects
         is_generating_block = multiprocessing.Event()
         has_received_new_block = multiprocessing.Event()

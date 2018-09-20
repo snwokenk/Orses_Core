@@ -47,6 +47,7 @@ class Admin:
         self.newAdmin = newAdmin
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
+        self.currenty_competing = False
         self.is_sandbox = is_sandbox
         self.compatible_hashes = None  # set compatible hashes
         self.known_addresses = None
@@ -116,7 +117,7 @@ class Admin:
         try:
             startup_file = self.fl.load_startup_file()
         except AttributeError:
-            return 'n'  # iscompetitor
+            return False  # iscompetitor
         else:
             try:
                 self.isCompetitor = startup_file["is_competitor"]
@@ -127,9 +128,10 @@ class Admin:
         if self.isCompetitor is True and always_compete is False:
             compete = input("Start Competing? Y/n(default is Y)").lower()
             if compete in {"y", ""}:
-                compete = "y"
+                self.currenty_competing = True
         elif always_compete is True and self.isCompetitor is True:
-            compete = 'y'
+            compete = True
+            self.currenty_competing = True
 
         elif self.isCompetitor is None:
             compete = input("Would You like to compete to create blocks on the Orses Network?\n"
@@ -143,15 +145,16 @@ class Admin:
                 #       "Once it has at least 10 confirmations. Blocks created by your node will be accepted by other "
                 #       "competitors and proxy nodes")
                 self.isCompetitor = True
+                self.currenty_competing = True
                 # todo: add logic to create new competitor network message for inclusion into the blockchain
             elif compete == "n":
                 self.isCompetitor = False
 
             else:  # sets compete to n for now and skps setting admin competitor status
-                compete = 'n'
+                pass
             self.fl.save_startup_file(is_competitor=self.isCompetitor, always_compete=always_compete)
         else:
-            compete = 'n'
+            compete = False
 
         return compete
 
