@@ -87,7 +87,7 @@ class MemPool:
         :return:
         """
 
-    def update_wallet_balances_bcw_db(self, wallet_id, activity_list, db_manager):
+    def update_wallet_balances_bcw_db(self, wallet_id: str, tx_hash: str, activity_list, db_manager):
         """
         This updates the permanent wallet balances db;
 
@@ -102,8 +102,18 @@ class MemPool:
         # update avail bal by adding amt and fee. if index 1 is sender then amt will be neg else positive. fee is neg.
         wallet_data[0] = wallet_data[0] + activity_list[-1] + activity_list[-2]
 
-        # update reserved balance if tx_type = rsv_req
-        wallet_data[1] = wallet_data[1] + abs(activity_list[-1]) if activity_list[0] == "rsv_req" else wallet_data[1]
+        # update reserved balance if tx_type = rsv_req and BCW
+        if activity_list[0] == "rsv_req":
+            wallet_data[1] = wallet_data[1] + abs(activity_list[-1])
+
+            # insert into BCW db
+            db_manager.insert_into_bcw_db(
+                wallet_id=wallet_id,
+                tx_hash=tx_hash,
+                rsv_req_dict=activity_list[2],
+                signature=activity_list[3]
+
+            )
 
         # update total balance
         wallet_data[2] = wallet_data[0] + wallet_data[1]
@@ -136,7 +146,7 @@ class MemPool:
             )
             tx_list = json.loads(tx_list)
 
-            # todo: update permanent wallet balance
+
             snd_wid = tx_list[-1]
             rcv_wid = tx_list[-2]
 
@@ -147,16 +157,18 @@ class MemPool:
             if snd_wid_activities:
                 self.update_wallet_balances_bcw_db(
                     wallet_id=snd_wid,
+                    tx_hash=msg_hash,
                     activity_list=snd_wid_activities,
                     db_manager=db_manager
                 )
             if rcv_wid:
-                rcv_wid_activities = db_manager.get_from_unconfirmed_db_wid(wallet_id=snd_wid, pop_from_value=msg_hash)
+                rcv_wid_activities = db_manager.get_from_unconfirmed_db_wid(wallet_id=rcv_wid, pop_from_value=msg_hash)
                 if rcv_wid_activities:
                     self.update_wallet_balances_bcw_db(
-                        wallet_id=snd_wid,
-                        activity_list=snd_wid_activities,
-                        db_manager=db_manager
+                        wallet_id=rcv_wid,
+                        activity_list=rcv_wid_activities,
+                        db_manager=db_manager,
+                        tx_hash=msg_hash
                     )
 
     def insert_into_valid_msg_preview_hash(self, hash_prev, msg):

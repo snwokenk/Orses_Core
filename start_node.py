@@ -61,26 +61,8 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: in move_from_unconfirmed_to_confirmed() mempool, go through flow to make sure no errors
-# todo: TokenTransferValidator checks the blockchain and unconfirmed for balances.
-# todo: when a block is created update the main wallet balance and unconfirmed by adding to receivers wallet balance
-# todo: and subtracting from senders wallet balance.
-# todo: delete transactions that are confirmed (in the blockchain) or
-# todo: move to a newly confirmed database  which keeps for at least 50 blocks
-# todo: the goal is to have wallet balances and unconfirmed tx net amount to reflect acurately
-
-
-# todo: refactor token reservation and token reservation revoke validators to also validate balances according
-# todo: also refactor checking inputs to verify that
-
-
-# todo: using the new Orses DB Manager, update wallet balances after every new block, in mempool.
-# todo: Also when moved to confirmed create or update files that allows for ease
-# todo: using the format of bitcoin data storage, create several helper files
-# todo: 1, create a file that stores each data for each wallet currently or previously managed by the blockchain
-# todo: 2, create a file that stores each BCW wallet metadata, metada can include:
-# todo:     client id, wallet id, tokens reserved, tokens managed, timestamp of reservation, length of reservation,
-# todo:     last hash state
+# todo: for non competing nodes, Create logic that allows to run validator process. or run
+# todo: blockchain_propagator.run_block_winner_chooser_process()
 
 # todo: implement a class that is used to check the balance of a wallet, using the blockchain
 # todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW

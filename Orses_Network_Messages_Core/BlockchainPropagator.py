@@ -975,8 +975,11 @@ def get_message_receiver(reason_msg, convo_id, protocol, protocol_id, propagator
             )
 
         else:
-            # todo: implement a message receiver class that ends an end message when no matching reason
-            msg_rcv = None
+            msg_rcv = DefaultMessageReceiver(
+                protocol=protocol,
+                convo_id=convo_id,
+                propagator_inst=propagator_inst
+            )
 
     else:
         print(f"in {__file__}: get_message_receiver, reason msg {reason_msg}")

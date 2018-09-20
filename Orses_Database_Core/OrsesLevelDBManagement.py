@@ -8,14 +8,6 @@ class OrsesLevelDBManager:
         self.databases = dict()
         self.prefix_db = dict()
 
-    def insert_into_bcw_db(self, tx_hash, wallet_id):
-        """
-
-        :param tx_hash:
-        :param wallet_id:
-        :return:
-        """
-        pass
 
     def create_load_wallet_balances_from_genesis_block(self, overwrite=False):
         """
@@ -69,11 +61,68 @@ class OrsesLevelDBManager:
             "confirmed_msgs_hashes",
             "unconfirmed_msgs_hashes",
             "unconfirmed_msgs_wid",
+            "BCWs"
+            "BCW_Proxies"  # db storing proxy information of each BCW
 
         ]
 
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
+
+    def insert_into_bcw_db(self, wallet_id: str, tx_hash: str, rsv_req_dict: dict, signature: str, recursive_count=0):
+        """
+        BCW database stores records of each blockchain connected wallet,
+        this include the Token Reservation Request sent.
+
+        2 other databases are kept. One stores the BCW's proxy nodes and pubkey key identifying each one.
+        The other  stores BCWs that have sent a reservation revoke request.
+
+        In addition, a proxy node db, stores each proxy nodes, BCW wallets that they are proxies for,
+        proof of authorizaiton by each BCW and wallet pubkey it uses to sign network messages for each BCW
+
+        structure of a BCW levelDB database is:
+
+        key = wallet_id
+        value = [tx_hash of rsv_req, rsv_req_dict, signature, amount_reserved, timestamp]
+
+        value is json encoded and stored as a byte string(required by levelDB)
+
+        :param wallet_id:
+        :param tx_hash:
+        :param rsv_req_dict:
+        :param signature
+        :param recursive_count:
+        :return:
+        """
+
+        try:
+            value = json.dumps([tx_hash, rsv_req_dict, signature, int(float(rsv_req_dict["rsv_req"]["amt"])*1e10),
+                     int(rsv_req_dict["rsv_req"]["time"])])
+        except Exception as e:
+            print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
+            return False
+
+        try:
+            self.databases["BCWs"].put(key=wallet_id.encode(), value=value.encode())
+
+        except KeyError:
+
+            if recursive_count < 1:
+                print(f"")
+                recursive_count += 1
+                self.load_db(name="BCWs")
+                return self.insert_into_bcw_db(
+                    wallet_id=wallet_id,
+                    tx_hash=tx_hash,
+                    rsv_req_dict=rsv_req_dict,
+                    signature=signature,
+                    recursive_count=recursive_count
+                )
+            else:
+                print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: not able to load 'BCWs' db")
+                return False
+
+        return True
 
     def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0, pop_value=False, pop_from_value=None):
         """
@@ -109,7 +158,10 @@ class OrsesLevelDBManager:
                 if pop_value:
                     self.databases["unconfirmed_msgs_wid"].delete(key=wallet_id.encode())
                 elif pop_from_value:
+
+                    print(f"debug: in OrsesLevelDB: in pop from value: value to pop {pop_from_value} admin {self.admin_inst.admin_name}")
                     activity = wallet_activity.pop(pop_from_value, [])
+                    print(f"debug: in OrsesLevelDB: in pop from value, {wallet_activity} admin {self.admin_inst.admin_name}")
 
                     # if activity is empty wallet id will be deleted from db
                     self.insert_into_unconfirmed_db_wid(
@@ -497,13 +549,12 @@ class OrsesLevelDBManager:
             print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
             return [0,0,0]
         else:
-            print(f"in OrsesLevelDBManagement: This is wallet balance before {wallet_balance}")
             if wallet_balance:
                 wallet_balance = json.loads(wallet_balance.decode())
             else:
                 wallet_balance = [0,0,0]  # available, reserved, total
 
-            print(f"wallet_balance of {wallet_id} in OrsesLevelDBManagement is {wallet_balance}")
+
             return wallet_balance
 
 

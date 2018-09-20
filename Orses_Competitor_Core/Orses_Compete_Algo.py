@@ -850,8 +850,7 @@ class Competitor:
                     # how long the time to receive blocks from other nodes should last
                     end_time = time.time() + (pause_time/2)
 
-                    # To account for the fact that there might not be a valid
-
+                    # To account for the fact that there might not be a valid hash
                     if new_block["bh"]["block_hash"]:
                         # this goes to block initiator method process of BlockchainPropagator
                         q_for_block_validator.put([reason_msg, end_time, new_block])
