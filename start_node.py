@@ -61,6 +61,12 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: implement non_compete process into main() and sandbox_main(), it should be called in the stead of compete
+# todo: when block winner chosen, and block mempool/block wallet balances updated, call non_compete_process again
+
+
+# todo: allow non_compete_process to be able to send a list of needed arguments to block_initiator
+# todo: this can then be used to run the run_block_winner_chooser_process() process
 # todo: using Orses compete non_compete_process() method, allow non competing nodes to be able to validate new blocks
 # todo: this process will keep in synch with the network competition time (using block timestamps) and will then
 # todo: run the run_block_winner_chooser_process() at appropriate times

@@ -409,6 +409,7 @@ class BlockChainPropagator:
                                 self.run_block_winner_chooser_process,
                                 block=rsp[-1],
                                 end_time=rsp[1],
+                                rsp=rsp
                             )
 
                             # send newly created blocks to other nodes
@@ -496,7 +497,7 @@ class BlockChainPropagator:
 
         print("In BlockchainPropagator.py convo manager ended")
 
-    def run_block_winner_chooser_process(self, block: dict, end_time: (int, float)) -> None:
+    def run_block_winner_chooser_process(self, block: (dict, list), end_time: (int, float), rsp) -> None:
         """
         A new instance of this function is run in a separate thread by the blockchainpropagator process
         Each new instance represents a new round, The aim of this process is to find the winning block based on the
@@ -512,36 +513,46 @@ class BlockChainPropagator:
         # start accepting blocks
         self.is_accepting_blocks.set()
 
-        block_header = block["bh"]
-        block_no = int(block_header["block_no"])
-        block_before_recent_no = block_no - 2
-        self.dict_of_potential_blocks["full_hash"][block_header["block_hash"]] = block
-        self.dict_of_potential_blocks["prev"][block_header["block_hash"][-8:]] = block_header["block_hash"]
+        if isinstance(block, dict):
+            block_header = block["bh"]
+            block_no = int(block_header["block_no"])
+            block_before_recent_no = block_no - 2
+            self.dict_of_potential_blocks["full_hash"][block_header["block_hash"]] = block
+            self.dict_of_potential_blocks["prev"][block_header["block_hash"][-8:]] = block_header["block_hash"]
 
-        # get the parameters used for competition
-        if block_no == 1:
-            prime_char = get_prime_char_for_block_one()
-            exp_leading_prime, addl_chars = get_addl_chars_exp_leading_block_one()
+            # get the parameters used for competition
+            if block_no == 1:
+                prime_char = get_prime_char_for_block_one()
+                exp_leading_prime, addl_chars = get_addl_chars_exp_leading_block_one()
+            else:
+                block_before_recent = BlockChainData.get_block(
+                    admin_instance=self.admin_instance,
+                    block_no=block_before_recent_no
+                )
+
+                block_before_recent_header = block_before_recent["bh"]
+
+                prime_char = get_prime_char(block={}, block_header=block_before_recent_header)
+                exp_leading_prime, addl_chars = get_addl_chars_exp_leading(block={}, block_header=block_before_recent_header)
+
+
+                # check first block received and get score
+                winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
+                    prime_char=prime_char,
+                    addl_chars=addl_chars,
+                    curr_winning_hash="",
+                    hash_of_new_block=block_header["block_hash"],
+                    exp_leading=exp_leading_prime,
+                    current_winning_score=0
+                )
         else:
-            block_before_recent = BlockChainData.get_block(
-                admin_instance=self.admin_instance,
-                block_no=block_before_recent_no
-            )
+            # block is list [block_no, prime char, addl_chars, exp_leading_prime]
+            block_no = block[0]
+            block_before_recent_no = block_no - 2
 
-            block_before_recent_header = block_before_recent["bh"]
+            pass
 
-            prime_char = get_prime_char(block={}, block_header=block_before_recent_header)
-            exp_leading_prime, addl_chars = get_addl_chars_exp_leading(block={}, block_header=block_before_recent_header)
 
-        # check first block received and get score
-        winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
-            prime_char=prime_char,
-            addl_chars=addl_chars,
-            curr_winning_hash="",
-            hash_of_new_block=block_header["block_hash"],
-            exp_leading=exp_leading_prime,
-            current_winning_score=0
-        )
 
         while self.is_program_running.is_set() and time.time() <= end_time:
             try:

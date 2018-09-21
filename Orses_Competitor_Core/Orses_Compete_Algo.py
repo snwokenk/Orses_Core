@@ -721,14 +721,58 @@ class Competitor:
         return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
                gen_block_header["block_hash"]
 
-    def non_compete_process(self, q_for_block_validator, is_program_running: multiprocessing.synchronize.Event):
+    def non_compete_process(self, q_for_block_validator, reactor_inst,  is_program_running: multiprocessing.synchronize.Event,
+                            pause_time=60):
         """
-        Will be run if by non competitor
+        Will be run if by non competitor/ no proxy nodes
+        The aim of this process is to be in sync with the competition schedule (of most of the nodes)
+        THis process is called and either sends block arguments for validation or creates a reactor.CallLater to
+        which sends the arguments at the appropriate time
+
         :param q_for_block_validator:
         :param is_program_running:
         :return:
         """
-        pass
+
+        # first get the last block to decide the timing
+        # later each node will be started by random bytes from proxy nodes
+
+        last_block = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)
+
+        try:
+            last_block_no = int(last_block[0])
+        except (TypeError, IndexError) as e:
+            print(f"in Orses_compete_algo, non_compete_process")
+
+        else:
+
+            if last_block_no > 0:
+                block_argument = self.get_new_block_arguments(rsp=last_block[1], pause_time=pause_time)
+                start_time = block_argument[0]
+                len_competition = block_argument[1]
+            else:
+                block_argument = self.get_block_one_arguments()
+                start_time = block_argument[0]
+                len_competition = block_argument[1]
+
+            time_to_end_of_competition = start_time + len_competition
+            print(f"in non_compete_process(), time to end of competition {time_to_end_of_competition}")
+
+
+            while is_program_running.is_set():
+                if time.time() >= time_to_end_of_competition:
+                    # [block_no, prime char, addl_chars, exp_leading_prime]
+                    q_for_block_validator.put([last_block_no+1, block_argument[2], block_argument[-2],
+                                               block_argument[3]])
+                    break
+                else:
+                    reactor_inst.callLater(
+                        abs(int(time_to_end_of_competition-time.time())), # the delay
+                        lambda: q_for_block_validator.put([last_block_no+1, block_argument[2], block_argument[-2],
+                                                           block_argument[3]]) # callable
+                    )
+                    break
+
 
     def proxy_node_new_block_chooser(self):
         # used a node that is a proxy node to choose a block. process sends signed bytes, signs valid blocks
