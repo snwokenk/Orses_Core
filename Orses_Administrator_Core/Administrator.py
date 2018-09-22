@@ -48,6 +48,9 @@ class Admin:
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
         self.currenty_competing = False
+
+        # if this is true, then node validates all blocks (does not simply receive from trusted source
+        self.is_validator = True
         self.is_sandbox = is_sandbox
         self.compatible_hashes = None  # set compatible hashes
         self.known_addresses = None
@@ -60,6 +63,27 @@ class Admin:
 
 
         self.__set_or_create_pki_pair()
+
+
+    # use @property fo validator. node must be a validator if it is competing.
+    # node doesn't have to be a competitor to validate, but it must be a validator to compete
+    @property
+    def is_validator(self):
+        return self.__is_validator
+
+    @is_validator.setter
+    def is_validator(self, value: bool):
+        if value is False:
+            if self.isCompetitor is True and self.currenty_competing is True:
+                print(f"in @property of Administrator.is_valid: is_valid must be true when node is currently_competing")
+                self.__is_validator = True
+            else:
+                self.__is_validator = value
+        else:
+            self.__is_validator = True  # default
+
+
+
 
     def __set_or_create_pki_pair(self):
         """

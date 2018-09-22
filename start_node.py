@@ -61,7 +61,8 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: implement non_compete process into main() and sandbox_main(), it should be called in the stead of compete
+# todo: in check_winning_block_from_network, when block winner is chosen, action should be taken if competing or not
+# todo: one way is in non_compete_process pass a callable of non_compete_process with list of block validation info
 # todo: when block winner chosen, and block mempool/block wallet balances updated, call non_compete_process again
 
 
@@ -320,6 +321,13 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     mempool = MemPool(admin_inst=admin)
     admin.load_mempool_instance(mempool_inst=mempool)
 
+    # instantiate the competitor class
+    competitor = Competitor(
+        reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
+        admin_inst=admin,
+        is_program_running=is_program_running,
+        just_launched=just_launched,
+    )
 
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and admin.currenty_competing is True:
@@ -327,14 +335,6 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         # multiprocessing event objects
         is_generating_block = multiprocessing.Event()
         has_received_new_block = multiprocessing.Event()
-
-        # instantiate the competitor class
-        competitor = Competitor(
-            reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
-            admin_inst=admin,
-            is_program_running=is_program_running,
-            just_launched=just_launched,
-        )
 
         # start compete thread using twisted reactor's thread
         reactor.callInThread(
@@ -364,6 +364,15 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
 
         p.daemon = False
         p.start()
+
+    elif admin.is_validator:
+        reactor.callInThread(
+            competitor.non_compete_process,
+            q_for_block_validator=q_for_block_validator,
+            reactor_inst=reactor
+
+        )
+
 
 
     # *** start blockchain propagator in different thread ***
@@ -497,6 +506,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         )
 
     for temp_node in node_dict["non-competing"]:
+
+
         reactor.callInThread(
 
             temp_node.run_node,
@@ -568,19 +579,21 @@ def main(just_launched=False):
     mempool = MemPool(admin_inst=admin)
     admin.load_mempool_instance(mempool_inst=mempool)
 
+    # instantiate the competitor class
+    competitor = Competitor(
+        reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
+        admin_inst=admin,
+        just_launched=just_launched,
+        is_program_running=is_program_running
+    )
+
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and admin.currenty_competing is True:
         # multiprocessing event objects
         is_generating_block = multiprocessing.Event()
         has_received_new_block = multiprocessing.Event()
 
-        # instantiate the competitor class
-        competitor = Competitor(
-            reward_wallet="W884c07be004ee2a8bc14fb89201bbc607e75258d",
-            admin_inst=admin,
-            just_launched=just_launched,
-            is_program_running=is_program_running
-        )
+
 
         # start compete thread using twisted reactor's thread
         reactor.callInThread(
@@ -610,6 +623,14 @@ def main(just_launched=False):
 
         p.daemon = True
         p.start()
+
+    elif admin.is_validator:
+        reactor.callInThread(
+            competitor.non_compete_process,
+            q_for_block_validator=q_for_block_validator,
+            reactor_inst=reactor
+
+        )
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(

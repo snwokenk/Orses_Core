@@ -409,7 +409,6 @@ class BlockChainPropagator:
                                 self.run_block_winner_chooser_process,
                                 block=rsp[-1],
                                 end_time=rsp[1],
-                                rsp=rsp
                             )
 
                             # send newly created blocks to other nodes
@@ -419,6 +418,15 @@ class BlockChainPropagator:
                                 protocol_list=list(self.connected_protocols_dict),
                                 propagator_inst=self
 
+                            )
+                        elif reason_msg == "new_round":  # if node is a non_competitor, this is sent
+                            # rsp == ["nb', end_time_for_winner chooser process, block]
+                            # startup winner chooser process
+                            # the data is received from handle_new_block of Orses_Compete_Algo.py
+                            self.reactor_instance.callInThread(
+                                self.run_block_winner_chooser_process,
+                                block=rsp[-1],
+                                end_time=rsp[1],
                             )
                 except KeyboardInterrupt:
                     print("ending convo initiator in BlockchainPropagator")
@@ -497,7 +505,7 @@ class BlockChainPropagator:
 
         print("In BlockchainPropagator.py convo manager ended")
 
-    def run_block_winner_chooser_process(self, block: (dict, list), end_time: (int, float), rsp) -> None:
+    def run_block_winner_chooser_process(self, block: (dict, list), end_time: (int, float)) -> None:
         """
         A new instance of this function is run in a separate thread by the blockchainpropagator process
         Each new instance represents a new round, The aim of this process is to find the winning block based on the
@@ -535,24 +543,24 @@ class BlockChainPropagator:
                 prime_char = get_prime_char(block={}, block_header=block_before_recent_header)
                 exp_leading_prime, addl_chars = get_addl_chars_exp_leading(block={}, block_header=block_before_recent_header)
 
-
-                # check first block received and get score
-                winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
-                    prime_char=prime_char,
-                    addl_chars=addl_chars,
-                    curr_winning_hash="",
-                    hash_of_new_block=block_header["block_hash"],
-                    exp_leading=exp_leading_prime,
-                    current_winning_score=0
-                )
+            # check first block received and get score
+            winning_score, winning_hash, determined_with_tiebreaker = choose_winning_hash_from_two(
+                prime_char=prime_char,
+                addl_chars=addl_chars,
+                curr_winning_hash="",
+                hash_of_new_block=block_header["block_hash"],
+                exp_leading=exp_leading_prime,
+                current_winning_score=0
+            )
         else:
             # block is list [block_no, prime char, addl_chars, exp_leading_prime]
             block_no = block[0]
             block_before_recent_no = block_no - 2
-
-            pass
-
-
+            winning_score = 0
+            prime_char = block[1]
+            addl_chars = block[2]
+            exp_leading_prime = block[3]
+            winning_hash = ""
 
         while self.is_program_running.is_set() and time.time() <= end_time:
             try:
@@ -563,8 +571,8 @@ class BlockChainPropagator:
             except Empty:
                 continue
             else:
-                # todo: check block hash to see if it is the winning block
-                # todo: use the choose_winning_hash_from_two function to determine if score of new is better
+
+                print(f"new block {new_block} in admin {self.admin_instance.admin_name}")
                 if isinstance(new_block, str) and new_block in {'exit', 'quit'}:
                     # rather than using usual break return so check_winning_block_from_network() does not exec
                     return
@@ -608,7 +616,7 @@ class BlockChainPropagator:
 
         self.dict_of_endorsed_hash[winning_hash] = 1
 
-        # variable will be used to compare total endorsements to all avaliable endorsements
+        # variable will be used to compare total endorsements to all available endorsements
         total_endorsements = 0
 
         winning_block_header = winning_block['bh']
@@ -697,7 +705,13 @@ class BlockChainPropagator:
 
                 # todo: update mempool to move transactions from unconfirmed to confirmed that were included in block
                 self.mempool.update_mempool(winning_block=self.locally_known_block)
-                self.q_object_compete.put(['bcb', self.locally_known_block])
+
+                if self.admin_instance.currenty_competing is True:
+                    self.q_object_compete.put(['bcb', self.locally_known_block])
+                elif self.admin_instance.is_validator is True:
+                    # use this to re lauch noncompete process
+                    # todo: competitor.non_compete_process should pass itself allow with block data
+                    pass
 
                 break
             elif block_winner_hash in self.dict_of_potential_indirect_blocks:
@@ -722,8 +736,11 @@ class BlockChainPropagator:
                     block_of_winner = self.dict_of_potential_indirect_blocks[block_winner_hash]
                     self.locally_known_block = block_of_winner
                     self.mempool.update_mempool(winning_block=self.locally_known_block)
-                    self.q_object_compete.put(
-                        ['bcb', self.locally_known_block])
+                    if self.admin_instance.currenty_competing is True:
+                        self.q_object_compete.put(
+                            ['bcb', self.locally_known_block])
+                    elif self.admin_instance.is_validator is True:
+                        pass
                     break
                 else:  # indirect block isn't valid
                     counter -= 1
@@ -741,7 +758,10 @@ class BlockChainPropagator:
                         block_of_winner = self.dict_of_potential_blocks[direct_winner]
                         self.locally_known_block = block_of_winner
                         self.mempool.update_mempool(winning_block=self.locally_known_block)
-                        self.q_object_compete.put(['bcb', self.locally_known_block])
+                        if self.admin_instance.currenty_competing is True:
+                            self.q_object_compete.put(['bcb', self.locally_known_block])
+                        elif self.admin_instance.is_validator is True:
+                            pass
                         break
             else:
                 print(f"in check_winning_block_from_network, BlockchainPropagator. Error, no block winner")
@@ -804,7 +824,6 @@ def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_
 def msg_sender_creator(protocol_id, msg, propagator_inst: BlockChainPropagator, **kwargs):
 
     reason_msg = msg[0]  # [reason, main message(if applicable)]
-
 
     if reason_msg in blockchain_msg_reasons:
 

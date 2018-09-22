@@ -143,13 +143,7 @@ class DummyAdminNode(DummyNode):
         mempool = MemPool(admin_inst=self.admin)
         self.admin.load_mempool_instance(mempool_inst=mempool)
 
-        if self.admin.isCompetitor is True:
-            try:
-                is_alive = compete_process.is_alive()
-            except AttributeError:
-                is_alive = False
-            print(f"Compete Prcess Should Have Started In Main Thread (coded on start_node.py), "
-                  f"Process_is_alive {is_alive}")
+
 
         # *** start blockchain propagator in different thread ***
         blockchain_propagator = BlockChainPropagator(
@@ -211,8 +205,6 @@ class DummyAdminNode(DummyNode):
         )
 
 
-
-
         # *** run sorter in another thread ***
         self.reactor.callInThread(network_message_sorter.run_sorter)
 
@@ -240,6 +232,20 @@ class DummyAdminNode(DummyNode):
         propagator.network_manager = network_manager
 
         db_manager.create_load_wallet_balances_from_genesis_block()
+
+        if self.admin.isCompetitor is True:
+            try:
+                is_alive = compete_process.is_alive()
+            except AttributeError:
+                is_alive = False
+            print(f"Compete Prcess Should Have Started In Main Thread (coded on start_node.py), "
+                  f"Process_is_alive {is_alive}")
+        else:
+            if self.admin.is_validator is True:
+                self.competitor.non_compete_process(
+                    q_for_block_validator=q_for_block_validator,
+                    reactor_inst=self.reactor
+                )
 
         self.reactor.run()
 
