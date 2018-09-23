@@ -61,9 +61,18 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: allow initial setup to set an Event object which allows processes depenedent on it but not using queue object
+# todo: to wait until initial setup is done
+
+# todo: check why block is not valid
+
+# todo: test what has been coded to verify that non competitors can still validate blocks
 # todo: in check_winning_block_from_network, when block winner is chosen, action should be taken if competing or not
 # todo: one way is in non_compete_process pass a callable of non_compete_process with list of block validation info
 # todo: when block winner chosen, and block mempool/block wallet balances updated, call non_compete_process again
+
+# todo: let handle_new_block process, send a list similar to non_compete process.
+# todo: None should be in the index of the list in which a callable is expected
 
 
 # todo: allow non_compete_process to be able to send a list of needed arguments to block_initiator

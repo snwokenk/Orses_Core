@@ -132,7 +132,8 @@ class NewBlockValidator(BaseBlockValidator):
         c = CompetitorInherited(
             reward_wallet="0",
             admin_inst=self.admin_inst,
-            just_launched=False if previous_block_no > 0 else False
+            just_launched=False if previous_block_no > 0 else False,
+            is_program_running=self.block_propagator_inst.is_program_running
         )
 
         if previous_block_no > 0:

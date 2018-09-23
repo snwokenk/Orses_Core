@@ -721,7 +721,7 @@ class Competitor:
         return start_time, len_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
                gen_block_header["block_hash"]
 
-    def non_compete_process(self, q_for_block_validator, reactor_inst, pause_time=60):
+    def non_compete_process(self, q_for_block_validator, reactor_inst, last_block=None, pause_time=60):
         """
         Will be run if by non competitor/ no proxy nodes
         The aim of this process is to be in sync with the competition schedule (of most of the nodes)
@@ -729,14 +729,17 @@ class Competitor:
         which sends the arguments at the appropriate time
 
         :param q_for_block_validator:
-        :param is_program_running:
+        :param reactor_inst: instance of reactor passed from main() function in start_node.py
+        :param last_block: previous block, it's none at start of program but subsequent calles from
+                            blockchainpropgator.check_winning_block_from_network puts the previous block
         :return:
         """
+        print(f"In Non_compete() admin {self.admin_inst.admin_name}")
 
-        # first get the last block to decide the timing
+        # first get the last block to decide the timing (if last_block_is_none)
         # later each node will be started by random bytes from proxy nodes
-
-        last_block = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)
+        if last_block is None:
+            last_block = BlockChainData.get_current_known_block(admin_instance=self.admin_inst)
 
         try:
             last_block_no = int(last_block[0])
@@ -756,26 +759,62 @@ class Competitor:
                 len_competition = block_argument[1]
                 new_block_no = block_argument[4]
 
-            time_to_end_of_competition = start_time + len_competition
+            time_to_end_of_competition = start_time + len_competition  # 10 second slack
             print(f"in non_compete_process(), time to end of competition {time_to_end_of_competition}")
 
             # how long the time to receive blocks from other nodes should last
-            end_time = time.time() + (pause_time/2)
+
+
+            # define a function to callback this function non_compete_process
+            def callback_non_compete(prev_block):
+                reactor_inst.callInThread(
+                    self.non_compete_process,
+                    q_for_block_validator=q_for_block_validator,
+                    reactor_inst=reactor_inst,
+                    last_block=prev_block
+                )
+
+            # set this callable to admin miscellaneous util dict, can then be called after new block is chosen
+            self.admin_inst.util_dict["callback_non_compete"] = callback_non_compete
+
+            # todo: because call back function includes reactor, it can't be sent using q
 
             # decide reason message
             reason_msg = "new_round"
             if time.time() >= time_to_end_of_competition:
-                # [block_no, prime char, addl_chars, exp_leading_prime]
+                # [block_no, prime char, addl_chars, exp_leading_prime, callable of non_compete_process]
                 # [reason_msg, end_time, new_block]
-                q_for_block_validator.put([reason_msg, end_time, [new_block_no, block_argument[2], block_argument[-2],
-                                           block_argument[3]]])
+                q_for_block_validator.put(
+                    [
+                        reason_msg,
+                        time.time() + (pause_time/2),  # end time
+                        [
+                            new_block_no,
+                            block_argument[2],
+                            block_argument[-2],
+                            block_argument[3],
+
+                        ]
+                    ]
+                )
             else:
                 # [block_no, prime char, addl_chars, exp_leading_prime]
                 # [reason_msg, end_time, new_block]
                 reactor_inst.callLater(
-                    abs(int(time_to_end_of_competition-time.time())), # the delay
-                    lambda: q_for_block_validator.put([reason_msg, end_time, [new_block_no, block_argument[2], block_argument[-2],
-                                                       block_argument[3]]]) # callable
+                    abs(int(time_to_end_of_competition-time.time())),  # the delay
+                    lambda: q_for_block_validator.put(
+                        [
+                            reason_msg,
+                            time.time() + (pause_time/2),  # end time
+                            [
+                                new_block_no,
+                                block_argument[2],
+                                block_argument[-2],
+                                block_argument[3],
+
+                            ]
+                        ]
+                    )
                 )
 
     def proxy_node_new_block_chooser(self):

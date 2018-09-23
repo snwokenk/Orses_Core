@@ -414,7 +414,7 @@ class BlockChainPropagator:
                             # send newly created blocks to other nodes
                             msg_sender_creator_for_multiple(
                                 set_of_excluded_protocol_id={},
-                                msg=rsp,
+                                msg=[rsp[0], rsp[-1]],
                                 protocol_list=list(self.connected_protocols_dict),
                                 propagator_inst=self
 
@@ -452,7 +452,7 @@ class BlockChainPropagator:
         try:
             while True:
                 rsp = self.q_for_bk_propagate.get()  # [protocol_id, data_list],  data_list=['b', convo_id, etc]
-                print("in convo manager, blockchainprop: message", rsp)
+                print(f"in convo manager, admin: {self.admin_instance.admin_name}, blockchainprop: message", rsp)
 
                 try:
                     if isinstance(rsp, str) and rsp in {'exit', 'quit'}:
@@ -553,9 +553,10 @@ class BlockChainPropagator:
                 current_winning_score=0
             )
         else:
-            # block is list [block_no, prime char, addl_chars, exp_leading_prime]
+            # block is list [block_no, prime char, addl_chars, exp_leading_prime, callable of non_compete_process]
+            # if block is a list, then Node is not competing but validating OR
+            # no valid hash was found
             block_no = block[0]
-            block_before_recent_no = block_no - 2
             winning_score = 0
             prime_char = block[1]
             addl_chars = block[2]
@@ -563,6 +564,7 @@ class BlockChainPropagator:
             winning_hash = ""
 
         while self.is_program_running.is_set() and time.time() <= end_time:
+            print(f"in run_block_winner_chooser_process, end time is {end_time}, admin is {self.admin_instance.admin_name}")
             try:
                 # blocks are received from NewBlockValidator.
                 # this function, is meant to determine the winning block from valid blocks received
@@ -597,17 +599,19 @@ class BlockChainPropagator:
 
         self.check_winning_block_from_network(
             winning_hash=winning_hash,
-            winning_score=winning_score,
-            block_no=block_no
+            block_no=block_no,
         )
 
-    def check_winning_block_from_network(self,  winning_hash, block_no, winning_score):
+    def check_winning_block_from_network(self,  winning_hash, block_no):
         """
         This function will use the locally determined winning block and check for endorsements from proxy nodes.
         The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
         :return:
         """
 
+        # todo: put in checks in case winning hash is not found and there is "" or None
+        print(f"in check_winning_block_from_network, blockchainpropgator: winning hash is {winning_hash}, "
+              f"admin {self.admin_instance.admin_name}")
         # start accepting block choices
         self.is_accepting_block_choices.set()
 
@@ -627,6 +631,8 @@ class BlockChainPropagator:
 
         # send winning hash to others who have asked
         # this is done by checking the deferred dict of propagator inst
+
+
         deffered_list = self.dict_of_deferred_convo.pop('bc', [])  # this will delete 'bc' key. return [] if no 'bc'
         for list_of_deffered in deffered_list:
             # list_of_deffered = [SendBlockWinner.listen_deffered callable, msg of rsp]
@@ -708,10 +714,6 @@ class BlockChainPropagator:
 
                 if self.admin_instance.currenty_competing is True:
                     self.q_object_compete.put(['bcb', self.locally_known_block])
-                elif self.admin_instance.is_validator is True:
-                    # use this to re lauch noncompete process
-                    # todo: competitor.non_compete_process should pass itself allow with block data
-                    pass
 
                 break
             elif block_winner_hash in self.dict_of_potential_indirect_blocks:
@@ -739,8 +741,6 @@ class BlockChainPropagator:
                     if self.admin_instance.currenty_competing is True:
                         self.q_object_compete.put(
                             ['bcb', self.locally_known_block])
-                    elif self.admin_instance.is_validator is True:
-                        pass
                     break
                 else:  # indirect block isn't valid
                     counter -= 1
@@ -760,8 +760,7 @@ class BlockChainPropagator:
                         self.mempool.update_mempool(winning_block=self.locally_known_block)
                         if self.admin_instance.currenty_competing is True:
                             self.q_object_compete.put(['bcb', self.locally_known_block])
-                        elif self.admin_instance.is_validator is True:
-                            pass
+
                         break
             else:
                 print(f"in check_winning_block_from_network, BlockchainPropagator. Error, no block winner")
@@ -773,6 +772,16 @@ class BlockChainPropagator:
                 block=block_of_winner,
                 admin_instance=self.admin_instance
             )
+
+        if self.admin_instance.currenty_competing is False and self.admin_instance.is_validator is True:
+
+            try:
+                # def callback_non_compete(prev_block) callback is called, this starts a new non_compete_process thread
+                self.admin_instance.util_dict["callback_non_compete"](block_of_winner)
+            except KeyError:
+                print(f"error in check_winning_block_from_network, blockchainpropagator: "
+                      f"'callback_non_compete' key not in Administrator.util_dict")
+
 
 
 def choose_winning_hash_from_two(prime_char: str, addl_chars: str, curr_winning_hash: str, hash_of_new_block: str,
@@ -1394,14 +1403,23 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
         :return:
         """
 
+        print(f"in ReceiveNewlyCreatedBlock admin {self.propagator_inst.admin_instance.admin_name}, starting")
+
         # only when node is accepting new blocks,
         # block number will be validated to make sure not sending stale blocks
-        if self.propagator_inst.is_accepting_blocks.is_set():
+
+        # enter a while loop that only breaks if program is closed or is_accepting block is True
+        while self.propagator_inst.is_program_running.is_set() and \
+            not self.propagator_inst.is_accepting_blocks.wait(timeout=5):
+            pass
+
+        if self.propagator_inst.is_program_running.is_set():
             # msg = ['b', [convo id, convo id], ['nb'
 
             # end the convo
             self.end_convo = True
             validator = NewBlockValidator if not self.is_block_one else NewBlockOneValidator
+            print(f"in ReceiveNewlyCreatedBlock admin {self.propagator_inst.admin_instance.admin_name}, msg {msg}")
             block = msg[2][1]
 
 
@@ -1422,6 +1440,7 @@ class ReceiveNewlyCreatedBlock(BlockChainMessageReceiver):
             # )
 
         else:
+            print(f"in ReceiveNewlyCreatedBlock admin {self.propagator_inst.admin_instance.admin_name}, ending convo")
             self.end_convo = True
 
 

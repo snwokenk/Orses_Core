@@ -61,6 +61,8 @@ class Admin:
         # if mempool is used then self.load_mempool_instance() is used
         self.mempool = None
 
+        # util_dictionary, to keep miscellaneous things that can be used throughout the program
+        self.util_dict = dict()
 
         self.__set_or_create_pki_pair()
 
