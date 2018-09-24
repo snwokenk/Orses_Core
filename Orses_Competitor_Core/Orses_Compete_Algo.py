@@ -786,7 +786,7 @@ class Competitor:
         # decide reason message
         reason_msg = "new_round"
         if time.time() >= time_to_end_of_competition:
-            # [block_no, prime char, addl_chars, exp_leading_prime, callable of non_compete_process]
+            # [block_no, prime char, addl_chars, exp_leading_prime,]
             # [reason_msg, end_time, new_block]
             q_for_block_validator.put(
                 [
@@ -802,8 +802,8 @@ class Competitor:
                 ]
             )
         else:
-            # [block_no, prime char, addl_chars, exp_leading_prime]
-            # [reason_msg, end_time, new_block]
+            # list of args = [block_no, prime char, addl_chars, exp_leading_prime]
+            # [reason_msg, end_time, new_block or list of args]
             reactor_inst.callLater(
                 abs(int(time_to_end_of_competition-time.time())),  # the delay
                 lambda: q_for_block_validator.put(
@@ -952,15 +952,36 @@ class Competitor:
                     end_time = time.time() + (pause_time/2)
 
                     # To account for the fact that there might not be a valid hash
+                    # if not a valid has, then block_hash will be None
                     if new_block["bh"]["block_hash"]:
                         # this goes to block initiator method process of BlockchainPropagator
+                        end_time = time.time() + (pause_time/2)
                         q_for_block_validator.put([reason_msg, end_time, new_block])
                     else:
 
-                        # todo: if local node has no valid block, it can still receive blocks and participate in
-                        # todo: choosing the winner, set it up for this, might be done when running test net on
-                        # todo: multiple computers
+
+                        # todo: send list similar to non_compete process, when valid hash not found
+                        # list of args = [block_no, prime char, addl_chars, exp_leading_prime]
+                        # [reason_msg, end_time, new_block or list of args]
+
+                        # set to true, if no hash was found, no need to wait if trying to exit.
+                        # because there is no likely hood a monetary loss
                         is_not_in_process_of_creating_new_block.set()
+
+                        q_for_block_validator.put(
+                            [
+                                "new_round",  # reason message
+                                time.time() + (pause_time/2),  # end time
+                                [
+                                    new_block_no,
+                                    single_prime_char,
+                                    addl_chars,
+                                    exp_leading_prime
+                                ],
+
+
+                            ]
+                        )
 
             except TypeError as e:
                 print(f"in Orses Compete error: {e}")

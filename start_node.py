@@ -61,19 +61,19 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: allow initial setup to set an Event object which allows processes depenedent on it but not using queue object
-# todo: to wait until initial setup is done
 
+# todo: finish up get_from_bcw_db()
 
-# todo: let handle_new_block process, send a list similar to non_compete process if no valid hash
-# todo: None should be in the index of the list in which a callable is expected
+# todo: implement a class that is used to check the balance of a wallet, using the blockchain
+# todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
+
+# todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
 # todo: running and maintaining BCWs that the admin node is a proxy of.
 
 
-# todo: implement a class that is used to check the balance of a wallet, using the blockchain
-# todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
+
 
 # todo: create a block validator which validates newly created block from others
 # todo: this validator first checks that transactions in the block are part of its validated transactions
@@ -307,6 +307,14 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         just_launched=just_launched,
     )
 
+    def callback_non_compete(prev_block):
+        reactor.callInThread(
+            competitor.non_compete_process,
+            q_for_block_validator=q_for_block_validator,
+            reactor_inst=reactor,
+            last_block=prev_block
+        )
+
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and admin.currenty_competing is True:
 
@@ -344,12 +352,10 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         p.start()
 
     elif admin.is_validator:
-        reactor.callInThread(
-            competitor.non_compete_process,
-            q_for_block_validator=q_for_block_validator,
-            reactor_inst=reactor
-
-        )
+        # callback_non_compete() will be passed as a callback function to BlockchainPropagator.initial_setup
+        # once initial setup is done and recent block is not none it will be called in
+        # send_response_to_other_threads function defined in initial_setup method
+        pass
 
 
 
@@ -367,7 +373,7 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     )
 
     # *** set intial setup to start in 3 seconds. This will get new blocks and data before other processes start ***
-    reactor.callLater(3.0, blockchain_propagator.initial_setup)
+    reactor.callLater(3.0, blockchain_propagator.initial_setup, callback_non_compete)
 
     # *** start blockchain propagator manager in separate thread ***
     reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
@@ -565,6 +571,14 @@ def main(just_launched=False):
         is_program_running=is_program_running
     )
 
+    def callback_non_compete(prev_block):
+        reactor.callInThread(
+            competitor.non_compete_process,
+            q_for_block_validator=q_for_block_validator,
+            reactor_inst=reactor,
+            last_block=prev_block
+        )
+
     # start compete(mining) process, if compete is yes. process is started using separate process (not just thread)
     if admin.isCompetitor is True and admin.currenty_competing is True:
         # multiprocessing event objects
@@ -599,16 +613,14 @@ def main(just_launched=False):
 
         )
 
-        p.daemon = True
+        p.daemon = False
         p.start()
 
     elif admin.is_validator:
-        reactor.callInThread(
-            competitor.non_compete_process,
-            q_for_block_validator=q_for_block_validator,
-            reactor_inst=reactor
-
-        )
+        # callback_non_compete() will be passed as a callback function to BlockchainPropagator.initial_setup
+        # once initial setup is done and recent block is not none it will be called in
+        # send_response_to_other_threads function defined in initial_setup method
+        pass
 
     # *** start blockchain propagator in different thread ***
     blockchain_propagator = BlockChainPropagator(
@@ -625,7 +637,7 @@ def main(just_launched=False):
     )
 
     # *** set intial setup to start in 3 seconds. This will get new blocks and data before other processes start ***
-    reactor.callLater(3.0, blockchain_propagator.initial_setup)
+    reactor.callLater(3.0, blockchain_propagator.initial_setup, callback_non_compete)
 
     # *** start blockchain propagator manager in separate thread ***
     reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
@@ -729,15 +741,22 @@ if __name__ == '__main__':
 
     long_opts = ["live", "sandbox=", "mining=", "new"]  # if sandbox is put then number of nodes must be present
     # short_opts = "l s:n"
-
     try:
         optlist, args = getopt.getopt(sys.argv[1:], shortopts='', longopts=long_opts)
     except getopt.GetoptError as e:
         print(e)
+        print(f"to run live mode use: 'python start_node.py --live'\n")
+        print(f"to run live mode for a new node: 'python start_node.py --live --new'\n")
+
+        print(f"to run sandbox mode use: 'python start_node.py --sandbox (number_nodes)' number_nodes should be how "
+              f"many fake nodes to create.\n\nie 'python start_node.py --sandbox 2' will create 2 extra fake nodes\n")
+        print(f"to determine how many mining fake nodes use --mining\n"
+              f"example: 'python start_node.py --sandbox 2 --mining 1' , this will create 2 fake nodes with 1 a mining "
+              f"node")
+
     else:
 
         option_dict = dict(optlist)
-        print(option_dict)
 
         if not option_dict:  # run default sandbox simulation
             sandbox_main(

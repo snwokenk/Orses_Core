@@ -143,7 +143,21 @@ class DummyAdminNode(DummyNode):
         mempool = MemPool(admin_inst=self.admin)
         self.admin.load_mempool_instance(mempool_inst=mempool)
 
+        def callback_non_compete(prev_block):
+            reactor.callInThread(
+                self.competitor.non_compete_process,
+                q_for_block_validator=q_for_block_validator,
+                reactor_inst=self.reactor,
+                last_block=prev_block
+            )
 
+        if self.admin.isCompetitor is True:
+            try:
+                is_alive = compete_process.is_alive()
+            except AttributeError:
+                is_alive = False
+            print(f"Compete Prcess Should Have Started In Main Thread (coded on start_node.py), "
+                  f"Process_is_alive {is_alive}")
 
         # *** start blockchain propagator in different thread ***
         blockchain_propagator = BlockChainPropagator(
@@ -159,7 +173,7 @@ class DummyAdminNode(DummyNode):
         )
 
         # *** set intial setup to start in 3 seconds. This will get new blocks and data before other processes start ***
-        self.reactor.callLater(3.0, blockchain_propagator.initial_setup)
+        self.reactor.callLater(3.0, blockchain_propagator.initial_setup, callback_non_compete)
 
         # *** start blockchain propagator manager in separate thread ***
         self.reactor.callInThread(blockchain_propagator.run_propagator_convo_manager)
@@ -233,19 +247,7 @@ class DummyAdminNode(DummyNode):
 
         db_manager.create_load_wallet_balances_from_genesis_block()
 
-        if self.admin.isCompetitor is True:
-            try:
-                is_alive = compete_process.is_alive()
-            except AttributeError:
-                is_alive = False
-            print(f"Compete Prcess Should Have Started In Main Thread (coded on start_node.py), "
-                  f"Process_is_alive {is_alive}")
-        else:
-            if self.admin.is_validator is True:
-                self.competitor.non_compete_process(
-                    q_for_block_validator=q_for_block_validator,
-                    reactor_inst=self.reactor
-                )
+
 
         self.reactor.run()
 

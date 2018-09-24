@@ -177,8 +177,7 @@ class BlockChainPropagator:
             print(f"In get_pubkey_of_node_with_protocol, blockchainPropagator, protocol id not in dict. BUT SHOULD BE")
             return None
 
-
-    def initial_setup(self, recursive_count=0, no_connected_peers_ok=True):
+    def initial_setup(self, non_compete_callable, no_connected_peers_ok=True):
         """
         Meant to run before Blockchain Propagator, Network Propagator and Compete processes
         :param recursive_count:
@@ -186,7 +185,7 @@ class BlockChainPropagator:
         :return:
         """
 
-        def first_initial_setup(recursive_count=0, prop_inst=self, no_connected_peers_ok=True):
+        def first_initial_setup(recursive_count=0, prop_inst=self, no_connected_peers_ok=no_connected_peers_ok):
 
             protocol_list = set(self.connected_protocols_dict)
 
@@ -363,9 +362,14 @@ class BlockChainPropagator:
 
             if recent_block:
                 self.mempool.update_mempool(winning_block=recent_block)
-                if (prop_inst.admin_instance.isCompetitor is True and
-                        isinstance(prop_inst.q_object_compete, multiprocessing.queues.Queue)):
+                if (prop_inst.admin_instance.isCompetitor is True and prop_inst.admin_instance.currenty_competing is
+                        True and isinstance(prop_inst.q_object_compete, multiprocessing.queues.Queue)):
                     prop_inst.q_object_compete.put(recent_block)
+
+                elif prop_inst.admin_instance.currenty_competing is False and prop_inst.admin_instance.is_validator:
+                    # call non_compete process
+                    non_compete_callable(recent_block)
+
 
         # START INITiAL SETUP
         self.reactor_instance.callInThread(
@@ -596,20 +600,23 @@ class BlockChainPropagator:
 
         # stop accepting blocks
         self.is_accepting_blocks.clear()
-
-        self.check_winning_block_from_network(
-            winning_hash=winning_hash,
-            block_no=block_no,
-        )
+        if winning_hash:
+            self.check_winning_block_from_network(
+                winning_hash=winning_hash,
+                block_no=block_no,
+            )
+        else:
+            print(f"in run_block_winner_chooser_process, winning hash not available, winning hash is: {winning_hash}")
 
     def check_winning_block_from_network(self,  winning_hash, block_no):
         """
         This function will use the locally determined winning block and check for endorsements from proxy nodes.
         The block with endorsements representing the most tokens is used as the next block. (as long as it is valid)
+        :param winning_hash: must be a non empty string, call this function in run_block_winner_chooser_process(),
+                after a local winning hash has been determined
         :return:
         """
 
-        # todo: put in checks in case winning hash is not found and there is "" or None
         print(f"in check_winning_block_from_network, blockchainpropgator: winning hash is {winning_hash}\n"
               f"block number is {block_no}\n"
               f"admin {self.admin_instance.admin_name}")
@@ -784,6 +791,9 @@ class BlockChainPropagator:
             except KeyError:
                 print(f"error in check_winning_block_from_network, blockchainpropagator: "
                       f"'callback_non_compete' key not in Administrator.util_dict")
+
+
+        # todo: reset self.dict_of_potential_winners
 
 
 

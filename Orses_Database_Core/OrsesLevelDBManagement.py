@@ -69,6 +69,14 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
+    def get_from_bcw_db(self, wallet_id):
+        """
+        returns
+        :param wallet_id:
+        :return:
+        """
+
+        # todo: finish up
     def insert_into_bcw_db(self, wallet_id: str, tx_hash: str, rsv_req_dict: dict, signature: str, recursive_count=0):
         """
         BCW database stores records of each blockchain connected wallet,
@@ -104,6 +112,8 @@ class OrsesLevelDBManager:
 
         try:
             self.databases["BCWs"].put(key=wallet_id.encode(), value=value.encode())
+
+            # todo: insert proxies of BCW into BCW_Proxies db
 
         except KeyError:
 

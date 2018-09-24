@@ -120,7 +120,6 @@ class MemPool:
 
         db_manager.update_wallet_balance_db(wallet_id=wallet_id, wallet_data=wallet_data)
 
-
     def move_from_unconfirmed_to_confirmed(self, msg_hash: str, db_manager):
         """
         insert into confirmed leveldb
