@@ -581,7 +581,7 @@ class BlockChainPropagator:
 
                 new_block_header = new_block["bh"]
 
-                self.dict_of_potential_blocks["full_hash"][new_block_header["block_hash"]] = block
+                self.dict_of_potential_blocks["full_hash"][new_block_header["block_hash"]] = new_block
                 self.dict_of_potential_blocks["prev"][new_block_header["block_hash"][-8:]] = \
                     new_block_header["block_hash"]
 
@@ -610,7 +610,8 @@ class BlockChainPropagator:
         """
 
         # todo: put in checks in case winning hash is not found and there is "" or None
-        print(f"in check_winning_block_from_network, blockchainpropgator: winning hash is {winning_hash}, "
+        print(f"in check_winning_block_from_network, blockchainpropgator: winning hash is {winning_hash}\n"
+              f"block number is {block_no}\n"
               f"admin {self.admin_instance.admin_name}")
         # start accepting block choices
         self.is_accepting_block_choices.set()
@@ -623,6 +624,8 @@ class BlockChainPropagator:
         # variable will be used to compare total endorsements to all available endorsements
         total_endorsements = 0
 
+
+        print(f"winning_block in check_winning_block_from_network {winning_block} admin {self.admin_instance.admin_name}")
         winning_block_header = winning_block['bh']
 
         # todo: for now use the absolute number of endorsements from nodes
@@ -637,9 +640,9 @@ class BlockChainPropagator:
         for list_of_deffered in deffered_list:
             # list_of_deffered = [SendBlockWinner.listen_deffered callable, msg of rsp]
             self.reactor_instance.callInThread(
-                callable=list_of_deffered[0],
+                list_of_deffered[0],
                 msg=list_of_deffered[1],
-                block_choice_prev=winning_block_header['block_hash'][-8:]
+                block_choice_full_block=winning_block  # pass full winning block choice (initial)
             )
 
         # once the deferred have been dealt with, send a request for block choice
@@ -1481,7 +1484,9 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
         self.peer_node_winner_prev = None
         self.peer_node_winner_pubkey = None
         self.peer_node_winner_sig = None
-        self.has_pubkey_of_peer_node = True if self.protocol.proto_id in self.propagator_inst.connected_protocols_dict_of_pubkey \
+        self.has_pubkey_of_peer_node = True if \
+            self.protocol.proto_id in self.propagator_inst.connected_protocols_dict_of_pubkey and \
+            self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol.proto_id]\
             else False
         self.received_first_message = False
 
@@ -1553,7 +1558,7 @@ class RequestBlockWinnerChoice(BlockChainMessageSender):
             preview = main_msg[0]
             signature = main_msg[1]
 
-            pubkey_of_protocol = self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol] if \
+            pubkey_of_protocol = self.propagator_inst.connected_protocols_dict_of_pubkey[self.protocol.proto_id] if \
                 self.has_pubkey_of_peer_node else (main_msg[2] if len(main_msg) > 2 and isinstance(main_msg[2], dict) else None)
 
             if not pubkey_of_protocol:

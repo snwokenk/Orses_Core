@@ -105,7 +105,6 @@ class NewBlockValidator(BaseBlockValidator):
 
         merkle_root_validated = o.merkle_root == self.block_header["mrh"]
 
-
         print(f" is merkle root validated {merkle_root_validated}")
         print(f"merkle root from block {self.block_header['mrh']}\n"
               f"merkle root recreated {o.merkle_root}")
@@ -138,7 +137,7 @@ class NewBlockValidator(BaseBlockValidator):
 
         if previous_block_no > 0:
             start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
-                prev_hash = c.get_new_block_arguments(rsp=self.block)
+                prev_hash = c.get_new_block_arguments(rsp=[self.prev_blockNo, self.prev_block])
         elif previous_block_no == 0:
             start_time, len_of_competition, single_prime_char, exp_leading_prime, new_block_no, addl_chars, \
                 prev_hash = c.get_block_one_arguments()
@@ -158,11 +157,12 @@ class NewBlockValidator(BaseBlockValidator):
                 prime_char=single_prime_char*exp_leading_prime,
                 extra_nonce=None,
                 nonce=None,
-                hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}{prev_hash}'.encode()),
+                hash_hex=competitive_hasher_func(f'{combined_merkle}{nonce}'.encode()),
                 len_prime_char=exp_leading_prime,
                 check_if_valid=True
 
             )
+
             print("In NewBlockValidator  Hash Is Valid", is_hash_valid)
         except Exception as e:
             print(f"in New Block Validator exception {e}")

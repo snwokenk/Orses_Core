@@ -64,25 +64,9 @@ else:
 # todo: allow initial setup to set an Event object which allows processes depenedent on it but not using queue object
 # todo: to wait until initial setup is done
 
-# todo: check why block is not valid
 
-# todo: test what has been coded to verify that non competitors can still validate blocks
-# todo: in check_winning_block_from_network, when block winner is chosen, action should be taken if competing or not
-# todo: one way is in non_compete_process pass a callable of non_compete_process with list of block validation info
-# todo: when block winner chosen, and block mempool/block wallet balances updated, call non_compete_process again
-
-# todo: let handle_new_block process, send a list similar to non_compete process.
+# todo: let handle_new_block process, send a list similar to non_compete process if no valid hash
 # todo: None should be in the index of the list in which a callable is expected
-
-
-# todo: allow non_compete_process to be able to send a list of needed arguments to block_initiator
-# todo: this can then be used to run the run_block_winner_chooser_process() process
-# todo: using Orses compete non_compete_process() method, allow non competing nodes to be able to validate new blocks
-# todo: this process will keep in synch with the network competition time (using block timestamps) and will then
-# todo: run the run_block_winner_chooser_process() at appropriate times
-# todo: for non competing nodes, Create logic that allows to run validator process. or run
-# todo: blockchain_propagator.run_block_winner_chooser_process()
-
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
 # todo: running and maintaining BCWs that the admin node is a proxy of.
@@ -90,12 +74,7 @@ else:
 
 # todo: implement a class that is used to check the balance of a wallet, using the blockchain
 # todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
-# todo: allow non-competitors to still run run_block_winner_chooser_process and check_winning_block_from_network
 
-
-# todo: bitcoin propagation takes roughly 1 minute for a propagation of 95%. Will have to increase wait time to 45 secs
-
-# todo: Refactor ttx or rsv_req validators to search blocks and verify enough tokens are unspent for transaction
 # todo: create a block validator which validates newly created block from others
 # todo: this validator first checks that transactions in the block are part of its validated transactions
 # todo: those that are not a independently verified before block is accepted by node
@@ -106,16 +85,9 @@ else:
 # todo: in order to speed up merkle root creation, propagation and verification, dicts might be turned to list
 # todo: when adding transactions etc to new block, verify it hasn't been added to prev block(not in merkle root)
 
-# todo: in compete() of Competitor class, figure out how to add store txs, wallet state hashes and misc msgs before
-# todo: block is created. This process should allow creation of empty dicts at start of a round and populate them
-# todo: during a round. The dict can be divided into fees, time etc
-
 
 # todo: token amounts should be represented in the smallest unit of Orses tokens or 'ntakiris'
 # todo: with 1 orses token == 10,000,000,000 (10 billion) ntakiris
-
-# todo: even though multiprocessing is being used to to use twisted's Process Protocol
-# todo: https://twistedmatrix.com/documents/current/core/howto/process.html
 
 
 # todo: delete the many print statements in BlockchainPropagator.py
@@ -132,10 +104,7 @@ else:
 # todo: Refactor Assignment statement, Token Transfer, Token Reservation Validators to check blockchain for proof of tokens
 
 
-# todo: Build a way to finish up any conversations with peers before ending program
-
-
-# todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities
+# todo: in send_token() and reserve_token() in Orses.py add a way of updating tokens and activities ( Orses_client)
 
 """
 file used to start node
