@@ -69,7 +69,7 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
-    def get_from_bcw_db(self, wallet_id):
+    def get_from_bcw_db(self, wallet_id, recursive_count=0):
         """
         returns
         :param wallet_id:
@@ -77,6 +77,31 @@ class OrsesLevelDBManager:
         """
 
         # todo: finish up
+        try:
+            # wallet balance = [[tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt], ...]
+            wallet_activity = self.databases["BCWs"].get(key=wallet_id.encode())
+
+        except KeyError:
+            # load up db
+            if recursive_count < 1:
+                recursive_count += 1
+                self.load_db(name="BCWs", create_if_missing=False)
+                return self.get_from_bcw_db(wallet_id=wallet_id, recursive_count=recursive_count)
+            else:
+                print(f"in get_from_bcw_db, unconfirmed_msgs_wid could not be loaded")
+                return []
+
+        except plyvel.Error:
+            print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
+            return []
+
+        else:
+            if wallet_activity:
+                return json.loads(wallet_activity.decode())
+            else:
+                return []
+
+
     def insert_into_bcw_db(self, wallet_id: str, tx_hash: str, rsv_req_dict: dict, signature: str, recursive_count=0):
         """
         BCW database stores records of each blockchain connected wallet,
@@ -105,7 +130,7 @@ class OrsesLevelDBManager:
 
         try:
             value = json.dumps([tx_hash, rsv_req_dict, signature, int(float(rsv_req_dict["rsv_req"]["amt"])*1e10),
-                     int(rsv_req_dict["rsv_req"]["time"])])
+                     int(rsv_req_dict["rsv_req"]["exp"])])
         except Exception as e:
             print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
             return False
@@ -159,7 +184,7 @@ class OrsesLevelDBManager:
                 return {}
 
         except plyvel.Error:
-            print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
+            print(f"Error in OrsesLevelDBManager, get_from_uncofirmed_db_wid DB does not exist")
             return {}
         else:
             print(f"in get_from_uncofirmed_db_wid, wallet activity: {wallet_activity} admin {self.admin_inst.admin_name}")

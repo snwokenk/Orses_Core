@@ -20,7 +20,7 @@ class TokenReservationRequestValidator:
         self.fee = tkn_rsv_dict["rsv_req"]["fee"]
         self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
         self.timestamp = tkn_rsv_dict["rsv_req"]["time"]
-        self.resevation_expiration = tkn_rsv_dict["rsv_req"]["exp"]
+        self.reservation_expiration = tkn_rsv_dict["rsv_req"]["exp"]
         self.wallet_pubkey = wallet_pubkey
         self.non_json_wallet_pubkey = None
         self.client_id = tkn_rsv_dict["client_id"]
@@ -71,7 +71,7 @@ class TokenReservationRequestValidator:
                 amt=float(self.amount),
                 fee=float(self.fee),
                 timestamp=int(self.timestamp),
-                expiration=int(self.resevation_expiration),
+                expiration=int(self.reservation_expiration),
                 owner_id=self.client_id,
                 sig=self.signature,
                 json_trr_dict=self.rsv_req_json,
@@ -157,7 +157,7 @@ class TokenReservationRequestValidator:
             return False
 
         print(f"duration in TokenReservationRequestValidator {(self.resevation_expiration - self.timestamp) >= 2592000}")
-        return (self.resevation_expiration - self.timestamp) >= 2592000  # 30 days in seconds
+        return (self.reservation_expiration - self.timestamp) >= 2592000  # 30 days in seconds
 
     def check_inputs(self):
         try:

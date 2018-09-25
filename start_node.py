@@ -62,10 +62,8 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: finish up get_from_bcw_db()
 
-# todo: implement a class that is used to check the balance of a wallet, using the blockchain
-# todo: This class should be able to determine if the wallet is a managed directly on the blockchain or by a BCW
+# todo: create a message receiver that sends wallet balance requested, if wallet is bcw, when wallet reservation exp
 
 # todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
