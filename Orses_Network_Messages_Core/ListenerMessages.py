@@ -13,6 +13,7 @@ validator_dict_callable["tx_trx"] = TokenReservationRevokeValidator.TokenReserva
 
 retriever_dict_callable = dict()
 retriever_dict_callable["rq_adr"] = None
+retriever_dict_callable['rq_bal'] = None  # request wallet balance
 
 class ListenerMessages:
     """
@@ -29,7 +30,7 @@ class ListenerMessages:
         higher class
         :param msg_type: this will be used to determine the validator to call depending on msg type
         """
-        assert (isinstance(messages_heard, list)), "first argument of ListnerMessages Class must be a list"
+        assert (isinstance(messages_heard, list)), "first argument of ListenerMessages Class must be a list"
 
         self.admin_instance = admin_instance
         self.messages_heard = messages_heard
@@ -59,6 +60,20 @@ class ListenerMessages:
         :return:
         """
         pass
+
+
+class ListenerForBalanceRequest(ListenerMessages):
+
+    def __init__(self, messages_heard, netmsginst, msg_type, admin_instance):
+        super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type,
+                         admin_instance=admin_instance)
+
+    def speak(self):
+
+        if self.messages_heard and self.messages_heard[-1] == self.last_msg:
+            self.netmsginst.end_convo = True
+            return self.last_msg
+        # elif self.messages_heard
 
 
 class ListenerForSendingTokens(ListenerMessages):
@@ -163,5 +178,6 @@ class ListenerForReservingTokens(ListenerForSendingTokens):
 
 class ListenerForRevokingTokens(ListenerForSendingTokens):
     pass
+
 
 

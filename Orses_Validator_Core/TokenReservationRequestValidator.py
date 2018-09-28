@@ -156,7 +156,7 @@ class TokenReservationRequestValidator:
         if not int(time.time()) < int(self.timestamp + 300):  # first verify request not stale
             return False
 
-        print(f"duration in TokenReservationRequestValidator {(self.resevation_expiration - self.timestamp) >= 2592000}")
+        print(f"duration in TokenReservationRequestValidator {(self.reservation_expiration - self.timestamp) >= 2592000}")
         return (self.reservation_expiration - self.timestamp) >= 2592000  # 30 days in seconds
 
     def check_inputs(self):
