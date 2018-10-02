@@ -171,7 +171,7 @@ class OrsesLevelDBManager:
         """
 
         try:
-            # wallet balance = [[tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt], ...]
+            # {tx_hash: [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos.]}
             wallet_activity = self.databases["unconfirmed_msgs_wid"].get(key=wallet_id.encode())
         except KeyError:
             # load up db

@@ -1,5 +1,6 @@
 import collections, json
 
+from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
     TokenReservationRequestValidator, TokenReservationRevokeValidator
 
@@ -10,6 +11,7 @@ validator_dict_callable["tx_asg"] = AssignmentStatementValidator.AssignmentState
 validator_dict_callable["tx_ttx"] = TokenTransferValidator.TokenTransferValidator
 validator_dict_callable["tx_trr"] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict_callable["tx_trx"] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
+# validator_dict_callable[]
 
 retriever_dict_callable = dict()
 retriever_dict_callable["rq_adr"] = None
@@ -73,7 +75,26 @@ class ListenerForBalanceRequest(ListenerMessages):
         if self.messages_heard and self.messages_heard[-1] == self.last_msg:
             self.netmsginst.end_convo = True
             return self.last_msg
-        # elif self.messages_heard
+        elif self.messages_heard and len(self.messages_heard) == 3:
+            # then last message should be wallet id
+            # [available balance, reserved balance, total balance]
+            wallet_balance = WalletInfo.get_wallet_balance_info(
+                admin_inst=self.admin_instance,
+                wallet_id=self.messages_heard[-1].decode()
+            )
+            # turn list into a json string
+            wallet_balance = json.dumps(wallet_balance)
+
+            # end convo
+            self.netmsginst.end_convo = True
+
+            # return encoded wallet balance which will be sent to peer
+            return wallet_balance.encode()
+        else:
+            self.netmsginst.end_convo = True
+            return self.reject_msg
+
+
 
 
 class ListenerForSendingTokens(ListenerMessages):
@@ -158,6 +179,10 @@ class ListenerForSendingTokens(ListenerMessages):
 
     def follow_up(self):
         pass
+
+
+class ListenerForSendingMiscMsgs(ListenerForSendingTokens):
+    pass
 
 
 class ListenerForSendingAddr(ListenerMessages):

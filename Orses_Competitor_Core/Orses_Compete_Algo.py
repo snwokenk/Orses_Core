@@ -959,7 +959,6 @@ class Competitor:
                         q_for_block_validator.put([reason_msg, end_time, new_block])
                     else:
 
-
                         # todo: send list similar to non_compete process, when valid hash not found
                         # list of args = [block_no, prime char, addl_chars, exp_leading_prime]
                         # [reason_msg, end_time, new_block or list of args]

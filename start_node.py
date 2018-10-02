@@ -63,8 +63,7 @@ else:
 
 
 
-# todo: create a message receiver that sends wallet balance requested, if wallet is bcw, when wallet reservation exp
-
+# todo: continue working of misc_messages validator
 # todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for

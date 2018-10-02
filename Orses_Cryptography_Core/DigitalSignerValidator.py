@@ -75,6 +75,9 @@ class DigitalSignerValidator:
             y_int = int.from_bytes(y_int, "big")
         except KeyError:
             return False
+        except Exception as e:
+            print(f"in DigitalsignerValidator: {e}")
+            return False
 
         signature = signature.encode()
         signature = base64.b85decode(signature)

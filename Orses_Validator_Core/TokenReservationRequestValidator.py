@@ -1,5 +1,6 @@
 from Crypto.Hash import SHA256, RIPEMD160
 
+from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 from Orses_Database_Core import RetrieveData, StoreData
@@ -180,17 +181,8 @@ class TokenReservationRequestValidator:
 
     def check_wallet_balance(self):
 
-        # get wallet balance
-
-        # wallet balance [int, int, int] = [free token balance, reserved_token_balance, total token]
-        # balance in ntakiri ie 1 orses token = 10,000,000,000 (10 billion) ntakiris
-        # balance gotten from blockchain
-        available_bal, reserved, total = self.db_manager.get_from_wallet_balances_db(
-            wallet_id=self.wallet_id,
-        )
-
-        unconfirmed_bal = available_bal + self.get_token_change_from_unconfirmed()
-        bal_to_use = unconfirmed_bal if unconfirmed_bal < available_bal else available_bal
+        # uses either confirmed balance or unconfirmed whichever is smaller
+        bal_to_use = WalletInfo.get_lesser_of_wallet_balance(admin_inst=self.admin_instance, wallet_id=self.wallet_id)
 
         # will choose the less of the balance
         if self.ntakiri_amount+self.ntakiri_fee <= bal_to_use:

@@ -10,10 +10,58 @@ class WalletInfo:
 
 
     @staticmethod
-    def get_wallet_balance(admin_inst, wallet_id):
+    def get_wallet_balance_info(admin_inst, wallet_id):
+        """
+        Is sent to client when requesting for  balance
+        :param admin_inst:
+        :param wallet_id:
+        :return:
+        """
 
         # returns [available tokens, reserved tokens, total tokens]
-        return admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=wallet_id)
+        confirmed_balance = admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=wallet_id)
+
+        # {tx_hash: [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos.]}
+        pending_txs = WalletInfo.get_pending_transactions(admin_inst=admin_inst, wallet_id=wallet_id)
+
+        return [confirmed_balance, pending_txs]
+
+
+
+
+    @staticmethod
+    def get_pending_transactions(admin_inst, wallet_id):
+
+        # {tx_hash: [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos.]}
+        return admin_inst.get_db_manager.get_from_unconfirmed_db_wid(
+            wallet_id=wallet_id
+        )
+
+
+    @staticmethod
+    def get_lesser_of_wallet_balance(admin_inst, wallet_id):
+        """
+        This is used internally to get the lesser of balance.
+
+        Either the balance found on the blockchain is used OR balance of blockchain + tokens sent/received
+
+        lesser_of_bal = confirmed_bal if confirmed_bal < pending_bal else pending_bal
+
+        :param admin_inst:
+        :param wallet_id:
+        :return:
+        """
+
+        confirmed_bal, pending_txs= WalletInfo.get_wallet_balance_info(admin_inst, wallet_id)
+        confirmed_bal = confirmed_bal[0]  # select only available bal
+        token_change = 0
+        for activity in pending_txs.values():
+            #              tkn amount     fee  These will be negative if wallet_id was sender and positive if receiver
+            token_change += activity[-1]+activity[-2]
+
+        pending_bal = confirmed_bal + token_change
+
+        return confirmed_bal if confirmed_bal < pending_bal else pending_bal
 
     @staticmethod
     def get_wallet_bcw_info(admin_inst, wallet_id):
