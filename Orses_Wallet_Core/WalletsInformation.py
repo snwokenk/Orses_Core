@@ -33,7 +33,7 @@ class WalletInfo:
     def get_pending_transactions(admin_inst, wallet_id):
 
         # {tx_hash: [tx_type, "sender" or "receiver, main_tx, sig,fee,  amt_tokens(sender=neg., receiver=pos.]}
-        return admin_inst.get_db_manager.get_from_unconfirmed_db_wid(
+        return admin_inst.get_db_manager().get_from_unconfirmed_db_wid(
             wallet_id=wallet_id
         )
 

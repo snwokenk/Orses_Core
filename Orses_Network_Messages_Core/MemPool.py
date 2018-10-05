@@ -47,7 +47,7 @@ class MemPool:
                 # will move to confirmed, if hash is not in confirmed will do nothing
                 self.move_from_unconfirmed_to_confirmed(msg_hash=active_list[0], db_manager=db_manager)
 
-        self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"])+1, new_block=winning_block)
+        self.update_next_block_no(new_block_no=int(winning_block["bh"]["block_no"], 16)+1, new_block=winning_block)
 
         return True
 
@@ -99,7 +99,8 @@ class MemPool:
         # [avail, reserved, total]
         wallet_data = db_manager.get_from_wallet_balances_db(wallet_id=wallet_id)
 
-        # update avail bal by adding amt and fee. if index 1 is sender then amt will be neg else positive. fee is neg.
+        # update avail bal by adding amt and fee. if index 1 is sender then amt/fee will be neg.
+        # if index_1 is receiver then amnt will be positive and fee will be zero
         wallet_data[0] = wallet_data[0] + activity_list[-1] + activity_list[-2]
 
         # update reserved balance if tx_type = rsv_req and BCW

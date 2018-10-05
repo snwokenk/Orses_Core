@@ -1,9 +1,9 @@
 from Crypto.Hash import SHA256, RIPEMD160
-
+import hashlib
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 
-import time
+import time, json
 
 
 class MiscMessagesValidator:
@@ -12,7 +12,7 @@ class MiscMessagesValidator:
     {
     'msg_hash': msg hash
     'wid': wallet id
-    'main_msg': {'msg':main msg, 'purp': purpose of message, 'time': timestamp, 'fee': fee (in ORST) }
+    'misc_msg': {'msg':main msg, 'purp': purpose of message, 'time': timestamp, 'fee': fee (in ORST) }
     'wallet_pupkey' main message
     'sig'  signature using msg_hash
 
@@ -26,7 +26,7 @@ class MiscMessagesValidator:
         self.q_object = q_object
         self.price_per_byte = price_per_byte
         self.misc_msg_dict = misc_msg_dict
-        self.main_msg = misc_msg_dict["main_msg"]
+        self.main_msg = misc_msg_dict["misc_msg"]
         self.msg_hash = misc_msg_dict["msg_hash"]
         self.wallet_id = misc_msg_dict["wid"]
         self.msg = self.main_msg["msg"]
@@ -47,10 +47,10 @@ class MiscMessagesValidator:
         """
         return int(round(self.msg_size * self.price_per_byte, 10) * 1e10)
 
-    def calc_msg_size(self, pubkey_key_size=100):
+    def calc_msg_size(self, pubkey_key_size=100, hash_size=64, time_size=10, fee_size=10):
 
-        size_of_msg = len(self.msg)
-        return size_of_msg + pubkey_key_size
+        size_of_msg = len(self.msg) + len(self.msg_purpose)
+        return size_of_msg + pubkey_key_size + hash_size + time_size + fee_size
 
     def check_validity(self):
         """
@@ -66,7 +66,7 @@ class MiscMessagesValidator:
 
     def check_signature(self):
         response = DigitalSignerValidator.validate_wallet_signature(
-            msg=self.msg_hash,
+            msg=json.dumps(self.main_msg),
             signature=self.sig,
             wallet_pubkey=self.wallet_pubkey
 

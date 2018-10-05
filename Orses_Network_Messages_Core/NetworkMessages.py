@@ -20,7 +20,7 @@ class NetworkMessages:
         self.first_two_msgs = list()
         self.message_object = None
         self.valid_first_msg = {b'rcn', b'rcnv'}
-        self.valid_second_msg = {b'tx_asg', b'tx_ttx', b'tx_trr', b'tx_trx', b'rq_adr', b'rq_bal'}
+        self.valid_second_msg = {b'tx_asg', b'tx_ttx', b'tx_trr', b'tx_trx', b'rq_adr', b'rq_bal', b'misc_msg'}
         self.last_msg = b'end'
         self.ack_msg = b'ack'
         self.reject_msg = b'rej'

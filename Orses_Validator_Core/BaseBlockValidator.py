@@ -8,7 +8,7 @@ class BaseBlockValidator:
         self.isNewlyCreated = is_newly_created
         self.block = block
         self.block_header = block["bh"]
-        self.blockNo = int(self.block_header["block_no"])
+        self.blockNo = int(self.block_header["block_no"], 16)
 
         self.prev_blockNo = self.blockNo - 1
         self.prev_block = BlockChainData.get_block(block_no=self.prev_blockNo, admin_instance=admin_inst)

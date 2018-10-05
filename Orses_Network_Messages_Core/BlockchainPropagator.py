@@ -527,7 +527,7 @@ class BlockChainPropagator:
 
         if isinstance(block, dict):
             block_header = block["bh"]
-            block_no = int(block_header["block_no"])
+            block_no = int(block_header["block_no"], 16)
             block_before_recent_no = block_no - 2
             self.dict_of_potential_blocks["full_hash"][block_header["block_hash"]] = block
             self.dict_of_potential_blocks["prev"][block_header["block_hash"][-8:]] = block_header["block_hash"]

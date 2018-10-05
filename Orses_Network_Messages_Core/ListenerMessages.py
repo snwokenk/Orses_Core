@@ -2,7 +2,7 @@ import collections, json
 
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator
 
 
 # add the validator method to the dictionary without calling it without the '()'
@@ -11,6 +11,7 @@ validator_dict_callable["tx_asg"] = AssignmentStatementValidator.AssignmentState
 validator_dict_callable["tx_ttx"] = TokenTransferValidator.TokenTransferValidator
 validator_dict_callable["tx_trr"] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict_callable["tx_trx"] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
+validator_dict_callable['misc_msg'] = MiscMessagesValidator.MiscMessagesValidator
 # validator_dict_callable[]
 
 retriever_dict_callable = dict()
@@ -66,7 +67,7 @@ class ListenerMessages:
 
 class ListenerForBalanceRequest(ListenerMessages):
 
-    def __init__(self, messages_heard, netmsginst, msg_type, admin_instance):
+    def __init__(self, messages_heard, netmsginst, msg_type, admin_instance, q_object=None):
         super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type,
                          admin_instance=admin_instance)
 
@@ -153,13 +154,17 @@ class ListenerForSendingTokens(ListenerMessages):
 
                     # if message is not last message then should be wallet pubkey info requested
                     # this will also store wallet info for reuse
-                    rsp = validator_dict_callable[self.msg_type](
-                        json.loads(self.messages_heard[2].decode()),
-                        # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}
-                        wallet_pubkey=self.messages_heard[-1].decode(),
-                        q_object=self.q_object,
-                        admin_instance=self.admin_instance,
-                    ).check_validity()
+                    if self.msg_type != "misc_msg":
+                        rsp = validator_dict_callable[self.msg_type](
+                            json.loads(self.messages_heard[2].decode()),
+                            # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}
+                            wallet_pubkey=self.messages_heard[-1].decode(),
+                            q_object=self.q_object,
+                            admin_instance=self.admin_instance,
+                        ).check_validity()
+                    else:
+                        # todo: add validator specifically for misc_messages
+                        rsp = True
 
                     print("in ListenerMessages.py rsp2: ", rsp)
 

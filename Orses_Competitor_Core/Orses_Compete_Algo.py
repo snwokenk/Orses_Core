@@ -1039,7 +1039,7 @@ class Competitor:
                     break
 
                 elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block]
-                    received_block_no = int(rsp[1]['bh']["block_no"])
+                    received_block_no = int(rsp[1]['bh']["block_no"], 16)
                     try:
                         print(f"received block no {received_block_no}")
                         assert received_block_no == recent_block_no+1

@@ -228,6 +228,7 @@ class OrsesLevelDBManager:
         :param main_tx: dict containting the main details of a msg
         :param amt: amount involved tx is for, if it is a ttx or rvk_req or rsv_req then it should be > 0
         :param fee: amount to be paid to administrators/blockcreators. should always be (fee > 0)
+        :param value:
         :return:
         """
 
@@ -241,14 +242,16 @@ class OrsesLevelDBManager:
         if value is None:
             prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id)
 
-            fee = -fee
+
             # set amount
             if sender is True:  # then receiver
                 snd_or_rcv ="sender"
                 amt = -amt if tx_type != "rvk_req" else 0
+                fee = -fee
 
             else:
                 snd_or_rcv = "receiver"
+                fee = 0
 
             if prev_activity:
 

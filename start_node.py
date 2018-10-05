@@ -63,6 +63,9 @@ else:
 
 
 
+
+# todo: fix balance info for token recipient. fee is deducted from token recipients balance, even though paid by sender
+# todo: so balance added for a token recipient is inaccurate
 # todo: continue working of misc_messages validator
 # todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
