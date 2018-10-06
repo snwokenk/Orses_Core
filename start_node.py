@@ -151,12 +151,13 @@ def send_stop_to_reactor(reactor_instance, q_object_to_each_node, is_program_run
 
                 print(f"is_not_in_process_of_creating_new_block {is_not_in_process_of_creating_new_block.is_set()}")
 
-                if ans in {"exit", "quit"}:
+                if ans in {"exit", "quit", 'force exit'}:
 
                     if not is_not_in_process_of_creating_new_block.is_set():
                         print(f"*** Node Currently In New Block Creation Process ***")
                         print(f"Waiting For Block Winner To Be Chosen")
-                        is_not_in_process_of_creating_new_block.wait()
+                        if ans != "force exit":
+                            is_not_in_process_of_creating_new_block.wait()
 
                     is_program_running.clear()
                     for i in args:

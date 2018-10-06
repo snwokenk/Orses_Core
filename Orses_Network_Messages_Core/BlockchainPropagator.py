@@ -713,6 +713,8 @@ class BlockChainPropagator:
         # todo: get block from indirect if not in dict_of_potential_blocks
         block_of_winner = self.dict_of_potential_blocks["full_hash"].get(block_winner_hash, None)
 
+        print(f"in Check winning block from network, block of winner {block_of_winner}")
+
         counter = -1
         while self.is_program_running.is_set():
 
@@ -721,7 +723,7 @@ class BlockChainPropagator:
 
                 # todo: update mempool to move transactions from unconfirmed to confirmed that were included in block
                 self.mempool.update_mempool(winning_block=self.locally_known_block)
-
+                print(f"in Check winning block from network, self.locally_known_block {self.locally_known_block}")
                 if self.admin_instance.currenty_competing is True:
                     self.q_object_compete.put(['bcb', self.locally_known_block])
 
@@ -748,6 +750,7 @@ class BlockChainPropagator:
                     block_of_winner = self.dict_of_potential_indirect_blocks[block_winner_hash]
                     self.locally_known_block = block_of_winner
                     self.mempool.update_mempool(winning_block=self.locally_known_block)
+                    print(f"2 in Check winning block from network, self.locally_known_block {self.locally_known_block}")
                     if self.admin_instance.currenty_competing is True:
                         self.q_object_compete.put(
                             ['bcb', self.locally_known_block])
@@ -769,6 +772,7 @@ class BlockChainPropagator:
                         self.locally_known_block = block_of_winner
                         self.mempool.update_mempool(winning_block=self.locally_known_block)
                         if self.admin_instance.currenty_competing is True:
+                            print(f"in Check winning block from network, self.locally_known_block {self.locally_known_block}")
                             self.q_object_compete.put(['bcb', self.locally_known_block])
 
                         break
@@ -1285,6 +1289,12 @@ class RequestNewBlock(BlockChainMessageSender):
             pass
 
     def save_block(self, block_no, block):
+
+        try:
+            block_no = int(block_no, 16)
+        except (ValueError, TypeError) as e:
+            print(f"in save_block blockchainpropagotr, {e}")
+
 
         # the block is validated in BlockchainData
         if isinstance(block_no, int) and isinstance(block, dict):

@@ -6,6 +6,8 @@ from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidato
 import time, json
 
 
+# insert tx into unconfirmed, with amt as zero and fee as fee
+
 class MiscMessagesValidator:
     """
     misc_msg_dict =

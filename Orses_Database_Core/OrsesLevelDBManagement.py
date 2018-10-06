@@ -228,7 +228,7 @@ class OrsesLevelDBManager:
         :param main_tx: dict containting the main details of a msg
         :param amt: amount involved tx is for, if it is a ttx or rvk_req or rsv_req then it should be > 0
         :param fee: amount to be paid to administrators/blockcreators. should always be (fee > 0)
-        :param value:
+        :param value: previous value if any
         :return:
         """
 
@@ -238,6 +238,11 @@ class OrsesLevelDBManager:
         # get previous activities if any and add to it
         # dict at index 0 of activity, tells the net of avail and reserved.
         # when
+
+        # strip main_tx of transaction hash to reduce redundant storage and bandwidth use
+        # print(main_tx)
+        # main_tx.pop("tx_hash")
+        # main_tx.pop("sig")
 
         if value is None:
             prev_activity = self.get_from_unconfirmed_db_wid(wallet_id=wallet_id)

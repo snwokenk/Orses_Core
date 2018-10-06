@@ -685,7 +685,7 @@ class Competitor:
         start_time = last_block_time + pause_time  # 7 second proxy window
 
         # get single prime, exp leading prime, addl chars, len of competition from block before recent
-        block_before_recent_block_no = int(block_header["block_no"]) - 1
+        block_before_recent_block_no = int(block_header["block_no"], 16) - 1
         block_before_recent = self.competitor_get_block(
             block_no=block_before_recent_block_no
         )
@@ -746,7 +746,7 @@ class Competitor:
                 return
         else:
             try:
-                last_block_no = int(last_block['bh']['block_no'])
+                last_block_no = int(last_block['bh']['block_no'], 16)
 
             except (KeyError, TypeError) as e:
                 print(f"in non_compete_process error occured and ending process: {e}")
@@ -1005,7 +1005,7 @@ class Competitor:
         reason_dict['d'] = "rvk_req"
 
         if "bh" in recent_blk and recent_blk["bh"]:
-            recent_block_no = int(recent_blk['bh']["block_no"])
+            recent_block_no = int(recent_blk['bh']["block_no"], 16)
         else:
             return
 
@@ -1041,10 +1041,10 @@ class Competitor:
                 elif rsp[0] == 'bcb':  # rsp is a block  bcb == blockchain block, rsp = ['bcb', block]
                     received_block_no = int(rsp[1]['bh']["block_no"], 16)
                     try:
-                        print(f"received block no {received_block_no}")
+                        print(f"received block no {received_block_no}, recent block +1 = {recent_block_no+1}")
                         assert received_block_no == recent_block_no+1
                     except AssertionError as e:
-                        print(f'Assertion_error in compete(), Orses_compete_algo.py')
+                        print(f'Assertion_error in compete(), Orses_compete_algo.py {e}')
                         break
 
                     recent_block_no = received_block_no
