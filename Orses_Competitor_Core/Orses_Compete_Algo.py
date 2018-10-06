@@ -1003,6 +1003,8 @@ class Competitor:
         reason_dict['b'] = "ttx"
         reason_dict['c'] = "rsv_req"
         reason_dict['d'] = "rvk_req"
+        reason_dict['f'] = "misc_msg"
+
 
         if "bh" in recent_blk and recent_blk["bh"]:
             recent_block_no = int(recent_blk['bh']["block_no"], 16)
@@ -1090,15 +1092,13 @@ class Competitor:
                                 fees=misc_m[-1]
                             )
 
-                    elif rsp[0] == "wh":  # wallet hash states
-                        pass
 
                     else:  # transaction message
                         # todo: when checking transaction messages, check for fees
 
                         try:
                             # rsp[0] either b,c,d
-                            # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req'
+                            # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req', misc_msg
                             tx_dict_key = reason_dict[rsp[0]]
                             main_msg = rsp[1][tx_dict_key]
                             sig = rsp[1]['sig']
@@ -1110,13 +1110,15 @@ class Competitor:
                                     [tx_dict_key, rsp[1]["tx_hash"], [main_msg, sig]]
                                 )
                             else:
-
-                                tx_misc_wsh.add_to_txs(
-                                    type_of_tx=tx_dict_key,
-                                    tx_hash=rsp[1]["tx_hash"],
-                                    tx=[main_msg, sig],
-                                    fees=main_msg['fee']
-                                )
+                                if tx_dict_key == "misc_msg":
+                                    pass
+                                else:
+                                    tx_misc_wsh.add_to_txs(
+                                        type_of_tx=tx_dict_key,
+                                        tx_hash=rsp[1]["tx_hash"],
+                                        tx=[main_msg, sig],
+                                        fees=main_msg['fee']
+                                    )
                         except KeyError as e:
                             print(f"In Orses_compete_algo: compete(), Key Error: {e},\nmsg: {rsp}\n")
                             continue

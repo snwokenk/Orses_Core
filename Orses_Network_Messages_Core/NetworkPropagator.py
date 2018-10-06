@@ -3,7 +3,7 @@ This module will be used  propagate messages to other verification nodes or admi
 Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator
 
 from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListener
 
@@ -15,6 +15,7 @@ validator_dict['a'] = AssignmentStatementValidator.AssignmentStatementValidator
 validator_dict['b'] = TokenTransferValidator.TokenTransferValidator
 validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
+validator_dict['f'] = MiscMessagesValidator.MiscMessagesValidator
 
 
 class NetworkPropagator:
@@ -293,7 +294,7 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
 
     # a: assignment statement validator, b:token transfer validator, c:token reservation request validator,
     # d:token reservation request validator, e: ConnectedNodeValidator
-    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd'}:
+    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd', 'f'}:
         statement_validator = validator_dict[msg[-1][0]]
 
     else:  # send end message
@@ -344,7 +345,7 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
     :return:
     """
     reason = rsp[0][0]
-    if reason not in {'a', 'b', 'c', 'd'}:
+    if reason not in {'a', 'b', 'c', 'd', 'f'}:
         return None
 
     # todo: check he message_from_other

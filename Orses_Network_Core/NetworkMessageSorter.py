@@ -81,7 +81,7 @@ class NetworkMessageSorter:
                 print("in NetworkMessageSorter, json message error")
                 continue
             except AttributeError as e:  # not able to decode() probably a string
-                if isinstance(msg, str) and msg in {"quit", "exit"}:
+                if isinstance(msg, str) and msg in {"quit", "exit", "force exit"}:
                     break
                 else:
                     print(f"\n-----\nError in {__file__}\nMessage causing Error: {msg}\n"
@@ -113,8 +113,8 @@ class NetworkMessageSorter:
 
                 try:  # check what type of message, if 'n' then networkpropagator, if 'b' then blockchainpropagator
                     try:
-                        print(f"in message sorter, msg: {msg}, "
-                              f"admin {self.node.admin.admin_name if self.node else None}")
+                        print(f"in message sorter, admin:{self.node.admin.admin_name if self.node else None}, msg: {msg}, "
+                              f"")
                     except AttributeError:
                         pass
 

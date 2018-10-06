@@ -96,8 +96,6 @@ class ListenerForBalanceRequest(ListenerMessages):
             return self.reject_msg
 
 
-
-
 class ListenerForSendingTokens(ListenerMessages):
 
     def __init__(self, messages_heard, netmsginst, msg_type, admin_instance,q_object=None):
@@ -186,7 +184,7 @@ class ListenerForSendingTokens(ListenerMessages):
         pass
 
 
-class ListenerForSendingMiscMsgs(ListenerForSendingTokens):
+class ListenerForMiscMsgs(ListenerForSendingTokens):
     pass
 
 

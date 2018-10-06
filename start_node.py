@@ -62,11 +62,8 @@ else:
     print("All Required Packages Installed")
 
 
-
-
-# todo: fix balance info for token recipient. fee is deducted from token recipients balance, even though paid by sender
-# todo: so balance added for a token recipient is inaccurate
-# todo: continue working of misc_messages validator
+# todo: in Orses compete, allow misc messages to be added line 1113 of Orses_compete
+# todo: continue working of misc_messages validator, Update uncomfirmed db when misc message is
 # todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
@@ -357,7 +354,6 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         # once initial setup is done and recent block is not none it will be called in
         # send_response_to_other_threads function defined in initial_setup method
         pass
-
 
 
     # *** start blockchain propagator in different thread ***
@@ -766,6 +762,10 @@ if __name__ == '__main__':
                 preferred_no_of_mining_nodes=0,
                 just_launched=True
             )
+
+            # main(
+            #     just_launched=True
+            # )
 
         elif "--sandbox" in option_dict and "--live" not in option_dict:  # run sandbox mode
 

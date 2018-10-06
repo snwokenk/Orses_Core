@@ -23,7 +23,7 @@ class MiscMessagesValidator:
     Note if fee == 0 or less then the msg_minimum_fee is used by the default 0.00001 token per byte, this can be changed
     by each node
     """
-    def __init__(self, misc_msg_dict, admin_instance,  price_per_byte=0.00001, timelimit=300,  q_object=None):
+    def __init__(self, misc_msg_dict, admin_instance,  price_per_byte=0.00001, wallet_pubkey=None,timelimit=300,  q_object=None):
         self.admin_instance = admin_instance
         self.q_object = q_object
         self.price_per_byte = price_per_byte
@@ -33,7 +33,7 @@ class MiscMessagesValidator:
         self.wallet_id = misc_msg_dict["wid"]
         self.msg = self.main_msg["msg"]
         self.sig = misc_msg_dict["sig"]
-        self.wallet_pubkey = misc_msg_dict["pubkey"]
+        self.wallet_pubkey = misc_msg_dict["pk"]
         self.msg_purpose = self.main_msg["purp"]
         self.timestamp = self.main_msg["time"]
         self.curr_time = time.time()
@@ -62,9 +62,11 @@ class MiscMessagesValidator:
         :return:
         """
         if self.check_if_msg_fee_is_enough() and self.check_signature():
-            self.q_object([f'b{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, True])
+            self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, True])
+            return True
         else:
-            self.q_object([f'b{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, False])
+            self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, False])
+            return False
 
     def check_signature(self):
         response = DigitalSignerValidator.validate_wallet_signature(
@@ -89,12 +91,14 @@ class MiscMessagesValidator:
             print(f" in MiscMessageValidator error: {e}")
             return False
         else:
-
             if msg_fee >= self.msg_minimum_cost:
-                return msg_fee <= WalletInfo.get_lesser_of_wallet_balance(
+                enough_bal = msg_fee <= WalletInfo.get_lesser_of_wallet_balance(
                     admin_inst=self.admin_instance,
                     wallet_id=self.wallet_id
                 )
+
+                print(f"in MiscMsgValidator, enough bal {enough_bal}")
+                return enough_bal
             else:
                 print(f"in MiscMessageValidator, msg_fee not enough")
                 return False

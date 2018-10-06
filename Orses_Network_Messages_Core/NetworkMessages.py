@@ -7,6 +7,7 @@ dict_of_listening_types["tx_trr"] = ListenerMessages.ListenerForReservingTokens
 dict_of_listening_types["tx_trx"] = ListenerMessages.ListenerForRevokingTokens
 dict_of_listening_types["rq_adr"] = ListenerMessages.ListenerForSendingAddr
 dict_of_listening_types["rq_bal"] = ListenerMessages.ListenerForBalanceRequest
+dict_of_listening_types['misc_msg'] = ListenerMessages.ListenerForMiscMsgs
 
 
 class NetworkMessages:
@@ -37,6 +38,8 @@ class NetworkMessages:
             # instantiates the message object based on the second msg
             # uses the instantiated listen() method to start listening
             type_key = self.first_two_msgs[-1].decode()
+
+            print(type_key)
             try:
                 self.message_object = dict_of_listening_types[type_key](
                     messages_heard=self.first_two_msgs,
