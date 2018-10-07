@@ -352,6 +352,9 @@ class OrsesLevelDBManager:
         :param tx_hash:
         :param signature:
         :param main_tx:
+        :param amt: amount being sent, if it is a non token related msg (ie misc_msg) then amount == 0
+        :param fee: fee being sent for inclusion: This is always here, some form of fee must be paid for storing
+                    messages/txs on the blockchain.
         :param rcv_wid: if tx_type is ttx or transfer transaction then rcv_wid should not be none
         :return:
         """

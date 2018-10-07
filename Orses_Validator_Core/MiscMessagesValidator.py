@@ -25,6 +25,7 @@ class MiscMessagesValidator:
     """
     def __init__(self, misc_msg_dict, admin_instance,  price_per_byte=0.00001, wallet_pubkey=None,timelimit=300,  q_object=None):
         self.admin_instance = admin_instance
+        self.db_manager = self.admin_instance.get_db_manager()
         self.q_object = q_object
         self.price_per_byte = price_per_byte
         self.misc_msg_dict = misc_msg_dict
@@ -62,6 +63,20 @@ class MiscMessagesValidator:
         :return:
         """
         if self.check_if_msg_fee_is_enough() and self.check_signature():
+            # store info into unconfirmed leveldb
+            rsp = self.db_manager.insert_into_unconfirmed_db(
+                tx_type="misc_msg",
+                sending_wid=self.wallet_id,
+                tx_hash=self.msg_hash,
+                signature=self.sig,
+                main_tx=self.main_msg,
+                amt=0,
+                fee=self.msg_fee,
+            )
+
+            if rsp is False:
+                print(f"in MiscMessageValidator.py, check_validity, not able to insert misc_msg into unconfirmed db")
+
             self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, True])
             return True
         else:
@@ -85,23 +100,20 @@ class MiscMessagesValidator:
         Checks to verify message fee is enough and if wallet has enough tokens
         :return:
         """
-        try:
-            msg_fee = int(round(float(self.msg_fee), 10)*1e10)
-        except ValueError as e:
-            print(f" in MiscMessageValidator error: {e}")
-            return False
-        else:
-            if msg_fee >= self.msg_minimum_cost:
-                enough_bal = msg_fee <= WalletInfo.get_lesser_of_wallet_balance(
-                    admin_inst=self.admin_instance,
-                    wallet_id=self.wallet_id
-                )
+        if self.msg_fee >= self.msg_minimum_cost:
+            available_bal = WalletInfo.get_lesser_of_wallet_balance(
+                admin_inst=self.admin_instance,
+                wallet_id=self.wallet_id
+            )
 
-                print(f"in MiscMsgValidator, enough bal {enough_bal}")
-                return enough_bal
-            else:
-                print(f"in MiscMessageValidator, msg_fee not enough")
-                return False
+            enough_bal = self.msg_fee <= int(available_bal)
+
+            print(f"in MiscMsgValidator, enough bal {enough_bal}")
+
+            return enough_bal
+        else:
+            print(f"in MiscMessageValidator, msg_fee not enough")
+            return False
 
 
 

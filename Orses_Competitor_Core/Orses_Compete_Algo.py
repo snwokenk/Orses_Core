@@ -570,20 +570,13 @@ class TxMiscWsh:
 
     def add_to_misc_msg(self, msg_hash, msg: list, fees: int):
 
-        # misc_msgs == {msg_hash: msg}
-        # msg == []
-        msg_index = self.append_to_combined_list(msg_hash, msg)
-        # msg.append(msg_index)
-        # self.misc_msgs[msg_hash] = msg
+        self.append_to_combined_list(msg_hash, msg)
         self.fees += fees
 
     def add_to_txs(self, type_of_tx, tx_hash, tx: list, fees: int):
         if type_of_tx in {"ttx", "rsv_req", "rvk_req"}:
 
-            # tx = [main_msg, sign]
-            tx_index = self.append_to_combined_list(tx_hash, tx)
-            # tx.append(tx_index)
-            # self.txs[type_of_tx][tx_hash] = tx
+            self.append_to_combined_list(tx_hash, tx)
             self.fees += fees
         else:
             print(f"in Orses_Compete_Algo.py: in add_to_txs, type_of_tx NOT VALID")
@@ -1073,10 +1066,10 @@ class Competitor:
                         print(f"received an assignment statement in compete, SHOULD NOT RECEIVE IN COMPETE\n{rsp}")
                         pass
 
-                    elif rsp[0] == "m":  # misc messages
+                    elif rsp[0] == "f":  # misc messages
 
-                        misc_m = [rsp[1]['msg'], rsp[1]['sig'], rsp[1]['pubkey'], rsp[1]["time"],
-                                                         rsp[1]['purp'], rsp[1]["fee"]]
+                        main_msg = rsp[1]["misc_msg"]
+                        sig = rsp[1]['sig']
 
                         # if new block has been received but next block not being generated,
                         if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
@@ -1085,37 +1078,36 @@ class Competitor:
                             q_object_from_compete_process_to_mining.put(['m', rsp[1]['msg_hash'], misc_m])
 
                         else:
-
                             tx_misc_wsh.add_to_misc_msg(
-                                msg_hash=rsp[1]['msg_hash'],
-                                msg=misc_m,
-                                fees=misc_m[-1]
+                                msg_hash=rsp[1]["msg_hash"],
+                                msg=[main_msg, sig],
+                                fees=main_msg['fee']
                             )
-
 
                     else:  # transaction message
                         # todo: when checking transaction messages, check for fees
 
                         try:
                             # rsp[0] either b,c,d
-                            # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req', misc_msg
-                            tx_dict_key = reason_dict[rsp[0]]
-                            main_msg = rsp[1][tx_dict_key]
-                            sig = rsp[1]['sig']
+                            # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req'
+                            tx_dict_key = reason_dict.get(rsp[0], None)
+                            if tx_dict_key:
+                                tx_dict_key = reason_dict[rsp[0]]
+                                main_msg = rsp[1][tx_dict_key]
+                                sig = rsp[1]['sig']
+                                tx_hash = rsp[1]["tx_hash"]
 
-                            if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
+                                if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
 
-                                # print("is here 111")
-                                q_object_from_compete_process_to_mining.put(
-                                    [tx_dict_key, rsp[1]["tx_hash"], [main_msg, sig]]
-                                )
-                            else:
-                                if tx_dict_key == "misc_msg":
-                                    pass
+                                    # print("is here 111")
+                                    q_object_from_compete_process_to_mining.put(
+                                        [tx_dict_key, tx_hash, [main_msg, sig]]
+                                    )
                                 else:
+
                                     tx_misc_wsh.add_to_txs(
                                         type_of_tx=tx_dict_key,
-                                        tx_hash=rsp[1]["tx_hash"],
+                                        tx_hash=tx_hash,
                                         tx=[main_msg, sig],
                                         fees=main_msg['fee']
                                     )

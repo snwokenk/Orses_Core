@@ -62,7 +62,6 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: in Orses compete, allow misc messages to be added line 1113 of Orses_compete
 # todo: continue working of misc_messages validator, Update uncomfirmed db when misc message is
 # todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
