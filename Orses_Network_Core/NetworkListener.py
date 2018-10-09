@@ -1,5 +1,5 @@
 from twisted.internet.protocol import Protocol, Factory, connectionDone
-
+from twisted.internet import threads
 """
 The goal of the NetworkListener protocol and factory is to be used to listen for network messages from other 
 non veri nodes. For connections from veri nodes the VeriNodeListener and VeriNodeConnector classes will be used
@@ -19,12 +19,24 @@ class NetworkListener(Protocol):
     def __init__(self, factory, message_object):
         super().__init__()
         self.factory = factory
-        self.message_object = message_object
+        self.message_object = message_object  # of class NetworkMessages in NetworkMessages.py
 
     def dataReceived(self, data):
         print("rec: ", data)
-        self.message_object.listen(data)
+        d = threads.deferToThread(
+            self.message_object.listen,
+            data
+        )
+        d.addCallback(
+            self.respond
+        )
+        d.addErrback(lambda e: print(f"error occurred in NetworkListener,datReceived defferal, error is {e}"))
 
+    def respond(self):
+        """
+        used as callback function to respond to node after deferral
+        :return:
+        """
         rsp = self.message_object.speak()
         print("resp: ", rsp)
 

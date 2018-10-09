@@ -1,5 +1,6 @@
 import collections, json
 
+
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
 
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
@@ -115,7 +116,7 @@ class ListenerForSendingTokens(ListenerMessages):
 
     def speak(self):
         """
-        [
+
         used in listen method to respond
         :return:
         """
@@ -128,11 +129,19 @@ class ListenerForSendingTokens(ListenerMessages):
                 return self.last_msg
 
             elif self.messages_heard and len(self.messages_heard) == 3:  # This is main msg for validation
+
+                """
+                These codes are blocking calls but since code is run in a defferal in NetworkListener.py, it shouldn't 
+                block the overall program
+                """
                 rsp = None
                 # self.msg_type will determine the validator to use
                 if self.msg_type == "tx_asg":
-                    # todo: call ProxyCenter.execute_assignment_statement()
-                    proxy_center = self.admin_instance.get_proxy_center()
+
+                    self.admin_instance.get_proxy_center().execute_assignment_statement(
+                        asgn_stmt_dict=json.loads(self.messages_heard[2]),
+                        q_obj=self.q_object
+                    )
 
                 else:
                     rsp = validator_dict_callable[self.msg_type](

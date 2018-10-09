@@ -463,22 +463,29 @@ class OrsesLevelDBManager:
         else:
             return tmp
 
-    def load_db(self, name: str, create_if_missing=True):
+    def load_db(self, name: str, create_if_missing=True, in_folder=None):
         """
         some databases are crated in data_client_wallet folder of user folder
         others are created in data_mempool
         :param name: the name of the database
         :param create_if_missing: create a database if not exist
+        :param in_folder: folder to store leveDB
         :return:
         """
+
+        # create filename/path
         if name in {"wallet_balances",
                     "wallet_pubkeys",
                     "temp_wallet_balances"}:
             filename = os.path.join(self.admin_inst.fl.get_clients_wallet_folder_path(), name)
         elif name in {"BCWs", "BCW_Proxies", 'local_'}:
             filename = os.path.join(self.admin_inst.fl.get_proxy_folder_path(), name)
+        elif isinstance(in_folder, str):
+            filename = os.path.join(in_folder, name)
         else:
             filename = os.path.join(self.admin_inst.fl.get_mempool_data_folder_path(), name)
+
+        # load or create database
         try:
             db = plyvel.DB(filename, create_if_missing=create_if_missing)
         except plyvel.Error as e:

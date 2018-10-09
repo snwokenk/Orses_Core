@@ -58,7 +58,13 @@ class WalletProxy:
 
         if not self.bcw_proxy_privkey or not self.bcw_proxy_pubkey:
             print(f"In WalletProxy.py not able to load pubkey or privkey. might not exist") if self.new_proxy is False\
-            else print(f"In WalletProxy.py not able to generate and load privkey or pubkey")
+                else print(f"In WalletProxy.py not able to generate and load privkey or pubkey")
+            return
+
+        # create or load leveldb databases for administration
+        # this includes db that stores all assignment statements sent to the administered BCW
+        # a db that stores all wallets with their managed by BCW
+
 
     def get_pubkey(self):
 

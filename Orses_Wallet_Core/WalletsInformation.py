@@ -6,6 +6,7 @@ This class can be used to get a wallet balance
 
 import time
 
+
 class WalletInfo:
 
 
@@ -25,6 +26,24 @@ class WalletInfo:
         pending_txs = WalletInfo.get_pending_transactions(admin_inst=admin_inst, wallet_id=wallet_id)
 
         return [confirmed_balance, pending_txs]
+
+    @staticmethod
+    def get_wallet_manager(admin_inst, wallet_id):
+        """
+
+        :param admin_inst:
+        :param wallet_id:
+        :return: balance list and 'blockchain' if not managed by a BCW or returns, bcw_wid
+        """
+
+        # returns [available tokens, reserved tokens, total tokens]
+        confirmed_balance = admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=wallet_id)
+
+        if len(confirmed_balance) == 3:
+
+            return [confirmed_balance, 'blkchain']
+        else:
+            return
 
 
 

@@ -13,7 +13,7 @@ class AssignmentStatementValidator:
     if message is validated, node sends a ver message
     else a rej message is sent if invalid
     """
-    def __init__(self, asgn_stmt_dict, admin_instance, wallet_pubkey=None, q_object=None):
+    def __init__(self, asgn_stmt_dict, admin_instance, asgn_stmt_list=None, wallet_pubkey=None, q_object=None):
         """
 
         :param asgn_stmt_dict: assignment statement dict with
@@ -38,7 +38,7 @@ class AssignmentStatementValidator:
         self.mempool = admin_instance.get_mempool()
         self.asgn_stmt_dict = asgn_stmt_dict
         self.asgn_stmt= asgn_stmt_dict["asgn_stmt"]
-        self.asgn_stmt_list = asgn_stmt_dict["asgn_stmt"].split(sep='|')
+        self.asgn_stmt_list = asgn_stmt_list if asgn_stmt_list else asgn_stmt_dict["asgn_stmt"].split(sep='|')
         self.sending_wallet_pubkey = wallet_pubkey
         self.non_json_wallet_pubkey = None
         self.sending_wid = self.asgn_stmt_list[0]
