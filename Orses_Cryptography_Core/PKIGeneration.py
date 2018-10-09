@@ -22,8 +22,6 @@ class PKI:
         self.privkey_file = Filenames_VariableNames.priv_key_filename.format(username)
         self.pubkey_file = Filenames_VariableNames.pub_key_filename.format(username)
 
-
-
     def generate_pub_priv_key(self, save_in_folder=None, overwrite=False):
 
         if overwrite is False and self.load_pub_key():

@@ -866,11 +866,12 @@ class Competitor:
 
                         print(f"In Handle blocks, {start_time}, {time.time()}")
 
-                    elif rsp[0] == 'm':  # rsp == ['m', msg hash, misc_msg_list]
+                    elif rsp[0] == 'f':  # rsp == ['m', msg_hash, [main_msg, sig], msg_fee]
                         try:
                             tx_misc_wsh.add_to_misc_msg(
                                 msg_hash=rsp[1],
-                                msg=rsp[2]
+                                msg=rsp[2],
+                                fees=rsp[3]
                             )
                         except AttributeError as e:  # tx_misc_wsh is still None
                             print(f"tx_misc_wsh is still none: {e}")
@@ -1070,18 +1071,20 @@ class Competitor:
 
                         main_msg = rsp[1]["misc_msg"]
                         sig = rsp[1]['sig']
+                        msg_hash = rsp[1]["msg_hash"]
+                        msg_fee = main_msg['fee']
 
                         # if new block has been received but next block not being generated,
                         if has_received_new_block.is_set() is True and is_generating_block.is_set() is False:
 
                             # this goes to process being run self.handle_new_block Competitor method
-                            q_object_from_compete_process_to_mining.put(['m', rsp[1]['msg_hash'], misc_m])
+                            q_object_from_compete_process_to_mining.put(['m', msg_hash, [main_msg, sig], msg_fee])
 
                         else:
                             tx_misc_wsh.add_to_misc_msg(
-                                msg_hash=rsp[1]["msg_hash"],
+                                msg_hash=msg_hash,
                                 msg=[main_msg, sig],
-                                fees=main_msg['fee']
+                                fees=msg_fee
                             )
 
                     else:  # transaction message

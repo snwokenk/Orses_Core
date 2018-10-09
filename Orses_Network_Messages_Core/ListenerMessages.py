@@ -1,10 +1,13 @@
 import collections, json
 
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
+
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
     TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator
 
 
+
+# todo: rather than having
 # add the validator method to the dictionary without calling it without the '()'
 validator_dict_callable = dict()
 validator_dict_callable["tx_asg"] = AssignmentStatementValidator.AssignmentStatementValidator
@@ -17,6 +20,7 @@ validator_dict_callable['misc_msg'] = MiscMessagesValidator.MiscMessagesValidato
 retriever_dict_callable = dict()
 retriever_dict_callable["rq_adr"] = None
 retriever_dict_callable['rq_bal'] = None  # request wallet balance
+
 
 class ListenerMessages:
     """
@@ -126,33 +130,37 @@ class ListenerForSendingTokens(ListenerMessages):
             elif self.messages_heard and len(self.messages_heard) == 3:  # This is main msg for validation
                 rsp = None
                 # self.msg_type will determine the validator to use
+                if self.msg_type == "tx_asg":
+                    # todo: call ProxyCenter.execute_assignment_statement()
+                    proxy_center = self.admin_instance.get_proxy_center()
 
-                rsp = validator_dict_callable[self.msg_type](
-                    json.loads(self.messages_heard[2].decode()),
-                    q_object=self.q_object,
-                    admin_instance=self.admin_instance,
-                ).check_validity()
-
-                print("in ListenerMessages.py, rsp: ", rsp)
-
-                if rsp is None: # wallet_pubkey not in database
-                    return self.need_pubkey
-                if rsp is True:
-                    self.netmsginst.end_convo = True
-                    return self.verified_msg
-                if rsp is False:
-                    self.netmsginst.end_convo = True
-                    return self.reject_msg
                 else:
-                    self.netmsginst.end_convo = True
-                    return self.last_msg
+                    rsp = validator_dict_callable[self.msg_type](
+                        json.loads(self.messages_heard[2].decode()),
+                        q_object=self.q_object,
+                        admin_instance=self.admin_instance,
+                    ).check_validity()
+
+                    print("in ListenerMessages.py, rsp: ", rsp)
+
+                    if rsp is None: # wallet_pubkey not in database
+                        return self.need_pubkey
+                    if rsp is True:
+                        self.netmsginst.end_convo = True
+                        return self.verified_msg
+                    if rsp is False:
+                        self.netmsginst.end_convo = True
+                        return self.reject_msg
+                    else:
+                        self.netmsginst.end_convo = True
+                        return self.last_msg
 
             elif len(self.messages_heard) > 3:
                 if self.messages_heard[-1] != self.last_msg:  # make sure last msg not b'end' message
 
                     # if message is not last message then should be wallet pubkey info requested
                     # this will also store wallet info for reuse
-                    if self.msg_type != "misc_msg":
+                    if self.msg_type in {"misc_msg", "tx_asg"}:  # misc_msg comes with pubkey
                         rsp = validator_dict_callable[self.msg_type](
                             json.loads(self.messages_heard[2].decode()),
                             # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}

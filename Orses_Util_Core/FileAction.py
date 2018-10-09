@@ -101,6 +101,13 @@ class FileAction:
         rsp = os.path.join(self.get_username_folder_path(), Filenames_VariableNames.key_folder)
         return rsp
 
+    def get_proxy_folder_path(self):
+        '''
+        folder where all proxy data is stored
+        :return:
+        '''
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.proxy_folder)
+
     def get_wallets_folder_path(self):
         """
         folder where admin's wallets are stored

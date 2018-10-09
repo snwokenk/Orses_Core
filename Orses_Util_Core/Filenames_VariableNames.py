@@ -4,6 +4,7 @@ pub_key_filename = "{}_pubkey"
 username_wallets = "{}_wallets"
 wallet_details_folder = "wallet_detail"
 key_folder = "keys"
+proxy_folder = "proxy_data"
 wallets_folder = "wallets"
 data_folder = "live_data"
 

@@ -4,6 +4,7 @@ from Orses_Database_Core.StoreData import StoreData
 from Orses_Database_Core.RetrieveData import RetrieveData
 from Orses_Util_Core.FileAction import FileAction
 from Orses_Util_Core import Filenames_VariableNames
+from Orses_Proxy_Core.ProxyCenter import ProxyCenter
 
 
 from Crypto.Hash import SHA256, RIPEMD160
@@ -64,6 +65,11 @@ class Admin:
         # util_dictionary, to keep miscellaneous things that can be used throughout the program
         self.util_dict = dict()
 
+        # instantiate proxy center class
+        self.proxy_center = ProxyCenter(
+            admin_inst=self
+        )
+
         self.__set_or_create_pki_pair()
 
 
@@ -83,9 +89,6 @@ class Admin:
                 self.__is_validator = value
         else:
             self.__is_validator = True  # default
-
-
-
 
     def __set_or_create_pki_pair(self):
         """
@@ -209,6 +212,9 @@ class Admin:
 
     def get_db_manager(self):
         return self.db_manager
+
+    def get_proxy_center(self):
+        return self.proxy_center
 
     def load_mempool_instance(self, mempool_inst):
         """

@@ -61,8 +61,8 @@ class OrsesLevelDBManager:
             "confirmed_msgs_hashes",
             "unconfirmed_msgs_hashes",
             "unconfirmed_msgs_wid",
-            "BCWs"
-            "BCW_Proxies"  # db storing proxy information of each BCW
+            "BCWs",  # database of all active BCW wallets
+            "BCW_Proxies"  # db storing proxy information of each BCW (in Network)
 
         ]
 
@@ -475,6 +475,8 @@ class OrsesLevelDBManager:
                     "wallet_pubkeys",
                     "temp_wallet_balances"}:
             filename = os.path.join(self.admin_inst.fl.get_clients_wallet_folder_path(), name)
+        elif name in {"BCWs", "BCW_Proxies", 'local_'}:
+            filename = os.path.join(self.admin_inst.fl.get_proxy_folder_path(), name)
         else:
             filename = os.path.join(self.admin_inst.fl.get_mempool_data_folder_path(), name)
         try:

@@ -62,13 +62,10 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: continue working of misc_messages validator, Update uncomfirmed db when misc message is
 # todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
 # todo: running and maintaining BCWs that the admin node is a proxy of.
-
-
 
 
 # todo: create a block validator which validates newly created block from others
