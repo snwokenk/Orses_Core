@@ -62,7 +62,10 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: code misc messages logic, for receiving, validating, propagating and adding to block (if block creator)
+
+# todo: finish working on Proxycenter execute_assignment_statement(), with a way of requesting for wallet pubkey,
+# todo: while storing info needed to revalidate assignment statement with pubkey key
+
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
 # todo: running and maintaining BCWs that the admin node is a proxy of.

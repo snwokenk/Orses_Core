@@ -13,7 +13,7 @@ class AssignmentStatementValidator:
     if message is validated, node sends a ver message
     else a rej message is sent if invalid
     """
-    def __init__(self, asgn_stmt_dict, admin_instance, asgn_stmt_list=None, wallet_pubkey=None, q_object=None):
+    def __init__(self, asgn_stmt_dict, admin_instance, snd_balance, asgn_stmt_list=None, wallet_pubkey=None, q_object=None):
         """
 
         :param asgn_stmt_dict: assignment statement dict with
@@ -33,6 +33,8 @@ class AssignmentStatementValidator:
                 x_int = base64.b85decode(wallet_pubkey["x"].encode())
                 x_int = int.from_bytes(x_int, "big")
         :param q_object: a queue.Queue instance (or similar)
+
+        :param snd_balance: list containing [available bal, reserved balance,
         """
         self.admin_instance = admin_instance
         self.mempool = admin_instance.get_mempool()
@@ -49,6 +51,12 @@ class AssignmentStatementValidator:
         self.timelimit = self.asgn_stmt_list[-1]
         self.unknown_wallet = True if wallet_pubkey else False
         self.q_object = q_object
+        try:
+            self.ntakiri_amount =  int(round(float(self.asgn_stmt_list[3]), 10) * 1e10)
+            self.ntakiri_fee = int(round(float(self.asgn_stmt_list[4]), 10) * 1e10)
+        except ValueError as e:
+            print(f"not")
+        self.snd_balance = snd_balance
 
         self.set_sending_wallet_pubkey()
 
@@ -172,19 +180,14 @@ class AssignmentStatementValidator:
         :return: True if inputs are of write data type else False
         """
 
-        try:
-            amt = float(self.asgn_stmt_list[3])
-            fee = float(self.asgn_stmt_list[4])
-        except ValueError:
+        if (self.ntakiri_amount > 0.0 and self.ntakiri_fee > 0.0) and \
+                (self.ntakiri_amount+self.ntakiri_fee <= self.snd_balance[0]): # verify amount and balance
+            print("inputs Check: ", True)
+            return True
+        else:
             print("inputs Check: ", False)
             return False
-        else:
-            if amt > 0.0 and fee > 0.0: # verify amt and fee is not negative
-                print("inputs Check: ", True)
-                return True
-            else:
-                print("inputs Check: ", False)
-                return False
+
 
 
 

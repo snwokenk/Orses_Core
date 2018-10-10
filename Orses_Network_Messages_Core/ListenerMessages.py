@@ -138,10 +138,19 @@ class ListenerForSendingTokens(ListenerMessages):
                 # self.msg_type will determine the validator to use
                 if self.msg_type == "tx_asg":
 
-                    self.admin_instance.get_proxy_center().execute_assignment_statement(
+                    rsp = self.admin_instance.get_proxy_center().execute_assignment_statement(
                         asgn_stmt_dict=json.loads(self.messages_heard[2]),
-                        q_obj=self.q_object
+                        q_obj=self.q_object,
+                        wallet_pubkey=None
                     )
+
+                    if rsp is None:
+                        return self.need_pubkey
+                    elif isinstance(rsp, str):
+                        pass
+                        # assignment statement has been executed
+
+
 
                 else:
                     rsp = validator_dict_callable[self.msg_type](

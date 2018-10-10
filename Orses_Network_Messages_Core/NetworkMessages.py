@@ -13,6 +13,7 @@ dict_of_listening_types['misc_msg'] = ListenerMessages.ListenerForMiscMsgs
 class NetworkMessages:
     """
     class is to listen for first 2 messages, then choose which ListenerMessages class to use
+    This class is passed as spk_msg_obj to NetworkListener
     """
 
     def __init__(self, admin_instance, q_obj=None):
@@ -50,6 +51,7 @@ class NetworkMessages:
                 )
                 self.message_object.listen(msg)
             except KeyError:
+                print(f" in NetworkMessages.py, not able to find listnener for msg {msg}")
                 return self.last_msg
 
     def speak(self):
@@ -63,7 +65,6 @@ class NetworkMessages:
             and self.message_object:
             return self.message_object.speak()
         else:
-            # print("len ", len(self.first_two_msgs), "\nlast message: ",self.first_two_msgs[-1], "\nmessage object: ", self.message_object)
             self.end_convo = True
             return self.last_msg
 

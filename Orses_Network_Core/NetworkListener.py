@@ -23,24 +23,26 @@ class NetworkListener(Protocol):
 
     def dataReceived(self, data):
         print("rec: ", data)
+
+        self.message_object.listen(data)
+
+        # add speak to defferal to avoid blocking code
         d = threads.deferToThread(
-            self.message_object.listen,
-            data
+            self.message_object.speak,
         )
         d.addCallback(
             self.respond
         )
         d.addErrback(lambda e: print(f"error occurred in NetworkListener,datReceived defferal, error is {e}"))
 
-    def respond(self):
+    def respond(self, response):
         """
         used as callback function to respond to node after deferral
         :return:
         """
-        rsp = self.message_object.speak()
-        print("resp: ", rsp)
+        print("resp: ", response)
 
-        self.transport.write(rsp)
+        self.transport.write(response)
 
         if self.message_object.end_convo is True:
             self.transport.loseConnection()

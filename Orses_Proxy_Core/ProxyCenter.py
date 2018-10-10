@@ -4,6 +4,7 @@ Proxy center is used to load WalletProxy instances and call certain methods need
 conditions of an assignment statement
 """
 from Orses_Proxy_Core.WalletProxy import WalletProxy
+import json
 
 
 class ProxyCenter:
@@ -14,6 +15,9 @@ class ProxyCenter:
 
         # dict_of_managing_bcw = {"wallet_id": WalletProxy Instance}
         self.dict_of_managing_bcw = dict()
+
+        # dict of messages, is updated by networkPropagator as a way to communicate with proxy center
+        self.dict_of_expected_messages = dict()
 
     def initiate_new_proxy(self, bcw_wid: str, overwrite=False):
 
@@ -85,65 +89,99 @@ class ProxyCenter:
         :return:
         """
 
-    def execute_assignment_statement(self, asgn_stmt_dict, q_obj):
+    def execute_assignment_statement(self, asgn_stmt_dict, q_obj, wallet_pubkey=None, **kwargs):
         """
 
         :param q_obj: queue.Queue object to NetworkPropagtor.run_propagator_convo_initiator
         :param asgn_stmt_dict: main assignment statement dict
+        :param kwargs: if kwargs is not empty then it should include the necessary information needed to execute the
+                    assignment statement. This is usually if a wallet pubkey was needed
         :return: bool, if able to execute or not
         """
 
-        # first verify assignment statement is using a BCW administered by local node
-        assignment_statement = asgn_stmt_dict["asgn_stmt"]
+        if not kwargs:
+            # first verify assignment statement is using a BCW administered by local node
+            assignment_statement = asgn_stmt_dict["asgn_stmt"]
 
-        # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
-        # timelimit is seconds after timestamp in which an asgn_stmt is considered stale
-        asgn_stmt_list = assignment_statement.split(sep='|')
+            # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
+            # timelimit is seconds after timestamp in which an asgn_stmt is considered stale
+            asgn_stmt_list = assignment_statement.split(sep='|')
 
-        # query bcw_wid not in self.dict_of_managing_bcw return false and end execution
-        # This is then used by ListenerMessages class to relay a 'rej' message to sender
-        if not asgn_stmt_list[2] in self.dict_of_managing_bcw:
-            return False
+            # query bcw_wid not in self.dict_of_managing_bcw return false and end execution
+            # This is then used by ListenerMessages class to relay a 'rej' message to sender
+            if not asgn_stmt_list[2] in self.dict_of_managing_bcw:
+                return False
 
-        # todo: assignment statement should then be propagated to other proxies of the same BCW (if they don't have it)
+            # todo: assignment statement should then be propagated to other proxies of the same BCW (if they don't have it)
 
-        # Now that it's been established that local node manages BCW, check to see if the two
-        # if the rcv wallet was newly created then it is managed by the BCW being used by the sender.
-        # each local node should have a db oll all wallets of the network, this is done using log messages for
-        # assignment statements
-        # once queried should
+            # Now that it's been established that local node manages BCW, check to see if the two
+            # if the rcv wallet was newly created then it is managed by the BCW being used by the sender.
+            # each local node should have a db oll all wallets of the network, this is done using log messages for
+            # assignment statements
+            # once queried should
 
-        # query for sender/receiver wallet id balance [available, reserved, total]
-        snd_balance = self.admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=asgn_stmt_list[0])
-        rcv_balance = self.admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=asgn_stmt_list[1])
+            # query for sender/receiver wallet id balance [available, reserved, total]
+            snd_balance = self.admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=asgn_stmt_list[0])
+            rcv_balance = self.admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=asgn_stmt_list[1])
 
-        if len(snd_balance) == 3:
-            snd_managed = [False, "blockchain"]
-        elif len(snd_balance) > 3 and isinstance(snd_balance[-1], str):
-            snd_managed = [True, snd_balance[-1]] if snd_balance[-1] == asgn_stmt_list[2] else [False, snd_balance[-1]]
+            if len(snd_balance) == 3:
+                snd_managed = [False, "blockchain"]
+            elif len(snd_balance) > 3 and isinstance(snd_balance[-1], str):
+                snd_managed = [True, snd_balance[-1]] if snd_balance[-1] == asgn_stmt_list[2] else [False, snd_balance[-1]]
 
+            else:
+                print(f"in ProxyCenter, Execute Assignment statement, could not determine sender wallet manager, debug")
+                return False
+
+            if len(rcv_balance) == 3 or rcv_balance[-1] is None:
+                rcv_managed = [False, "blockchain"] if rcv_balance[2] > 0 else [True, asgn_stmt_list[2]]
+            elif len(rcv_balance) > 3 and isinstance(rcv_balance[-1], str):
+                rcv_managed = [True, snd_balance[-1]] if snd_balance[-1] == asgn_stmt_list[2] else [False, snd_balance[-1]]
+
+            else:
+                print(f"in ProxyCenter, Execute Assignment statement, could not determine receiver wallet manager, debug")
+                return False
         else:
-            print(f"in ProxyCenter, Execute Assignment statement, could not determine sender wallet manager, debug")
-            return False
+            snd_managed = kwargs['snd_managed']
+            rcv_managed = kwargs['rcv_managed']
+            snd_balance = kwargs["snd_balance"]
+            rcv_balance = kwargs["rcv_balance"]
+            asgn_stmt_list = kwargs['stmt_list']
+            asgn_stmt_dict = kwargs['stmt_dict']
 
-        if len(rcv_balance) == 3 or rcv_balance[-1] is None:
-            rcv_managed = [False, "blockchain"] if rcv_balance[2] > 0 else [True, asgn_stmt_list[2]]
-        elif len(rcv_balance) > 3 and isinstance(rcv_balance[-1], str):
-            rcv_managed = [True, snd_balance[-1]] if snd_balance[-1] == asgn_stmt_list[2] else [False, snd_balance[-1]]
-
-        else:
-            print(f"in ProxyCenter, Execute Assignment statement, could not determine receiver wallet manager, debug")
-            return False
-
-        # first and easiest to accomplish is if both receiving and sending wallets managed by same BCW
-
-
-
+        # ***** Execute Assignment statement according to scenario ******
+        # set wallet proxy to use
         wallet_proxy = self.dict_of_managing_bcw[asgn_stmt_list[2]]
 
         if snd_managed[0] is True and rcv_managed[0] is True:
-            # todo: fulfill the easiest, which is when rcving
-            pass
+            rsp = wallet_proxy.execute_asgn_stmt_both_managed(
+                asgn_stmt_dict=asgn_stmt_dict,
+                stmt_list=asgn_stmt_list,
+                snd_balance=snd_balance,
+                rcv_balance=rcv_balance,
+                wallet_pubkey=None
+            )
+
+            # once returned to ListenerMessages will send a need pubkey message
+            # if kwargs is not empty then pubkey should have been sent
+            if rsp is None and not kwargs:
+                k = dict()
+                k['snd_managed'] = snd_managed
+                k['rcv_managed'] = rcv_managed
+                k["snd_balance"] = snd_balance
+                k["rcv_balance"] = rcv_balance
+                k["stmt_list"] = asgn_stmt_list
+                k["stmt_dict"] = asgn_stmt_dict
+                return [rsp, k]
+
+            elif rsp is None and kwargs:
+                return [False]
+
+            # assignment statement has been executed
+            elif isinstance(rsp, dict):
+                rsp_str = json.dumps(rsp)
+                return [True, rsp_str]
+
         elif snd_managed[0] is True and rcv_managed[0] is False:
             pass
         elif snd_managed[0] is False and rcv_managed[0] is False:

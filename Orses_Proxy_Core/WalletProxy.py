@@ -23,6 +23,7 @@ the "WSH" section
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Orses_Cryptography_Core.PKIGeneration import PKI
+from Orses_Validator_Core.AssignmentStatementValidator import AssignmentStatementValidator
 
 
 class WalletProxy:
@@ -64,6 +65,35 @@ class WalletProxy:
         # create or load leveldb databases for administration
         # this includes db that stores all assignment statements sent to the administered BCW
         # a db that stores all wallets with their managed by BCW
+
+    def execute_asgn_stmt_both_managed(self, asgn_stmt_dict, stmt_list, snd_balance, rcv_balance, wallet_pubkey=None):
+
+
+        # validate assignment statement
+        validator = AssignmentStatementValidator(
+            admin_instance=self.admin_inst,
+            asgn_stmt_dict=asgn_stmt_dict,
+            asgn_stmt_list=stmt_list,
+            snd_balance=snd_balance
+        ).check_validity()
+
+        if validator is None:
+            return None
+        elif validator is False:
+            return False
+
+
+
+
+
+    def execute_asgn_stmt_snd_managed(self, asgn_stmt_dict, stmt_list, snd_balance):
+        pass
+
+    def execute_asgn_stmt_rcv_managed(self, asgn_stmt_dict, stmt_list, rcv_balance):
+        pass
+
+    def execute_asgn_stmt_nonoe_managed(self, asgn_stmt_dict, stmt_list):
+        pass
 
 
     def get_pubkey(self):
