@@ -113,6 +113,7 @@ class ListenerForSendingTokens(ListenerMessages):
                          admin_instance=admin_instance)
         self.need_pubkey = b'wpk'
         self.q_object = q_object
+        self.message_deffered = None
 
     def speak(self):
         """
@@ -138,19 +139,25 @@ class ListenerForSendingTokens(ListenerMessages):
                 # self.msg_type will determine the validator to use
                 if self.msg_type == "tx_asg":
 
+                    # rsp response is a list. either len of 1 or len 2
                     rsp = self.admin_instance.get_proxy_center().execute_assignment_statement(
                         asgn_stmt_dict=json.loads(self.messages_heard[2]),
                         q_obj=self.q_object,
                         wallet_pubkey=None
                     )
 
-                    if rsp is None:
+                    if rsp[0] is None:
+                        self.message_deffered = rsp[1]
                         return self.need_pubkey
-                    elif isinstance(rsp, str):
-                        pass
-                        # assignment statement has been executed
 
+                    # assignment statement has been executed rsp = [True, json_encoded dict of reply]
+                    elif rsp[0] is True:
+                        self.netmsginst.end_convo = True
+                        return rsp[1]
 
+                    else:
+                        self.netmsginst.end_convo = True
+                        return self.reject_msg
 
                 else:
                     rsp = validator_dict_callable[self.msg_type](
@@ -173,12 +180,13 @@ class ListenerForSendingTokens(ListenerMessages):
                         self.netmsginst.end_convo = True
                         return self.last_msg
 
+            # usually if wallet pubkey is needed
             elif len(self.messages_heard) > 3:
                 if self.messages_heard[-1] != self.last_msg:  # make sure last msg not b'end' message
 
                     # if message is not last message then should be wallet pubkey info requested
                     # this will also store wallet info for reuse
-                    if self.msg_type in {"misc_msg", "tx_asg"}:  # misc_msg comes with pubkey
+                    if self.msg_type not in {"misc_msg", "tx_asg"}:  # misc_msg comes with pubkey
                         rsp = validator_dict_callable[self.msg_type](
                             json.loads(self.messages_heard[2].decode()),
                             # wallet_pubkey = son encoded string {"x":base85 str, "y": base85 str}
@@ -186,16 +194,36 @@ class ListenerForSendingTokens(ListenerMessages):
                             q_object=self.q_object,
                             admin_instance=self.admin_instance,
                         ).check_validity()
-                    else:
+                    elif self.msg_type == "tx_asg" and isinstance(self.message_deffered, dict):
+
+                        rsp = self.admin_instance.get_proxy_center().execute_assignment_statement(
+                            asgn_stmt_dict=None,
+                            q_obj=self.q_object,
+                            wallet_pubkey=self.messages_heard[-1].decode(),
+                            **self.message_deffered  # pass message deferred as kwargs, to avoid redoing actions
+
+                        )
+
+                        if rsp[0] is True:
+                            self.netmsginst.end_convo = True
+                            return rsp[1]
+                        else:
+                            self.netmsginst.end_convo = True
+                            return self.reject_msg
+
+                    elif self.msg_type == "misc_msg":
                         # todo: add validator specifically for misc_messages
                         rsp = True
+
+                    else:
+                        rsp = False
 
                     print("in ListenerMessages.py rsp2: ", rsp)
 
                     if rsp is True:
                         self.netmsginst.end_convo = True
                         return self.verified_msg
-                    elif rsp is False:
+                    else:
                         self.netmsginst.end_convo = True
                         return self.reject_msg
 

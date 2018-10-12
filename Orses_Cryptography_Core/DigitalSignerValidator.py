@@ -15,7 +15,7 @@ class DigitalSignerValidator:
 
 
     @staticmethod
-    def validate(msg, pubkey: dict, signature):
+    def validate(msg, pubkey: dict, signature, pre_message_hash=None):
         """
         used to validate signature
         :param msg: string or byte string, message to validate signature(assignment statements, token transfers etc)
@@ -51,12 +51,17 @@ class DigitalSignerValidator:
             verifier = DSS.new(pubkey, mode="fips-186-3")
             verifier.verify(hash_of_message, signature=signature)
         except ValueError:
-            return False
+           print(f"value error in digitalsignervalidator")
         else:
-            return True
+            if (pre_message_hash and hash_of_message == pre_message_hash) or pre_message_hash is None:
+                return True
+
+
+
+        return False
 
     @staticmethod
-    def validate_wallet_signature(msg, wallet_pubkey, signature):
+    def validate_wallet_signature(msg, wallet_pubkey, signature, pre_message_hash=None):
         """
 
         :param msg:
@@ -93,9 +98,15 @@ class DigitalSignerValidator:
             verifier = DSS.new(wallet_pubkey, mode="fips-186-3")
             verifier.verify(hash_of_message, signature=signature)
         except ValueError:
-            return False
+            print(f"value error in digitalsignervalidator")
         else:
-            return True
+            if (pre_message_hash and hash_of_message == pre_message_hash) or pre_message_hash is None:
+                return True
+            else:
+                print(f"pre message hash not the same as hash used by signature")
+
+
+        return False
 
 
 

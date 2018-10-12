@@ -101,12 +101,21 @@ class FileAction:
         rsp = os.path.join(self.get_username_folder_path(), Filenames_VariableNames.key_folder)
         return rsp
 
-    def get_proxy_folder_path(self):
+    def get_proxy_center_folder_path(self):
         '''
         folder where all proxy data is stored
+        is a folder of folders with each folder in it representing a wallet proxy OR Leveldb folder
         :return:
         '''
-        return os.path.join(self.__username_folder_path, Filenames_VariableNames.proxy_folder)
+        return os.path.join(self.__username_folder_path, Filenames_VariableNames.proxy_center_folder)
+
+    def get_wallet_proxy_folder_path(self, proxy_name: str):
+        """
+        gets folder of a wallet proxy
+        :param proxy_name: name of Wallet proxy
+        :return:
+        """
+        return os.path.join(self.get_proxy_center_folder_path(), proxy_name)
 
     def get_wallets_folder_path(self):
         """

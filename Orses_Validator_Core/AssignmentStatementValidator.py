@@ -161,7 +161,9 @@ class AssignmentStatementValidator:
     def check_signature_valid(self):
         response = DigitalSignerValidator.validate_wallet_signature(msg=self.asgn_stmt,
                                                                     wallet_pubkey=self.non_json_wallet_pubkey,
-                                                                    signature=self.signature)
+                                                                    signature=self.signature,
+                                                                    pre_message_hash=self.stmt_hash
+                                                                    )
         print("sig check: ", response)
         if response is True:
             return True

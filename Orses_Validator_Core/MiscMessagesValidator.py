@@ -64,7 +64,7 @@ class MiscMessagesValidator:
         """
         if self.check_if_msg_fee_is_enough() and self.check_signature():
             # store info into unconfirmed leveldb
-            rsp = self.db_manager.insert_into_unconfirmed_db(
+            response = self.db_manager.insert_into_unconfirmed_db(
                 tx_type="misc_msg",
                 sending_wid=self.wallet_id,
                 tx_hash=self.msg_hash,
@@ -74,13 +74,14 @@ class MiscMessagesValidator:
                 fee=self.msg_fee,
             )
 
-            if rsp is False:
+            if response is False:
                 print(f"in MiscMessageValidator.py, check_validity, not able to insert misc_msg into unconfirmed db")
-
-            self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, True])
+            if self.q_object:
+                self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, True])
             return True
         else:
-            self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, False])
+            if self.q_object:
+                self.q_object.put([f'f{self.msg_hash[:8]}', self.wallet_pubkey, self.misc_msg_dict, False])
             return False
 
     def check_signature(self):

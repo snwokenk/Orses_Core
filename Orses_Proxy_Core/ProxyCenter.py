@@ -19,6 +19,21 @@ class ProxyCenter:
         # dict of messages, is updated by networkPropagator as a way to communicate with proxy center
         self.dict_of_expected_messages = dict()
 
+    def __load_proxy_center(self):
+
+        bcw_administered_list = self.admin_inst.fl.open_file_from_json(
+            filename="list_of_administered_bcws",
+            in_folder=self.admin_inst.fl.get_proxy_center_folder_path()
+        )
+
+        for bcw_wid in bcw_administered_list:
+            self.dict_of_managing_bcw[bcw_wid] = WalletProxy(
+                proxy_center=self,
+                bcw_wid=bcw_wid,
+                new_proxy=False,
+                overwrite=False
+            )
+
     def initiate_new_proxy(self, bcw_wid: str, overwrite=False):
 
         # initiate walletProxy
@@ -36,12 +51,11 @@ class ProxyCenter:
 
             self.dict_of_managing_bcw[bcw_wid] = new_proxy
 
-
             bcw_administered_list = list(self.dict_of_managing_bcw.keys())
             self.admin_inst.fl.save_json_into_file(
                 filename="list_of_administered_bcws",
                 python_json_serializable_object=bcw_administered_list,
-                in_folder=self.admin_inst.fl.get_proxy_folder_path()
+                in_folder=self.admin_inst.fl.get_proxy_center_folder_path()
             )
 
             # return pubkey
@@ -68,9 +82,12 @@ class ProxyCenter:
 
     def load_administered_proxies(self):
 
+        # todo: later, logic involving syncing of data among other proxies will be added,
+        # todo: this might be on the Proxycenter level or individual WalletProxy level. ind. proxies preferred
+
         bcw_administered_list = self.admin_inst.fl.open_file_from_json(
             filename="list_of_administered_bcws",
-            in_folder=self.admin_inst.fl.get_proxy_folder_path()
+            in_folder=self.admin_inst.fl.get_proxy_center_folder_path()
         )
         for bcw_wid in bcw_administered_list:
             loaded_proxy = self.load_a_proxy(bcw_wid=bcw_wid)
@@ -136,7 +153,7 @@ class ProxyCenter:
             if len(rcv_balance) == 3 or rcv_balance[-1] is None:
                 rcv_managed = [False, "blockchain"] if rcv_balance[2] > 0 else [True, asgn_stmt_list[2]]
             elif len(rcv_balance) > 3 and isinstance(rcv_balance[-1], str):
-                rcv_managed = [True, snd_balance[-1]] if snd_balance[-1] == asgn_stmt_list[2] else [False, snd_balance[-1]]
+                rcv_managed = [True, snd_balance[3]] if snd_balance[3] == asgn_stmt_list[2] else [False, snd_balance[3]]
 
             else:
                 print(f"in ProxyCenter, Execute Assignment statement, could not determine receiver wallet manager, debug")
@@ -151,15 +168,14 @@ class ProxyCenter:
 
         # ***** Execute Assignment statement according to scenario ******
         # set wallet proxy to use
-        wallet_proxy = self.dict_of_managing_bcw[asgn_stmt_list[2]]
+        wallet_proxy: WalletProxy = self.dict_of_managing_bcw[asgn_stmt_list[2]]
 
         if snd_managed[0] is True and rcv_managed[0] is True:
             rsp = wallet_proxy.execute_asgn_stmt_both_managed(
                 asgn_stmt_dict=asgn_stmt_dict,
                 stmt_list=asgn_stmt_list,
                 snd_balance=snd_balance,
-                rcv_balance=rcv_balance,
-                wallet_pubkey=None
+                wallet_pubkey=wallet_pubkey
             )
 
             # once returned to ListenerMessages will send a need pubkey message
@@ -187,6 +203,12 @@ class ProxyCenter:
         elif snd_managed[0] is False and rcv_managed[0] is False:
             pass
         elif snd_managed[0] is False and rcv_managed[0] is True:
+            rsp = wallet_proxy.execute_asgn_stmt_rcv_managed(
+                asgn_stmt_dict=asgn_stmt_dict,
+                stmt_list=asgn_stmt_list,
+                snd_balance=snd_balance,
+                wallet_pubkey=wallet_pubkey
+            )
             pass
 
 

@@ -479,7 +479,7 @@ class OrsesLevelDBManager:
                     "temp_wallet_balances"}:
             filename = os.path.join(self.admin_inst.fl.get_clients_wallet_folder_path(), name)
         elif name in {"BCWs", "BCW_Proxies", 'local_'}:
-            filename = os.path.join(self.admin_inst.fl.get_proxy_folder_path(), name)
+            filename = os.path.join(self.admin_inst.fl.get_proxy_center_folder_path(), name)
         elif isinstance(in_folder, str):
             filename = os.path.join(in_folder, name)
         else:
