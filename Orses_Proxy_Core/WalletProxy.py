@@ -171,9 +171,9 @@ class WalletProxy:
             asgn_stmt_dict=asgn_stmt_dict
         ).sign_and_return_bcw_initiated_token_transfer(bcw_proxy_privkey=self.bcw_proxy_privkey)
 
-        d = lambda: self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
+        a_callable = lambda: self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
 
-        return ['defer', btt_dict, d]
+        return ['defer', btt_dict, a_callable]
 
     def execute_asgn_stmt_none_managed(self, asgn_stmt_dict, stmt_list):
         pass

@@ -28,7 +28,7 @@ class ListenerMessages:
     base class, create ListenerMessages subclasses for each type of message.
     These subclasses can then be used in the Network manager depending on the type of connection
     """
-    def __init__(self,  messages_heard, netmsginst, msg_type, admin_instance):
+    def __init__(self,  messages_heard, netmsginst, msg_type, admin_instance, protocol=None):
         """
 
         :param messages_heard: a list of messages already heard from client
@@ -47,6 +47,7 @@ class ListenerMessages:
         self.verified_msg = b'ver'
         self.netmsginst = netmsginst
         self.msg_type = msg_type
+        self.protocol=protocol
 
     def listen(self, msg):
         """
@@ -103,14 +104,14 @@ class ListenerForBalanceRequest(ListenerMessages):
 
 class ListenerForSendingTokens(ListenerMessages):
 
-    def __init__(self, messages_heard, netmsginst, msg_type, admin_instance,q_object=None):
+    def __init__(self, messages_heard, netmsginst, msg_type, admin_instance, protocol=None,q_object=None):
         """
         :param messages_heard: this is the two initial messages already heard, list
         :param netmsginst: used to pass the
         :param msg_type: this will be used to determine the validator to call depending on msg type
         """
         super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type,
-                         admin_instance=admin_instance)
+                         admin_instance=admin_instance, protocol=protocol)
         self.need_pubkey = b'wpk'
         self.q_object = q_object
         self.message_deffered = None
@@ -143,7 +144,8 @@ class ListenerForSendingTokens(ListenerMessages):
                     rsp = self.admin_instance.get_proxy_center().execute_assignment_statement(
                         asgn_stmt_dict=json.loads(self.messages_heard[2]),
                         q_obj=self.q_object,
-                        wallet_pubkey=None
+                        wallet_pubkey=None,
+                        protocol=self.protocol
                     )
 
                     if rsp[0] is None:
@@ -200,8 +202,8 @@ class ListenerForSendingTokens(ListenerMessages):
                             asgn_stmt_dict=None,
                             q_obj=self.q_object,
                             wallet_pubkey=self.messages_heard[-1].decode(),
+                            protocol=self.protocol,
                             **self.message_deffered  # pass message deferred as kwargs, to avoid redoing actions
-
                         )
 
                         if rsp[0] is True:

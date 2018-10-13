@@ -62,6 +62,13 @@ else:
     print("All Required Packages Installed")
 
 
+# todo: keep working on proxycenter, also refactor mempool, update_mempool, to correctly handle btt by inserting
+# todo: the BCW_WID into balance list at index 3. And also updating the BCW's payables balance
+
+# todo: when Walletproxy has to transfer token management using bcw initiated Token Transfer,
+# todo: it must be able to send the btt to the network and keep sending keep alive messages every 60 seconds until the
+# todo: until the BTT has been added to the blockchain. Once it is added it can now move on
+
 
 # todo: finish working on Proxycenter execute_assignment_statement(), with a way of requesting for wallet pubkey,
 # todo: while storing info needed to revalidate assignment statement with pubkey key

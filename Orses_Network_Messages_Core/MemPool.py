@@ -27,6 +27,9 @@ class MemPool:
 
         self.next_block_no = None
 
+    def get_next_block_no(self):
+        return self.next_block_no
+
     def update_mempool(self, winning_block: dict) -> bool:
         """
         Use this to update mempool.

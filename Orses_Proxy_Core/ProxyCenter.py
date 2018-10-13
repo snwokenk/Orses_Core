@@ -5,7 +5,7 @@ conditions of an assignment statement
 """
 from Orses_Proxy_Core.WalletProxy import WalletProxy
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
-import json
+import json, time
 
 
 class ProxyCenter:
@@ -20,7 +20,11 @@ class ProxyCenter:
         # dict of messages, is updated by networkPropagator as a way to communicate with proxy center
         self.dict_of_expected_messages = dict()
 
-        # dict
+        # dict of callables
+        self.dict_of_callables = dict()
+
+        # message sent by protocol center telling peer node to wait
+        self.wait_msg = b'wait'
 
     def __load_proxy_center(self):
 
@@ -109,7 +113,7 @@ class ProxyCenter:
         :return:
         """
 
-    def execute_assignment_statement(self, asgn_stmt_dict, q_obj, wallet_pubkey=None, **kwargs):
+    def execute_assignment_statement(self, asgn_stmt_dict, q_obj, wallet_pubkey=None, protocol=None, **kwargs):
         """
 
         asgn_stmt_dict = {
@@ -241,15 +245,57 @@ class ProxyCenter:
                 return [False]
 
             # callable is stored, btt message is sent to NetworkPropagtor for propagation
+            # rsp = ['defer', btt_dict, a_callable]
             elif isinstance(rsp, list) and rsp[0] == "defer":
                 btt = rsp[1]
                 btt_hash = btt['tx_hash']
+                update_balance_callback = rsp[2]
 
                 # send btt to NetworkPropagator.run_propagator_convo_initiator
                 q_obj.put([f'e{btt_hash[:8]}', wallet_proxy.bcw_proxy_pubkey, btt, True])
 
-                # todo write logic that waits for btt to be propagated and added to the blockchain, before proxy
-                # todo: starts managing wallet
+                # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
+                self.wait_and_notify_of_blockchain_inclusion(
+                    update_balance_callback=update_balance_callback,
+                    end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
+                    snd_wid=asgn_stmt_list[0],
+                    bcw_wid=asgn_stmt_list[2],
+                    protocol=protocol,
+
+                )
+
+
+    def wait_and_notify_of_blockchain_inclusion(self, update_balance_callback, end_timestamp: int,**kwargs):
+
+        """
+
+        :param update_balance_callback: a callback function to update balances and create a notification message
+        :param end_timestamp: this is usually gotten from the assgn statement, by adding timestamp+timelimit
+        :param kwargs:
+        :return:
+        """
+
+        snd_wid = kwargs["snd_wid"]
+        bcw_wid = kwargs["bcw_wid"]
+        protocol = kwargs["protocol"]
+        while time.time() <= end_timestamp:
+            time.sleep(60)
+            tmp_bal = self.db_manager.get_from_wallet_balances_db(
+                wallet_id=snd_wid
+            )
+            if tmp_bal[-1] == bcw_wid:  # the last data in balance list is the BCW wallet id, if managed by a bcw
+                return update_balance_callback()
+
+            protocol.transport.write(self.wait_msg)
+
+        return
+
+    def wait_for_new_block(self):
+
+
+        pass
+
+
 
 
 
