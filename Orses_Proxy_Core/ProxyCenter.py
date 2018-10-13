@@ -4,6 +4,7 @@ Proxy center is used to load WalletProxy instances and call certain methods need
 conditions of an assignment statement
 """
 from Orses_Proxy_Core.WalletProxy import WalletProxy
+from Orses_Wallet_Core.WalletsInformation import WalletInfo
 import json
 
 
@@ -18,6 +19,8 @@ class ProxyCenter:
 
         # dict of messages, is updated by networkPropagator as a way to communicate with proxy center
         self.dict_of_expected_messages = dict()
+
+        # dict
 
     def __load_proxy_center(self):
 
@@ -109,6 +112,12 @@ class ProxyCenter:
     def execute_assignment_statement(self, asgn_stmt_dict, q_obj, wallet_pubkey=None, **kwargs):
         """
 
+        asgn_stmt_dict = {
+                "asgn_stmt": "snd_wid|rcv_wid|bcw wid|amt|fee|timestamp|timelimit",
+                "sig": signature, Base85 encoded string (must be encoded back to byte then decoded from base85 encoding
+                "stmt_hsh": statement_hash, SHA256 hash
+                "client_id": Hex ID
+            }
         :param q_obj: queue.Queue object to NetworkPropagtor.run_propagator_convo_initiator
         :param asgn_stmt_dict: main assignment statement dict
         :param kwargs: if kwargs is not empty then it should include the necessary information needed to execute the
@@ -138,8 +147,13 @@ class ProxyCenter:
             # once queried should
 
             # query for sender/receiver wallet id balance [available, reserved, total]
-            snd_balance = self.admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=asgn_stmt_list[0])
-            rcv_balance = self.admin_inst.get_db_manager().get_from_wallet_balances_db(wallet_id=asgn_stmt_list[1])
+            snd_wallet_info = WalletInfo.get_wallet_balance_info(admin_inst=self.admin_inst, wallet_id=asgn_stmt_list[0])
+            snd_balance = snd_wallet_info[0]
+            snd_pending_tx = snd_wallet_info[1]
+
+            rcv_wallet_info = WalletInfo.get_wallet_balance_info(admin_inst=self.admin_inst, wallet_id=asgn_stmt_list[2])
+            rcv_balance = rcv_wallet_info[0]
+            rcv_pending_tx = rcv_wallet_info[1]
 
             if len(snd_balance) == 3:
                 snd_managed = [False, "blockchain"]
@@ -160,6 +174,8 @@ class ProxyCenter:
                 return False
         else:
             snd_managed = kwargs['snd_managed']
+            snd_wallet_info = kwargs['snd_wallet_info']
+            snd_pending_tx = snd_wallet_info[1]
             rcv_managed = kwargs['rcv_managed']
             snd_balance = kwargs["snd_balance"]
             rcv_balance = kwargs["rcv_balance"]
@@ -188,15 +204,15 @@ class ProxyCenter:
                 k["rcv_balance"] = rcv_balance
                 k["stmt_list"] = asgn_stmt_list
                 k["stmt_dict"] = asgn_stmt_dict
-                return [rsp, k]
-
-            elif rsp is None and kwargs:
-                return [False]
+                return [None, k]
 
             # assignment statement has been executed
             elif isinstance(rsp, dict):
                 rsp_str = json.dumps(rsp)
                 return [True, rsp_str]
+
+            else:
+                return [False]
 
         elif snd_managed[0] is True and rcv_managed[0] is False:
             pass
@@ -207,9 +223,34 @@ class ProxyCenter:
                 asgn_stmt_dict=asgn_stmt_dict,
                 stmt_list=asgn_stmt_list,
                 snd_balance=snd_balance,
-                wallet_pubkey=wallet_pubkey
+                wallet_pubkey=wallet_pubkey,
+                snd_pending_tx=snd_pending_tx
             )
-            pass
+
+            if rsp is None and not kwargs:
+                k = dict()
+                k['snd_managed'] = snd_managed
+                k['rcv_managed'] = rcv_managed
+                k["snd_balance"] = snd_balance
+                k["rcv_balance"] = rcv_balance
+                k["stmt_list"] = asgn_stmt_list
+                k["stmt_dict"] = asgn_stmt_dict
+                return [rsp, k]
+
+            elif rsp is None and kwargs:
+                return [False]
+
+            # callable is stored, btt message is sent to NetworkPropagtor for propagation
+            elif isinstance(rsp, list) and rsp[0] == "defer":
+                btt = rsp[1]
+                btt_hash = btt['tx_hash']
+
+                # send btt to NetworkPropagator.run_propagator_convo_initiator
+                q_obj.put([f'e{btt_hash[:8]}', wallet_proxy.bcw_proxy_pubkey, btt, True])
+
+                # todo write logic that waits for btt to be propagated and added to the blockchain, before proxy
+                # todo: starts managing wallet
+
 
 
 

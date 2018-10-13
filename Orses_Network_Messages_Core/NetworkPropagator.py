@@ -293,8 +293,8 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     print(f"in NetworkPropagtor.py, message receiver creator, msg {msg}")
 
     # a: assignment statement validator, b:token transfer validator, c:token reservation request validator,
-    # d:token reservation request validator, e: ConnectedNodeValidator
-    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd', 'f'}:
+    # d:token reservation request validator, e: BCW initiated token transfer
+    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd', 'f', 'e'}:
         statement_validator = validator_dict[msg[-1][0]]
 
     else:  # send end message
@@ -345,7 +345,9 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
     :return:
     """
     reason = rsp[0][0]
-    if reason not in {'a', 'b', 'c', 'd', 'f'}:
+    # a is assignment statement, b is token transfer transaction, c is token reservation request,
+    # d is token reservation revoke, f is misc messages, e is BCW intiated tranfer transaction (btt)
+    if reason not in {'a', 'b', 'c', 'd', 'f', 'e'}:
         return None
 
     # todo: check he message_from_other
