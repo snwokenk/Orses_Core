@@ -889,6 +889,9 @@ class Competitor:
 
                         print(f"In Handle blocks, {start_time}, {time.time()}")
 
+                    elif rsp[0] == 'e':  # btt
+                        pass
+
                     else:  # rsp SHOULD represent a transaction rsp == [tx_type, tx_hash, [main_msg, sig]]
 
                         tx_misc_wsh.add_to_txs(
@@ -998,6 +1001,7 @@ class Competitor:
         reason_dict['c'] = "rsv_req"
         reason_dict['d'] = "rvk_req"
         reason_dict['f'] = "misc_msg"
+        reason_dict['e'] = 'btt'
 
 
         if "bh" in recent_blk and recent_blk["bh"]:
@@ -1095,7 +1099,6 @@ class Competitor:
                             # tx_dict_key either 'ttx', 'rsv_req' or 'rvk_req'
                             tx_dict_key = reason_dict.get(rsp[0], None)
                             if tx_dict_key:
-                                tx_dict_key = reason_dict[rsp[0]]
                                 main_msg = rsp[1][tx_dict_key]
                                 sig = rsp[1]['sig']
                                 tx_hash = rsp[1]["tx_hash"]

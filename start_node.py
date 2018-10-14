@@ -61,7 +61,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-
+# todo: work on the BTTValidator,
 # todo: keep working on proxycenter, also refactor mempool, update_mempool, to correctly handle btt by inserting
 # todo: the BCW_WID into balance list at index 3. And also updating the BCW's payables balance
 

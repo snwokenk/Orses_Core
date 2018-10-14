@@ -5,6 +5,7 @@ conditions of an assignment statement
 """
 from Orses_Proxy_Core.WalletProxy import WalletProxy
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
+from Orses_Validator_Core.BTTValidator import BTTValidator
 import json, time
 
 
@@ -251,11 +252,13 @@ class ProxyCenter:
                 btt_hash = btt['tx_hash']
                 update_balance_callback = rsp[2]
 
+                #
+
                 # send btt to NetworkPropagator.run_propagator_convo_initiator
                 q_obj.put([f'e{btt_hash[:8]}', wallet_proxy.bcw_proxy_pubkey, btt, True])
 
                 # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
-                self.wait_and_notify_of_blockchain_inclusion(
+                response = self.wait_and_notify_of_blockchain_inclusion(
                     update_balance_callback=update_balance_callback,
                     end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
                     snd_wid=asgn_stmt_list[0],
@@ -264,6 +267,11 @@ class ProxyCenter:
 
                 )
 
+                if isinstance(response, dict):
+                    rsp_str = json.dumps(response)
+                    return [True, rsp_str]
+                else:
+                    return [False]
 
     def wait_and_notify_of_blockchain_inclusion(self, update_balance_callback, end_timestamp: int,**kwargs):
 
@@ -288,7 +296,7 @@ class ProxyCenter:
 
             protocol.transport.write(self.wait_msg)
 
-        return
+        return False
 
     def wait_for_new_block(self):
 

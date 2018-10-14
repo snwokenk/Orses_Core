@@ -33,17 +33,19 @@ class BCWTokenTransfer:
     }
     """
 
-    def __init__(self, wallet_proxy, asgn_stmt_dict):
+    def __init__(self, wallet_proxy, asgn_stmt_dict, fee=0.0000000001):
         self.wallet_proxy = wallet_proxy
         self.admin_inst = wallet_proxy.admin_inst
         self.asgn_stmt_dict = asgn_stmt_dict
+        self.fee = fee
 
     def create_btt(self):
 
         btt = {
             'asgn_stmt': self.asgn_stmt_dict,
             'proxy_id': self.admin_inst.admin_id,
-            'timestamp': int(time.time())
+            'timestamp': int(time.time()),
+            'fee': self.fee
         }
 
         return btt
@@ -63,8 +65,9 @@ class BCWTokenTransfer:
             btt_dict = {
                 'btt': btt,
                 'sig': signature,
-                'tx_hash':tx_hash,
-                'asgn_hash': self.asgn_stmt_dict["stmt_hsh"]
+                'tx_hash': tx_hash,
+                'asgn_hash': self.asgn_stmt_dict["stmt_hsh"],
+                'p_pubkey': self.wallet_proxy.bcw_proxy_pubkey
             }
 
             return btt_dict
