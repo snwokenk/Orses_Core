@@ -95,12 +95,13 @@ class MemPool:
         This updates the permanent wallet balances db;
 
         It also adds
-        :param new_block:
+        :param tx_hash:
         :param activity_list: [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
+        :param db_manager:
         :return:
         """
-        # [avail, reserved, total]
-        wallet_data = db_manager.get_from_wallet_balances_db(wallet_id=wallet_id)
+        # [avail, reserved, total]  or [avail, reserved, total, managing bcw_wid]
+        wallet_data: list = db_manager.get_from_wallet_balances_db(wallet_id=wallet_id)
 
         # update avail bal by adding amt and fee. if index 1 is sender then amt/fee will be neg.
         # if index_1 is receiver then amnt will be positive and fee will be zero
@@ -108,7 +109,23 @@ class MemPool:
 
         # update reserved balance if tx_type = rsv_req and BCW
         if activity_list[0] == "rsv_req":
+
+            # wallet data will now include [avail bal, reserved bal, payable balance, receivable bal, total balance]
+            wallet_data = wallet_data[:3]
+
+            # add to wallet reserved balance
             wallet_data[1] = wallet_data[1] + abs(activity_list[-1])
+
+            # payable balance is zero
+            wallet_data[2] = 0
+
+            # receivable balance is
+            wallet_data.append(0)
+
+            # total balance
+            wallet_data.append(sum(wallet_data[:4]))
+
+
 
             # insert into BCW db
             db_manager.insert_into_bcw_db(

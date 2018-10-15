@@ -19,6 +19,7 @@ class BTTValidator:
         self.non_json_proxy_pubkey = None
         self.btt_dict = btt_dict
         self.btt = btt_dict['btt']
+        self.snd_admin_id =btt_dict["admin_id"]
         self.btt_hash = btt_dict['tx_hash']
         self.related_asgn_stmt_dict = self.btt['asgn_stmt']
 
@@ -28,13 +29,17 @@ class BTTValidator:
         self.timelimit = timelimit
         self.q_object = q_object
 
+        self.set_sending_wallet_pubkey()
+
     def set_sending_wallet_pubkey(self):
         """
         used to retrieve the wallet's pubkey from storage
         :return:
         """
         if self.bcw_proxy_pubkey is None:
-            snd_wid = self.sending_wid
+
+            # proxy id, is just bcw_wid+proxy's admin id
+            bcw_proxy_id = f"{self.related_asgn_stmt_list[2]}{self.snd_admin_id}"
 
             self.bcw_proxy_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(
                 wid=snd_wid,
@@ -45,9 +50,19 @@ class BTTValidator:
             # print(len(snd_wid))
             # print("sending pubkey: ", self.sending_wallet_pubkey)
         else:
-            self.non_json_proxy_pubkey = json.loads(self.bcw_proxy_pubkey)
+            try:
+                self.non_json_proxy_pubkey = json.loads(self.bcw_proxy_pubkey)
+            except TypeError as e:
+                if isinstance(self.bcw_proxy_pubkey, dict):  # already a python object
+                    self.non_json_proxy_pubkey = self.bcw_proxy_pubkey
+                else:
+                    self.non_json_proxy_pubkey = False
 
     def check_validity(self):
+        if self.non_json_proxy_pubkey is None:
+            return None
+        elif self.non_json_proxy_pubkey is False:
+            return False
 
         if self.check_signature_valid() is True:
 

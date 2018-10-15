@@ -252,7 +252,12 @@ class ProxyCenter:
                 btt_hash = btt['tx_hash']
                 update_balance_callback = rsp[2]
 
-                #
+                #add BTT validator
+                is_btt_validated = BTTValidator(
+                    admin_instance=self.admin_inst,
+                    btt_dict=btt,
+                    bcw_proxy_pubkey=wallet_proxy.bcw_proxy_pubkey
+                ).check_validity()
 
                 # send btt to NetworkPropagator.run_propagator_convo_initiator
                 q_obj.put([f'e{btt_hash[:8]}', wallet_proxy.bcw_proxy_pubkey, btt, True])

@@ -44,9 +44,11 @@ class RetrieveData:
         :param wid: wallet id
         :return: base85 encoded wallet pubkey or empty string
         """
-        print(wid_check(wid))
+        is_a_wid = wid_check(wid=wid)
 
-        if wid_check(wid=wid):
+        print(f"is a valid wallet id {is_a_wid}")
+
+        if is_a_wid:
 
             db = Sqlite3Database(dbName=Filenames_VariableNames.wallet_id_dbname,
                                  in_folder=user_instance.fl.get_clients_wallet_folder_path())

@@ -67,7 +67,7 @@ class BCWTokenTransfer:
                 'sig': signature,
                 'tx_hash': tx_hash,
                 'asgn_hash': self.asgn_stmt_dict["stmt_hsh"],
-                'p_pubkey': self.wallet_proxy.bcw_proxy_pubkey
+                'admin_id': self.admin_inst.admin_id
             }
 
             return btt_dict

@@ -3,11 +3,15 @@ import plyvel, os, json
 
 class OrsesLevelDBManager:
 
+    """
+    load required databases and then before running event loop load wallet balances from genesis block
+
+    """
+
     def __init__(self, admin_inst):
         self.admin_inst = admin_inst
         self.databases = dict()
         self.prefix_db = dict()
-
 
     def create_load_wallet_balances_from_genesis_block(self, overwrite=False):
         """
@@ -78,7 +82,12 @@ class OrsesLevelDBManager:
 
         # todo: finish up
         try:
-            # wallet balance = [[tx_type, snd_or_rcv, main_tx, signature, tx_hash, fee, amt], ...]
+            # wallet balance = [[avail bal, reserved bal, payable balance, receivable bal, total balance],
+            #                       [reservation time, expiration time, tx_hash of token_reservation],
+            #                       [proxy id, proxy id, proxy id, etc]
+            #                   ]
+
+            # [avail bal, reserved bal, payable balance, receivable bal, total balance]
             wallet_activity = self.databases["BCWs"].get(key=wallet_id.encode())
 
         except KeyError:
@@ -92,17 +101,19 @@ class OrsesLevelDBManager:
                 return []
 
         except plyvel.Error:
-            print(f"Error in OrsesLevelDBManager, wallet_balances DB does not exist")
+            print(f"Error in OrsesLevelDBManager, BCWs DB does not exist")
             return []
 
         else:
             if wallet_activity:
-                return json.loads(wallet_activity.decode())
+                wallet_activity = json.loads(wallet_activity.decode())
+
+                return wallet_activity
             else:
                 return []
 
-
-    def insert_into_bcw_db(self, wallet_id: str, tx_hash: str, rsv_req_dict: dict, signature: str, recursive_count=0):
+    def insert_into_bcw_db(self, wallet_id: str, tx_hash: str, rsv_req_dict: dict, signature: str, value=None,
+                           recursive_count=0, block_number=None):
         """
         BCW database stores records of each blockchain connected wallet,
         this include the Token Reservation Request sent.
@@ -128,9 +139,42 @@ class OrsesLevelDBManager:
         :return:
         """
 
+        # wallet balance = [[avail bal, reserved bal, payable balance, receivable bal, total balance],
+        #                       [reservation time, expiration time, tx_hash of token_reservation],
+        #                       [proxy id, proxy id, proxy id, etc]
+
+        # first get wallet balance
+
+        if rsv_req_dict:
+            pass
+        elif value:
+            pass
+
         try:
-            value = json.dumps([tx_hash, rsv_req_dict, signature, int(float(rsv_req_dict["rsv_req"]["amt"])*1e10),
-                     int(rsv_req_dict["rsv_req"]["exp"])])
+
+            if rsv_req_dict and isinstance(block_number, int):  # newly reserved so
+
+                # bcw info list tx_hash of req, time of creation, time of expiration, block number added, rsv dict]
+                bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
+                                 block_number, rsv_req_dict]
+                value = json.dumps(bcw_info_list)
+
+                # get the proxies from reservation dict
+                proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
+
+                # create individual proxy db with concatenated bcw_wid and admin id of proxy
+                for ad_id in proxy_list:
+                    proxy_id = f"{wallet_id}{ad_id}"
+
+                    # an empty dict is put in place, this is replaced when the actual node responds with a unique
+                    # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
+                    # proxy for BCW
+                    proxy_db = self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
+            elif value:
+                value = json.dumps(value)
+            else:
+                print(f"rsv_req_dict is None AND Value is None OR Block Number is needed")
+                return False
         except Exception as e:
             print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
             return False
@@ -585,7 +629,8 @@ class OrsesLevelDBManager:
         """
 
         try:
-            # wallet balance = [b'wallet id', b'[free token amount, reserved token amount]'
+            # wallet balance = b'[free token amount, reserved token amount, total balance]
+            # if bcw then = b'[avail bal, reserved bal, payable bal, receivable bal, total bal]'
             wallet_balance = self.databases["wallet_balances"].get(key=wallet_id.encode())
 
             print(f"self.databases {self.databases}")
