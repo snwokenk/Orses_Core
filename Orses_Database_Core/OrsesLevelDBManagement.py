@@ -163,13 +163,13 @@ class OrsesLevelDBManager:
                 proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
 
                 # create individual proxy db with concatenated bcw_wid and admin id of proxy
-                for ad_id in proxy_list:
-                    proxy_id = f"{wallet_id}{ad_id}"
+                for adminid in proxy_list:
+                    proxy_id = f"{wallet_id}{adminid}"
 
                     # an empty dict is put in place, this is replaced when the actual node responds with a unique
                     # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
                     # proxy for BCW
-                    proxy_db = self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
+                    self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
             elif value:
                 value = json.dumps(value)
             else:
@@ -202,6 +202,21 @@ class OrsesLevelDBManager:
                 return False
 
         return True
+
+    def get_proxy_pubkey(self, proxy_id: str):
+        """
+
+        :param proxy_id: a concatenation of admin_id+walletid
+        :return: pubkey dict
+        """
+
+        pubkey: bytes = self.databases["BCW_Proxies"].get(key=proxy_id.encode())
+
+        if pubkey:
+            pubkey = json.loads(pubkey.decode())
+            return pubkey
+        else:
+            return {}
 
     def get_from_unconfirmed_db_wid(self, wallet_id: str, recursive_count=0, pop_value=False, pop_from_value=None):
         """

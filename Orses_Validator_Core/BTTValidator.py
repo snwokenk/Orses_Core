@@ -41,14 +41,9 @@ class BTTValidator:
             # proxy id, is just bcw_wid+proxy's admin id
             bcw_proxy_id = f"{self.related_asgn_stmt_list[2]}{self.snd_admin_id}"
 
-            self.bcw_proxy_pubkey = RetrieveData.RetrieveData.get_pubkey_of_wallet(
-                wid=snd_wid,
-                user_instance=self.admin_instance
-            )
-            self.non_json_proxy_pubkey = None if not self.bcw_proxy_pubkey else \
-                json.loads(self.bcw_proxy_pubkey)
-            # print(len(snd_wid))
-            # print("sending pubkey: ", self.sending_wallet_pubkey)
+            self.non_json_proxy_pubkey = self.db_manager.get_proxy_pubkey(proxy_id=bcw_proxy_id)
+
+
         else:
             try:
                 self.non_json_proxy_pubkey = json.loads(self.bcw_proxy_pubkey)
@@ -59,7 +54,7 @@ class BTTValidator:
                     self.non_json_proxy_pubkey = False
 
     def check_validity(self):
-        if self.non_json_proxy_pubkey is None:
+        if not self.non_json_proxy_pubkey:  # if empty dict {}
             return None
         elif self.non_json_proxy_pubkey is False:
             return False
@@ -67,9 +62,10 @@ class BTTValidator:
         if self.check_signature_valid() is True:
 
             # send btt to NetworkPropagator.run_propagator_convo_initiator
-            self.q_object.put([f'e{self.btt_hash[:8]}', wallet_proxy.bcw_proxy_pubkey, self.btt_dict, True])
+            self.q_object.put([f'e{self.btt_hash[:8]}', json.dumps(self.non_json_proxy_pubkey), self.btt_dict, True])
             return True
         else:
+            self.q_object.put([f'e{self.btt_hash[:8]}', json.dumps(self.non_json_proxy_pubkey), self.btt_dict, False])
             return False
 
 
