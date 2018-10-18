@@ -77,17 +77,14 @@ class OrsesLevelDBManager:
         """
         returns
         :param wallet_id:
+        :param recursive_count: number of recursion
         :return:
         """
 
         # todo: finish up
         try:
-            # wallet balance = [[avail bal, reserved bal, payable balance, receivable bal, total balance],
-            #                       [reservation time, expiration time, tx_hash of token_reservation],
-            #                       [proxy id, proxy id, proxy id, etc]
-            #                   ]
-
-            # [avail bal, reserved bal, payable balance, receivable bal, total balance]
+            # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
+            # list of proxies, rsv dict]
             wallet_activity = self.databases["BCWs"].get(key=wallet_id.encode())
 
         except KeyError:
@@ -154,13 +151,16 @@ class OrsesLevelDBManager:
 
             if rsv_req_dict and isinstance(block_number, int):  # newly reserved so
 
-                # bcw info list tx_hash of req, time of creation, time of expiration, block number added, rsv dict]
-                bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
-                                 block_number, rsv_req_dict]
-                value = json.dumps(bcw_info_list)
-
                 # get the proxies from reservation dict
                 proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
+
+                # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
+                # set of proxies, rsv dict]
+                bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
+                                 block_number, set(proxy_list), rsv_req_dict]
+                value = json.dumps(bcw_info_list)
+
+
 
                 # create individual proxy db with concatenated bcw_wid and admin id of proxy
                 for adminid in proxy_list:
@@ -404,21 +404,31 @@ class OrsesLevelDBManager:
             return activity_of_hash
 
     def insert_into_unconfirmed_db(self, tx_type: str, sending_wid: str, tx_hash: str, signature: str,
-                                   main_tx: dict, amt: int, fee: int, rcv_wid=None, recursive_count=0):
+                                   main_tx: dict, amt: int, fee: int, rcv_wid=None, recursive_count=0, **kwargs):
         """
         This inserts hash of message
-        :param sending_wid:
+        :param sending_wid: the senders wallet id, if tx_type is btt then senders wallet id that sent the asgn_stmt
         :param tx_hash:
         :param signature:
         :param main_tx:
         :param amt: amount being sent, if it is a non token related msg (ie misc_msg) then amount == 0
         :param fee: fee being sent for inclusion: This is always here, some form of fee must be paid for storing
                     messages/txs on the blockchain.
-        :param rcv_wid: if tx_type is ttx or transfer transaction then rcv_wid should not be none
+        :param rcv_wid: if tx_type is ttx or transfer transaction then rcv_wid should not be none,
+                    if it is btt then should be the bcw_wid (NOT THE rcv_wid in the asgn statement
+
+        :param recursive_count: number of recursion
         :return:
         """
 
-        value = json.dumps([main_tx, signature, rcv_wid, sending_wid])
+        value = [main_tx, signature, rcv_wid, sending_wid]
+
+        if tx_type in {'btt'}:
+            # rcv_wid is BCW_wid, sending wid is sender of
+            value.append("mc")  # management change
+
+
+        value = json.dumps(value)
 
         try:
             self.databases["unconfirmed_msgs_hashes"].put(key=tx_hash.encode(), value=value.encode())

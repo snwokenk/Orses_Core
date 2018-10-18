@@ -3,7 +3,7 @@ This module will be used  propagate messages to other verification nodes or admi
 Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator, BTTValidator
 
 from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListener
 
@@ -16,6 +16,7 @@ validator_dict['b'] = TokenTransferValidator.TokenTransferValidator
 validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestValidator
 validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
 validator_dict['f'] = MiscMessagesValidator.MiscMessagesValidator
+validator_dict['e'] = BTTValidator.BTTValidator
 
 
 class NetworkPropagator:
@@ -135,6 +136,7 @@ class NetworkPropagator:
                             self.q_object_compete.put([reason_msg,rsp[2]]) if rsp[3] is True else None
                         elif reason_msg == "a":
                             print(f"Received an assignment statement, BCW logic not yet implemented")
+                            continue
 
                         # propagate
                         self.reactor_instance.callInThread(
@@ -556,7 +558,7 @@ class StatementReceiver(PropagatorMessageReceiver):
 
                 self.speak(rsp=rsp)
             else:
-                print("in NetworkPropagator, statementreceiver, No option available")
+                print("in NetworkPropagator, StatementReceiver, No option available")
                 self.speak(rsp=self.last_msg)
 
     def speak(self, rsp=None):

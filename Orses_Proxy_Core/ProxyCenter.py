@@ -252,29 +252,35 @@ class ProxyCenter:
                 btt_hash = btt['tx_hash']
                 update_balance_callback = rsp[2]
 
-                #add BTT validator
+                # add BTT validator, this just validates local node
                 is_btt_validated = BTTValidator(
                     admin_instance=self.admin_inst,
                     btt_dict=btt,
                     bcw_proxy_pubkey=wallet_proxy.bcw_proxy_pubkey
                 ).check_validity()
 
-                # send btt to NetworkPropagator.run_propagator_convo_initiator
-                q_obj.put([f'e{btt_hash[:8]}', wallet_proxy.bcw_proxy_pubkey, btt, True])
+                # wait and check for blockchain inclusion, then update
+                if is_btt_validated is True:
 
-                # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
-                response = self.wait_and_notify_of_blockchain_inclusion(
-                    update_balance_callback=update_balance_callback,
-                    end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
-                    snd_wid=asgn_stmt_list[0],
-                    bcw_wid=asgn_stmt_list[2],
-                    protocol=protocol,
+                    # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
+                    response = self.wait_and_notify_of_blockchain_inclusion(
+                        update_balance_callback=update_balance_callback,
+                        end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
+                        snd_wid=asgn_stmt_list[0],
+                        bcw_wid=asgn_stmt_list[2],
+                        protocol=protocol,
 
-                )
+                    )
 
+                # if btt not included in the blockchain on time, then a false is sent to token sender
+                else:
+                    response = False
+
+                # if response is a dict, then btt was included in blockchain and asgn_stmt executed
                 if isinstance(response, dict):
                     rsp_str = json.dumps(response)
                     return [True, rsp_str]
+
                 else:
                     return [False]
 

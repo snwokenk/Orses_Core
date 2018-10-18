@@ -61,7 +61,7 @@ class DigitalSignerValidator:
         return False
 
     @staticmethod
-    def validate_wallet_signature(msg, wallet_pubkey, signature, pre_message_hash=None):
+    def validate_wallet_signature(msg, wallet_pubkey: dict, signature, pre_message_hash=None):
         """
 
         :param msg:

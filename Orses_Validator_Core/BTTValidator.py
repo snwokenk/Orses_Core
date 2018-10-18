@@ -20,14 +20,21 @@ class BTTValidator:
         self.btt_dict = btt_dict
         self.btt = btt_dict['btt']
         self.snd_admin_id =btt_dict["admin_id"]
+        self.signature = btt_dict["sig"]
         self.btt_hash = btt_dict['tx_hash']
         self.related_asgn_stmt_dict = self.btt['asgn_stmt']
 
-        # [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
+        # related_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
         self.related_asgn_stmt_list = self.related_asgn_stmt_dict['asgn_stmt'].split(sep='|')
+
+        # bcw wid
+        self.bcw_wid = self.related_asgn_stmt_list[2]
+
+        self.asgn_stmt_sndr = self.related_asgn_stmt_list[0]
         self.btt_dict_json = json.dumps(self.btt)
         self.timelimit = timelimit
         self.q_object = q_object
+        self.btt_fee = self.btt["fee"]
 
         self.set_sending_wallet_pubkey()
 
@@ -39,7 +46,7 @@ class BTTValidator:
         if self.bcw_proxy_pubkey is None:
 
             # proxy id, is just bcw_wid+proxy's admin id
-            bcw_proxy_id = f"{self.related_asgn_stmt_list[2]}{self.snd_admin_id}"
+            bcw_proxy_id = f"{self.bcw_wid}{self.snd_admin_id}"
 
             self.non_json_proxy_pubkey = self.db_manager.get_proxy_pubkey(proxy_id=bcw_proxy_id)
 
@@ -59,7 +66,20 @@ class BTTValidator:
         elif self.non_json_proxy_pubkey is False:
             return False
 
-        if self.check_signature_valid() is True:
+        if self.check_signature_valid() is True and self.check_node_is_valid_proxy():
+
+
+            # refactor this, to allow for inclusion into wallet of sender and BCW_WID wallet
+            rsp = self.db_manager.insert_into_unconfirmed_db(
+                tx_type="btt",
+                sending_wid=self.asgn_stmt_sndr,
+                tx_hash=self.tx_hash,
+                signature=self.signature,
+                main_tx=self.btt_dict,
+                amt=self.ntakiri_amount,
+                fee=self.btt_fee,
+                rcv_wid=self.receiving_wid
+            )
 
             # send btt to NetworkPropagator.run_propagator_convo_initiator
             self.q_object.put([f'e{self.btt_hash[:8]}', json.dumps(self.non_json_proxy_pubkey), self.btt_dict, True])
@@ -68,14 +88,29 @@ class BTTValidator:
             self.q_object.put([f'e{self.btt_hash[:8]}', json.dumps(self.non_json_proxy_pubkey), self.btt_dict, False])
             return False
 
-
     def check_signature_valid(self):
+
         response = DigitalSignerValidator.validate_wallet_signature(msg=self.btt_dict_json,
-                                                                    wallet_pubkey=self.non_json_wallet_pubkey,
+                                                                    wallet_pubkey=self.non_json_proxy_pubkey,
                                                                     signature=self.signature)
         print("sig check: ", response)
         if response is True:
             return True
         else:
             return False
+
+    def check_node_is_valid_proxy(self):
+        """
+        logic that checks that a node is a valid proxy
+        :return:
+        """
+
+        bcw_info = self.db_manager.get_from_bcw_db(
+            wallet_id=self.bcw_wid
+        )
+
+        if isinstance(bcw_info, list) and len(bcw_info) > 4:
+            return self.snd_admin_id in bcw_info[4]
+
+
 
