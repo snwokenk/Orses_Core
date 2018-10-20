@@ -70,15 +70,16 @@ class BTTValidator:
 
 
             # refactor this, to allow for inclusion into wallet of sender and BCW_WID wallet
+            # sending_wid is the BCW and receiving id is the asgn stmt senders wid
             rsp = self.db_manager.insert_into_unconfirmed_db(
                 tx_type="btt",
-                sending_wid=self.asgn_stmt_sndr,
-                tx_hash=self.tx_hash,
+                sending_wid=self.bcw_wid,
+                tx_hash=self.btt_hash,
                 signature=self.signature,
                 main_tx=self.btt_dict,
-                amt=self.ntakiri_amount,
+                amt=0.0,
                 fee=self.btt_fee,
-                rcv_wid=self.receiving_wid
+                rcv_wid=self.asgn_stmt_sndr
             )
 
             # send btt to NetworkPropagator.run_propagator_convo_initiator

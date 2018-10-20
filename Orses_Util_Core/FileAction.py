@@ -107,7 +107,14 @@ class FileAction:
         is a folder of folders with each folder in it representing a wallet proxy OR Leveldb folder
         :return:
         '''
-        return os.path.join(self.__username_folder_path, Filenames_VariableNames.proxy_center_folder)
+        folder_path = os.path.join(self.__username_folder_path, Filenames_VariableNames.proxy_center_folder)
+
+        try:
+            os.mkdir(folder_path)
+        except OSError:
+            pass
+
+        return folder_path
 
     def get_wallet_proxy_folder_path(self, proxy_name: str):
         """
@@ -115,14 +122,28 @@ class FileAction:
         :param proxy_name: name of Wallet proxy
         :return:
         """
-        return os.path.join(self.get_proxy_center_folder_path(), proxy_name)
+        folder_path = os.path.join(self.get_proxy_center_folder_path(), proxy_name)
+        try:
+            os.mkdir(folder_path)
+        except OSError:
+            pass
+
+        return folder_path
 
     def get_wallets_folder_path(self):
         """
         folder where admin's wallets are stored
         :return:
         """
-        return os.path.join(self.__username_folder_path, Filenames_VariableNames.wallets_folder)
+
+        folder_path = os.path.join(self.__username_folder_path, Filenames_VariableNames.wallets_folder)
+
+        try:
+            os.mkdir(folder_path)
+        except OSError:
+            pass
+
+        return folder_path
 
     def get_clients_wallet_folder_path(self):
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.clients_wallets_data)

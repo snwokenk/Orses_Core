@@ -43,7 +43,14 @@ class MemPool:
             db_manager = self.admin_inst.get_db_manager()
         except KeyError:
             # specifically for block 0 no key called "block activity" in genesis block
-            pass
+            try:
+                if int(winning_block["bh"]["block_no"], 16) == 0:
+                    pass
+                else:
+                    return False
+            except (ValueError, KeyError) as e:
+                print(f"in update_mempool, error {e}")
+                return False
         else:
             for active_list in block_activities:
                 # hash of activity is always index 0 (first element)
@@ -90,17 +97,22 @@ class MemPool:
         :return:
         """
 
-    def update_wallet_balances_bcw_db(self, wallet_id: str, tx_hash: str, activity_list, db_manager):
+    def update_wallet_balances_bcw_db(self, wallet_id: str, tx_hash: str, activity_list: list, db_manager,
+                                      bcw_wid_or_rcv_wid=None):
         """
         This updates the permanent wallet balances db;
 
         It also adds
+        :param wallet_id: wallet id to update
         :param tx_hash:
-        :param activity_list: [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
-        :param db_manager:
+        :param activity_list: [tx_type, snd_or_rcv, main_tx, signature, fee, amt] if tx_type is 'btt' then:
+        :param db_manager: db manager instance from Administrator class
+        :param bcw_wid_or_rcv_wid: by default is None, but if tx_type (activity_list[0]) is 'btt' must be wallet id of bcw_wid
         :return:
         """
         # [avail, reserved, total]  or [avail, reserved, total, managing bcw_wid]
+        # if wallet data represents a BCW the wallet data is:
+        # [avail bal, reserved bal, payable bal, receivable bal, total bal]
         wallet_data: list = db_manager.get_from_wallet_balances_db(wallet_id=wallet_id)
 
         # update avail bal by adding amt and fee. if index 1 is sender then amt/fee will be neg.
@@ -135,9 +147,27 @@ class MemPool:
                 signature=activity_list[3]
 
             )
+        elif activity_list[0] == "btt":
 
+            if activity_list[1] == "receiver" and isinstance(bcw_wid_or_rcv_wid, str):
+                # referring to regular wallet now being managed by BCW
+                try:
+                    wallet_data[3] = bcw_wid_or_rcv_wid
+                except IndexError:
+                    wallet_data.append(bcw_wid_or_rcv_wid)
+            elif activity_list[1] == "sender" and len(wallet_data) == 5 and isinstance(bcw_wid_or_rcv_wid, str):
+                # sender  is BCW_WID (through proxy)
+                # [avail bal, reserved bal, payable balance, receivable bal, total balance]
+                managed_wallet_data: list = db_manager.get_from_wallet_balances_db(wallet_id=bcw_wid_or_rcv_wid)
+                if len(managed_wallet_data) < 5:  # make sure wallet is not a BCW
+
+                    # update payable balance
+                    wallet_data[2] = wallet_data[2] + managed_wallet_data[2]
+
+                    # todo: update certain data, including keeping a database of managed_wallets
+                    # todo: this should be done in the WalletProxy or ProxyCenter Class
         # update total balance
-        wallet_data[2] = wallet_data[0] + wallet_data[1]
+        wallet_data[-1] = sum(wallet_data[:-1])
 
         db_manager.update_wallet_balance_db(wallet_id=wallet_id, wallet_data=wallet_data)
 
@@ -166,7 +196,6 @@ class MemPool:
             )
             tx_list = json.loads(tx_list)
 
-
             snd_wid = tx_list[-1]
             rcv_wid = tx_list[-2]
 
@@ -188,7 +217,8 @@ class MemPool:
                         wallet_id=rcv_wid,
                         activity_list=rcv_wid_activities,
                         db_manager=db_manager,
-                        tx_hash=msg_hash
+                        tx_hash=msg_hash,
+                        bcw_wid_or_rcv_wid=snd_wid if rcv_wid_activities[0] == 'btt' else None
                     )
 
     def insert_into_valid_msg_preview_hash(self, hash_prev, msg):

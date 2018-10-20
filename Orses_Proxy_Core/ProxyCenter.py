@@ -249,7 +249,6 @@ class ProxyCenter:
             # rsp = ['defer', btt_dict, a_callable]
             elif isinstance(rsp, list) and rsp[0] == "defer":
                 btt = rsp[1]
-                btt_hash = btt['tx_hash']
                 update_balance_callback = rsp[2]
 
                 # add BTT validator, this just validates local node

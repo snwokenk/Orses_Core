@@ -407,15 +407,16 @@ class OrsesLevelDBManager:
                                    main_tx: dict, amt: int, fee: int, rcv_wid=None, recursive_count=0, **kwargs):
         """
         This inserts hash of message
-        :param sending_wid: the senders wallet id, if tx_type is btt then senders wallet id that sent the asgn_stmt
+        :param sending_wid: the senders wallet id, if tx_type is btt then bcw_wid
         :param tx_hash:
         :param signature:
         :param main_tx:
-        :param amt: amount being sent, if it is a non token related msg (ie misc_msg) then amount == 0
+        :param amt: amount being sent, if it is a non token related msg (ie misc_msg) then amount == 0, amount is also 0
+                    if it is "btt", this message just notifies the network of wallet management change
         :param fee: fee being sent for inclusion: This is always here, some form of fee must be paid for storing
                     messages/txs on the blockchain.
         :param rcv_wid: if tx_type is ttx or transfer transaction then rcv_wid should not be none,
-                    if it is btt then should be the bcw_wid (NOT THE rcv_wid in the asgn statement
+                    if it is btt then should be the snd_wid of asgn statement (NOT THE rcv_wid in the asgn statement
 
         :param recursive_count: number of recursion
         :return:
@@ -424,9 +425,8 @@ class OrsesLevelDBManager:
         value = [main_tx, signature, rcv_wid, sending_wid]
 
         if tx_type in {'btt'}:
-            # rcv_wid is BCW_wid, sending wid is sender of
+            # rcv_wid is BCW_wid, sending wid is sender of asgn_stmt and amt == 0
             value.append("mc")  # management change
-
 
         value = json.dumps(value)
 
@@ -541,6 +541,7 @@ class OrsesLevelDBManager:
         :param in_folder: folder to store leveDB
         :return:
         """
+        #todo: create folder names
 
         # create filename/path
         if name in {"wallet_balances",
@@ -558,7 +559,8 @@ class OrsesLevelDBManager:
         try:
             db = plyvel.DB(filename, create_if_missing=create_if_missing)
         except plyvel.Error as e:
-            print(f"in CreateALevelDB, error occured: {e}")
+            print(f"in load_db, error occured: {e}")
+            return None
         else:
             self.databases[name] = db
 
