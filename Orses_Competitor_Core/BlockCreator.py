@@ -86,7 +86,7 @@ class GenesisBlockCreator:
         self.block_header_callable = GenesisBlockHeader
         self.tats = {
             "W3c8135240da9d25d3905aa7aca64c98ca6b1fede": 850_000_000,
-            "W884c07be004ee2a8bc14fb89201bbc607e75258d": 425_000_000,
+            "W6c6e3e5204dfe0a5e07acfbb7ba39123e8220598": 425_000_000,
             "Wf2f140a956cec5cd6a1a6f7763378b239a007ac0": 425_500_000,
             "Wc8f7cc3576244c915e50e4410b988dfb6946f036": 150_000_000,
             "Wfa1f6617995833b679e090f88f90603cc9fbd485": 250_000_000,
@@ -97,7 +97,7 @@ class GenesisBlockCreator:
 
         self.dict_of_bcw = {
             "W3c8135240da9d25d3905aa7aca64c98ca6b1fede": 800_000,
-            "W884c07be004ee2a8bc14fb89201bbc607e75258d": 250_000
+            "W6c6e3e5204dfe0a5e07acfbb7ba39123e8220598": 250_000
         }
 
         self.pubkey = {

@@ -91,7 +91,7 @@ class DigitalSigner:
         return digital_signature
 
     @staticmethod
-    def sign_with_provided_privkey(dict_of_privkey_numbers, message):
+    def sign_with_provided_privkey(dict_of_privkey_numbers, message, key=None):
         """
 
         :param dict_of_privkey_numbers: dictionary with numbers to recreate key
@@ -106,14 +106,14 @@ class DigitalSigner:
         elif isinstance(message, str):
             message = message.encode()
 
-        key = None
         try:
-            key = ECC.construct(
-                curve="P-256",
-                point_x=dict_of_privkey_numbers["x"],
-                point_y=dict_of_privkey_numbers["y"],
-                d=dict_of_privkey_numbers["d"]
-            )
+            if not key:
+                key = ECC.construct(
+                    curve="P-256",
+                    point_x=dict_of_privkey_numbers["x"],
+                    point_y=dict_of_privkey_numbers["y"],
+                    d=dict_of_privkey_numbers["d"]
+                )
         except KeyError as e:  # does not have all required ECC attributes x, y and d for private key con
             print(f"in digitalsigner.py: exception occured:\n{e}")
 

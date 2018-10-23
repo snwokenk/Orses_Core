@@ -567,8 +567,9 @@ class BlockChainPropagator:
             exp_leading_prime = block[3]
             winning_hash = ""
 
+        print(f"in run_block_winner_chooser_process, end time is {end_time}, admin is {self.admin_instance.admin_name}")
         while self.is_program_running.is_set() and time.time() <= end_time:
-            print(f"in run_block_winner_chooser_process, end time is {end_time}, admin is {self.admin_instance.admin_name}")
+
             try:
                 # blocks are received from NewBlockValidator.
                 # this function, is meant to determine the winning block from valid blocks received
@@ -666,11 +667,12 @@ class BlockChainPropagator:
         # check for response
         no_of_protocols = len(self.connected_protocols_dict)
         len_of_check = time.time() + 20
+
+        print(f"in check_winning_network {time.time()} - len_to_wait {len_of_check}")
         while self.is_program_running.is_set() and no_of_protocols > 0 and time.time() <= len_of_check:
             try:
                 winning_hash_rsp = self.q_object_for_winning_block_process.get(timeout=0.2)
             except Empty:
-                print(f"in check_winning_network {time.time()} - len_to_wait {len_of_check}")
                 pass
             else:
                 if isinstance(winning_hash_rsp, str) and winning_hash_rsp in {'exit', 'quit'}:

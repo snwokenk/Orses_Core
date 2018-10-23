@@ -57,8 +57,9 @@ class BCWTokenTransfer:
             btt = self.create_btt()
             btt_json = json.dumps(btt)
             signature = DigitalSigner.sign_with_provided_privkey(
-                dict_of_privkey_numbers=bcw_proxy_privkey,
-                message=btt_json
+                dict_of_privkey_numbers=None,
+                message=btt_json,
+                key=bcw_proxy_privkey
             )
             tx_hash = SHA256.new(btt_json.encode()).hexdigest()
 

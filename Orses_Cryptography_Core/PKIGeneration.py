@@ -91,7 +91,7 @@ class PKI:
         decrypted_key = Decrypt(list_of_encrypted_privkey_tag_nonce_salt, password=self.password).decrypt()
 
         if importedKey is True and decrypted_key:
-            pubkey = self.load_pub_key(x_y_only=True, user_or_wallet=user_or_wallet)
+            pubkey = self.load_pub_key(x_y_only=True, user_or_wallet=user_or_wallet, in_folder=in_folder)
             x_int = base64.b85decode(pubkey["x"].encode())
             x_int = int.from_bytes(x_int, "big")
 

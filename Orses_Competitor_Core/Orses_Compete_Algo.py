@@ -481,7 +481,7 @@ def generate_block_one(admin_inst, combined_list: list,  wsh: dict, fees: int, n
     return new_block
 
 
-def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_prime_char='f', should_save=False):
+def generate_genesis_block(len_of_competition=90, exp_leading_prime=6, single_prime_char='f', should_save=False):
     gen_block_creator_inst = GenesisBlockCreator(primary_sig_wallet_id="W884c07be004ee2a8bc14fb89201bbc607e75258d")
     gen_block_creator_inst.set_before_competing()
 
@@ -497,7 +497,7 @@ def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_pr
 
 
 
-    final_block_header = start_competing(
+    final_block_header: dict = start_competing(
         block_header=block_header,
         len_competition=len_of_competition,
         exp_leading=exp_leading_prime,
@@ -507,19 +507,17 @@ def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_pr
     )
 
     gen_block_obj.set_after_compete(
-        block_header=final_block_header.get_block_header(),
+        block_header=final_block_header,
         signature=DigitalSigner.sign_with_provided_privkey(
             dict_of_privkey_numbers={
                 'x': 60785994004755780541968889462742035955235637618029604119657448498380482761088,
                 'y': 100309319245511545150569175878829989424599308092677960010907323326738383429364,
                 'd': 29950300400169917180358605208938775880760212514399944926857005417377480590100
             },
-            message=final_block_header.block_hash
+            message=final_block_header.get("block_hash")
         ),
         list_of_secondary_signatories=["Wf2f140a956cec5cd6a1a6f7763378b239a007ac0",
                                        "Wc8f7cc3576244c915e50e4410b988dfb6946f036"]
-
-
     )
 
     gen_block = gen_block_obj.get_block()
@@ -527,13 +525,13 @@ def generate_genesis_block(len_of_competition=30, exp_leading_prime=6, single_pr
     filename = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Blockchain_Data", "0")
 
     if should_save:
-        with open(filename, "w") as outfile:
-            json.dump(outfile, gen_block)
         FileAction.save_json_into_file(
-            filename="0",
+            filename=filename,
             python_json_serializable_object=gen_block,
-            in_folder="Blockchain_Data"
         )
+
+    print(f"Newly Generated Block is:\n")
+    print(gen_block)
 
     return gen_block
 
@@ -1128,7 +1126,9 @@ class Competitor:
 
 if __name__ == '__main__':
 
-    genesis_block = generate_genesis_block(should_save=False)
+    genesis_block = generate_genesis_block(should_save=True)
+
+    print(genesis_block)
 
 
     print("\n\n")

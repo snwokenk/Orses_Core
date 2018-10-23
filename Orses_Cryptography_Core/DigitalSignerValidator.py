@@ -100,10 +100,13 @@ class DigitalSignerValidator:
         except ValueError:
             print(f"value error in digitalsignervalidator")
         else:
-            if (pre_message_hash and hash_of_message == pre_message_hash) or pre_message_hash is None:
+            if (pre_message_hash and hash_of_message.hexdigest() == pre_message_hash) or pre_message_hash is None:
                 return True
             else:
-                print(f"pre message hash not the same as hash used by signature")
+                print(f"pre message hash not the same as hash used by signature\n"
+                      f"msg {msg}\n"
+                      f"hash of message {hash_of_message}\n"
+                      f"pre message hash {pre_message_hash}")
 
 
         return False

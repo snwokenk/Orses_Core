@@ -181,7 +181,11 @@ class Admin:
 
             else:  # sets compete to n for now and skps setting admin competitor status
                 pass
-            self.fl.save_startup_file(is_competitor=self.isCompetitor, always_compete=always_compete)
+            self.fl.save_startup_file(
+                is_competitor=self.isCompetitor,
+                always_compete=always_compete,
+                admin_id=self.admin_id
+            )
         else:
             compete = False
 

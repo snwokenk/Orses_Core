@@ -13,7 +13,7 @@ class ProxyCenter:
     def __init__(self, admin_inst):
 
         self.admin_inst = admin_inst
-        self.db_manager = self.admin_inst.get_db_manager()
+        self.db_manager = self.admin_inst.db_manager
 
         # dict_of_managing_bcw = {"wallet_id": WalletProxy Instance}
         self.dict_of_managing_bcw = dict()
@@ -70,6 +70,7 @@ class ProxyCenter:
             return pubkey
         else:
             # will  not insert into dict and will return
+            print(f"Proxycenter.initiate_new_proxy pubkey not able to load {pubkey}")
             return {}
 
     def load_a_proxy(self, bcw_wid):
@@ -141,7 +142,10 @@ class ProxyCenter:
             # query bcw_wid not in self.dict_of_managing_bcw return false and end execution
             # This is then used by ListenerMessages class to relay a 'rej' message to sender
             if not asgn_stmt_list[2] in self.dict_of_managing_bcw:
-                return False
+                print(f"in Proxycenter.execute_assignment_statement, BCW not in dict_of_managing_BCW\n"
+                      f"dict_of_managing_bcw is: {self.dict_of_managing_bcw}\n"
+                      f"BCW_WID is {asgn_stmt_list[2]}")
+                return [False]  # must return a list
 
             # todo: assignment statement should then be propagated to other proxies of the same BCW (if they don't have it)
 
@@ -156,7 +160,7 @@ class ProxyCenter:
             snd_balance = snd_wallet_info[0]
             snd_pending_tx = snd_wallet_info[1]
 
-            rcv_wallet_info = WalletInfo.get_wallet_balance_info(admin_inst=self.admin_inst, wallet_id=asgn_stmt_list[2])
+            rcv_wallet_info = WalletInfo.get_wallet_balance_info(admin_inst=self.admin_inst, wallet_id=asgn_stmt_list[1])
             rcv_balance = rcv_wallet_info[0]
             rcv_pending_tx = rcv_wallet_info[1]
 
@@ -166,8 +170,9 @@ class ProxyCenter:
                 snd_managed = [True, snd_balance[-1]] if snd_balance[-1] == asgn_stmt_list[2] else [False, snd_balance[-1]]
 
             else:
-                print(f"in ProxyCenter, Execute Assignment statement, could not determine sender wallet manager, debug")
-                return False
+                print(f"in ProxyCenter, Execute Assignment statement, could not determine sender wallet manager, debug\n"
+                      f"snd_wallet_info {snd_wallet_info}")
+                return [False]
 
             if len(rcv_balance) == 3 or rcv_balance[-1] is None:
                 rcv_managed = [False, "blockchain"] if rcv_balance[2] > 0 else [True, asgn_stmt_list[2]]
@@ -175,8 +180,9 @@ class ProxyCenter:
                 rcv_managed = [True, snd_balance[3]] if snd_balance[3] == asgn_stmt_list[2] else [False, snd_balance[3]]
 
             else:
-                print(f"in ProxyCenter, Execute Assignment statement, could not determine receiver wallet manager, debug")
-                return False
+                print(f"in ProxyCenter, Execute Assignment statement, could not determine receiver wallet manager, debug\n"
+                      f"rcv_wallet_info {rcv_wallet_info}")
+                return [False]
         else:
             snd_managed = kwargs['snd_managed']
             snd_wallet_info = kwargs['snd_wallet_info']
@@ -204,6 +210,7 @@ class ProxyCenter:
             if rsp is None and not kwargs:
                 k = dict()
                 k['snd_managed'] = snd_managed
+                k["snd_wallet_info"] = snd_wallet_info
                 k['rcv_managed'] = rcv_managed
                 k["snd_balance"] = snd_balance
                 k["rcv_balance"] = rcv_balance
@@ -235,6 +242,7 @@ class ProxyCenter:
             if rsp is None and not kwargs:
                 k = dict()
                 k['snd_managed'] = snd_managed
+                k["snd_wallet_info"] = snd_wallet_info
                 k['rcv_managed'] = rcv_managed
                 k["snd_balance"] = snd_balance
                 k["rcv_balance"] = rcv_balance
@@ -255,7 +263,8 @@ class ProxyCenter:
                 is_btt_validated = BTTValidator(
                     admin_instance=self.admin_inst,
                     btt_dict=btt,
-                    bcw_proxy_pubkey=wallet_proxy.bcw_proxy_pubkey
+                    bcw_proxy_pubkey=wallet_proxy.bcw_proxy_pubkey,
+                    q_object=q_obj
                 ).check_validity()
 
                 # wait and check for blockchain inclusion, then update

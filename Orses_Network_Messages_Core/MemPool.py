@@ -144,7 +144,8 @@ class MemPool:
                 wallet_id=wallet_id,
                 tx_hash=tx_hash,
                 rsv_req_dict=activity_list[2],
-                signature=activity_list[3]
+                signature=activity_list[3],
+                block_number=self.get_next_block_no()  # next_block_no is block just created
 
             )
         elif activity_list[0] == "btt":

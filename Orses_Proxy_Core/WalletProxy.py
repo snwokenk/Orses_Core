@@ -60,8 +60,10 @@ class WalletProxy:
 
     def __set_or_create_pki_pair(self):
 
-        # create an instance of PKI class (uses RSA 3072)
-        pki = PKI(username=self.bcw_filename, password=self.admin_inst.password, user_instance=self)
+        print(f"in WalletProxy __set_or_create_pki_pair, bcw_filename {self.bcw_filename}\n"
+              f"bcw folder name {self.bcw_folder_name}")
+        # create an instance of PKI class (uses ECDSA)
+        pki = PKI(username=self.bcw_filename, password=self.admin_inst.password, user_instance=self.admin_inst)
 
         if self.new_proxy is True:
             pki.generate_pub_priv_key(

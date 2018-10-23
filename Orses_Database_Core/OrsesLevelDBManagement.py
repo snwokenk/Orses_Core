@@ -147,37 +147,47 @@ class OrsesLevelDBManager:
         elif value:
             pass
 
-        try:
+        # try:
 
-            if rsv_req_dict and isinstance(block_number, int):  # newly reserved so
+        if rsv_req_dict and isinstance(block_number, int):  # newly reserved so
 
-                # get the proxies from reservation dict
-                proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
+            # get the proxies from reservation dict
+            proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
 
-                # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
-                # set of proxies, rsv dict]
-                bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
-                                 block_number, set(proxy_list), rsv_req_dict]
-                value = json.dumps(bcw_info_list)
+            # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
+            # set of proxies, rsv dict]
+            bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
+                             block_number, proxy_list, rsv_req_dict]
+            value = json.dumps(bcw_info_list)
 
 
 
-                # create individual proxy db with concatenated bcw_wid and admin id of proxy
-                for adminid in proxy_list:
-                    proxy_id = f"{wallet_id}{adminid}"
+            # create individual proxy db with concatenated bcw_wid and admin id of proxy
+            for adminid in proxy_list:
+                proxy_id = f"{wallet_id}{adminid}"
 
-                    # an empty dict is put in place, this is replaced when the actual node responds with a unique
-                    # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
-                    # proxy for BCW
-                    self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
-            elif value:
-                value = json.dumps(value)
-            else:
-                print(f"rsv_req_dict is None AND Value is None OR Block Number is needed")
-                return False
-        except Exception as e:
-            print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
+                # an empty dict is put in place, this is replaced when the actual node responds with a unique
+                # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
+                # proxy for BCW
+                self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
+
+
+                # check if admin in admin list is current node
+                if adminid == self.admin_inst.admin_id:
+                    self.admin_inst.proxy_center.initiate_new_proxy(
+                        bcw_wid=wallet_id
+                    )
+
+
+        elif value:
+            value = json.dumps(value)
+        else:
+            print(f"rsv_req_dict is None AND Value is None OR Block Number is needed")
             return False
+
+        # except Exception as e:
+        #     print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
+        #     return False
 
         try:
             self.databases["BCWs"].put(key=wallet_id.encode(), value=value.encode())
@@ -408,7 +418,7 @@ class OrsesLevelDBManager:
         """
         This inserts hash of message
         :param sending_wid: the senders wallet id, if tx_type is btt then bcw_wid
-        :param tx_hash:
+        :param tx_hash: transaction hash, if it is a btt then hash is hash of asgn_stmt
         :param signature:
         :param main_tx:
         :param amt: amount being sent, if it is a non token related msg (ie misc_msg) then amount == 0, amount is also 0

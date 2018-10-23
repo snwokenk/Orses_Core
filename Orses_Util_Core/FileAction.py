@@ -66,19 +66,23 @@ class FileAction:
 
         return start_file
 
-    def save_startup_file(self, is_competitor: bool, always_compete: bool):
+    def save_startup_file(self, **kwargs):
+        """
 
-        temp_dict = dict()
-        temp_dict["is_competitor"] = is_competitor
-        temp_dict["always_compete"] = always_compete
+        :param kwargs: dictionary should contain  is_competitor and always_compete which are boolean,
+            can contain other things
+        :return:
+        """
 
-        self.save_json_into_file(
-            filename=self.start_up_filename,
-            python_json_serializable_object=temp_dict,
-            in_folder=self.__username_folder_path
-        )
+        if kwargs:
 
-        return True
+            self.save_json_into_file(
+                filename=self.start_up_filename,
+                python_json_serializable_object=kwargs,
+                in_folder=self.__username_folder_path
+            )
+
+            return True
 
     def get_address_file_path(self):
         return os.path.join(self.get_username_folder_path(), Filenames_VariableNames.default_addr_list_sandbox) if (

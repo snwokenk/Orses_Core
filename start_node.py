@@ -61,6 +61,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: test Orses_client using OrsesCLITest
 # todo: check Btt validator to allow for inclusion into walletOrses compete, to allow for inclusion into blockchain
 # todo: also allow for btt_fee inclusion
 
