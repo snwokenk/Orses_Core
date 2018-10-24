@@ -263,7 +263,7 @@ class ProxyCenter:
                 is_btt_validated = BTTValidator(
                     admin_instance=self.admin_inst,
                     btt_dict=btt,
-                    bcw_proxy_pubkey=wallet_proxy.bcw_proxy_pubkey,
+                    wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
                     q_object=q_obj
                 ).check_validity()
 
@@ -305,15 +305,25 @@ class ProxyCenter:
         snd_wid = kwargs["snd_wid"]
         bcw_wid = kwargs["bcw_wid"]
         protocol = kwargs["protocol"]
+
+        print(f"in Wait_and_notify_of_blockchain_inclusion, Proxycenter.py:\n"
+              f"snd_wid {snd_wid}\n"
+              f"bcw_wid {bcw_wid}\n"
+              f"end time {end_timestamp}\n"
+              f"time.time {time.time()}")
         while time.time() <= end_timestamp:
+            print(f"waiting for blockchain inclusion, admin {self.admin_inst.admin_id}")
             time.sleep(60)
             tmp_bal = self.db_manager.get_from_wallet_balances_db(
                 wallet_id=snd_wid
             )
+            print("***")
+            print(f"in Proxcenter.py, tmp_bal {tmp_bal}")
             if tmp_bal[-1] == bcw_wid:  # the last data in balance list is the BCW wallet id, if managed by a bcw
+                print(f"in Wait_and_notify, proxycenter.py, ")
                 return update_balance_callback()
 
-            protocol.transport.write(self.wait_msg)
+            # protocol.transport.write(self.wait_msg)
 
         return False
 

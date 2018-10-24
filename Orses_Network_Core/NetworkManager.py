@@ -13,7 +13,7 @@ from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyReactor
 
 class NetworkManager:
     def __init__(self, admin, q_object_from_protocol, q_object_to_validator, net_msg_sorter, reg_network_sandbox: bool,
-                 reg_listening_port=55600, veri_listening_port=55602):
+                 reactor_inst, reg_listening_port=55600, veri_listening_port=55602, ):
 
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
@@ -51,7 +51,7 @@ class NetworkManager:
                 network_sorter=net_msg_sorter
             )
         self.regular_listening_factory = NetworkListenerFactory(spkn_msg_obj_creator=NetworkMessages, admin=admin,
-                                                                q_obj=q_object_to_validator)
+                                                                q_obj=q_object_to_validator, reactor_inst=reactor_inst)
         self.propagator = net_msg_sorter
         self.regular_listening_port = reg_listening_port
 

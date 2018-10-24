@@ -572,12 +572,12 @@ class TxMiscWsh:
         self.fees += fees
 
     def add_to_txs(self, type_of_tx, tx_hash, tx: list, fees: int):
-        if type_of_tx in {"ttx", "rsv_req", "rvk_req"}:
+        if type_of_tx in {"ttx", "rsv_req", "rvk_req", "btt"}:
 
             self.append_to_combined_list(tx_hash, tx)
             self.fees += fees
         else:
-            print(f"in Orses_Compete_Algo.py: in add_to_txs, type_of_tx NOT VALID")
+            print(f"in Orses_Compete_Algo.py: in add_to_txs, type_of_tx NOT VALID '{type_of_tx}''")
 
     def add_to_wsh(self, wsh_hash, wsh_list: list, no_of_asgn_stmt: int, fees: int):
         wsh_index = self.append_to_combined_list(wsh_hash, wsh_list)

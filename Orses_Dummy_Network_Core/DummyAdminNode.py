@@ -215,7 +215,8 @@ class DummyAdminNode(DummyNode):
             q_object_to_validator=q_for_validator,
             net_msg_sorter=network_message_sorter,
             reg_listening_port=55600,
-            reg_network_sandbox=reg_network_sandbox
+            reg_network_sandbox=reg_network_sandbox,
+            reactor_inst=self.reactor
         )
 
 

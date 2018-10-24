@@ -61,7 +61,10 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: test Orses_client using OrsesCLITest
+# todo: check proxycenter Protocol to verify it is not none
+# todo: Databases updated, verify enough time is being allowed for sending.
+# todo: check proxycenter wait_and_notify_of_blockchain_inclusion to verify making sure time.sleep not causing an issue
+
 # todo: check Btt validator to allow for inclusion into walletOrses compete, to allow for inclusion into blockchain
 # todo: also allow for btt_fee inclusion
 
@@ -423,7 +426,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         q_object_to_validator=q_for_validator,
         net_msg_sorter=network_message_sorter,
         reg_listening_port=55600,
-        reg_network_sandbox=reg_network_sandbox
+        reg_network_sandbox=reg_network_sandbox,
+        reactor_inst=reactor
     )
 
 
@@ -687,7 +691,8 @@ def main(just_launched=False):
         q_object_to_validator=q_for_validator,
         net_msg_sorter=network_message_sorter,
         reg_listening_port=55600,
-        reg_network_sandbox=False
+        reg_network_sandbox=False,
+        reactor_inst=reactor
     )
 
     # *** run sorter in another thread ***

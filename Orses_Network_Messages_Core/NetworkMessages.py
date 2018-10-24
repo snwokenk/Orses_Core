@@ -16,9 +16,10 @@ class NetworkMessages:
     This class is passed as spk_msg_obj to NetworkListener
     """
 
-    def __init__(self, admin_instance, q_obj=None):
+    def __init__(self, admin_instance, reactor_inst, q_obj=None, ):
 
         self.admin_instance=admin_instance
+        self.reactor_inst = reactor_inst
         self.first_two_msgs = list()
         self.message_object = None
         self.valid_first_msg = {b'rcn', b'rcnv'}

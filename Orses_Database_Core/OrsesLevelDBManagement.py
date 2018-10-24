@@ -147,47 +147,47 @@ class OrsesLevelDBManager:
         elif value:
             pass
 
-        # try:
+        try:
 
-        if rsv_req_dict and isinstance(block_number, int):  # newly reserved so
+            if rsv_req_dict and isinstance(block_number, int):  # newly reserved so
 
-            # get the proxies from reservation dict
-            proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
+                # get the proxies from reservation dict
+                proxy_list = rsv_req_dict["rsv_req"]["v_node_proxies"]
 
-            # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
-            # set of proxies, rsv dict]
-            bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
-                             block_number, proxy_list, rsv_req_dict]
-            value = json.dumps(bcw_info_list)
-
-
-
-            # create individual proxy db with concatenated bcw_wid and admin id of proxy
-            for adminid in proxy_list:
-                proxy_id = f"{wallet_id}{adminid}"
-
-                # an empty dict is put in place, this is replaced when the actual node responds with a unique
-                # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
-                # proxy for BCW
-                self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
+                # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
+                # set of proxies, rsv dict]
+                bcw_info_list = [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
+                                 block_number, proxy_list, rsv_req_dict]
+                value = json.dumps(bcw_info_list)
 
 
-                # check if admin in admin list is current node
-                if adminid == self.admin_inst.admin_id:
-                    self.admin_inst.proxy_center.initiate_new_proxy(
-                        bcw_wid=wallet_id
-                    )
+
+                # create individual proxy db with concatenated bcw_wid and admin id of proxy
+                for adminid in proxy_list:
+                    proxy_id = f"{wallet_id}{adminid}"
+
+                    # an empty dict is put in place, this is replaced when the actual node responds with a unique
+                    # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
+                    # proxy for BCW
+                    self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
 
 
-        elif value:
-            value = json.dumps(value)
-        else:
-            print(f"rsv_req_dict is None AND Value is None OR Block Number is needed")
+                    # check if admin in admin list is current node
+                    if adminid == self.admin_inst.admin_id:
+                        self.admin_inst.proxy_center.initiate_new_proxy(
+                            bcw_wid=wallet_id
+                        )
+
+
+            elif value:
+                value = json.dumps(value)
+            else:
+                print(f"rsv_req_dict is None AND Value is None OR Block Number is needed")
+                return False
+
+        except Exception as e:
+            print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
             return False
-
-        # except Exception as e:
-        #     print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
-        #     return False
 
         try:
             self.databases["BCWs"].put(key=wallet_id.encode(), value=value.encode())
@@ -389,6 +389,7 @@ class OrsesLevelDBManager:
 
         try:
             # b'[main_tx, signature, rcv_wid, sending_wid]' decode and json load python object
+            # if hash represents a 'btt' then  b'[main_tx, signature, rcv_wid, sending_wid, 'mc']'
             activity_of_hash = self.databases["unconfirmed_msgs_hashes"].get(key=tx_hash.encode())
 
         except KeyError:
@@ -697,12 +698,22 @@ class OrsesLevelDBManager:
 
 if __name__ == '__main__':
     try:
-        db = plyvel.DB("Sam1", create_if_missing=True)
+        db = plyvel.DB("/home/snwokenk/IdeaProjects/Orses_Core/sandbox/sn/data_client_wallet/wallet_balances", create_if_missing=True)
+        db2 = plyvel.DB("/home/snwokenk/IdeaProjects/Orses_Core/sandbox/sn/data_mempool/confirmed_msgs_hashes", create_if_missing=False)
     except plyvel.Error as e:
         print(e)
     else:
-        db.delete()
 
-        db.put(b"s", b"1")
+        for i in db:
+            print(i)
 
-        print(db.get(b"s"))
+        print("====")
+        #
+        # for i in db2:
+        #     print(i)
+
+
+
+
+
+

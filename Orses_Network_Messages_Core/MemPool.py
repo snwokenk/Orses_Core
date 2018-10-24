@@ -149,26 +149,39 @@ class MemPool:
 
             )
         elif activity_list[0] == "btt":
+            print(f"in mempool, activity_list[0] is 'btt'")
 
-            if activity_list[1] == "receiver" and isinstance(bcw_wid_or_rcv_wid, str):
+            if activity_list[1] == "receiver" and isinstance(bcw_wid_or_rcv_wid, str) and len(wallet_data) < 5:
                 # referring to regular wallet now being managed by BCW
                 try:
+                    print(f"in mempool, updating wallet data to include {bcw_wid_or_rcv_wid} a managing BCW")
                     wallet_data[3] = bcw_wid_or_rcv_wid
                 except IndexError:
                     wallet_data.append(bcw_wid_or_rcv_wid)
             elif activity_list[1] == "sender" and len(wallet_data) == 5 and isinstance(bcw_wid_or_rcv_wid, str):
                 # sender  is BCW_WID (through proxy)
-                # [avail bal, reserved bal, payable balance, receivable bal, total balance]
+                # [avail bal, reserved bal, total balance, "bcw wid"*]  bcw_wid should be in index -1 or will be
                 managed_wallet_data: list = db_manager.get_from_wallet_balances_db(wallet_id=bcw_wid_or_rcv_wid)
                 if len(managed_wallet_data) < 5:  # make sure wallet is not a BCW
 
-                    # update payable balance
+                    # update payable balance of bcw_wid with total balance of managed_wallet_data
+                    # [avail bal, reserved bal, payable bal, receivable bal, total bal]
                     wallet_data[2] = wallet_data[2] + managed_wallet_data[2]
+
+
+
 
                     # todo: update certain data, including keeping a database of managed_wallets
                     # todo: this should be done in the WalletProxy or ProxyCenter Class
-        # update total balance
-        wallet_data[-1] = sum(wallet_data[:-1])
+
+
+
+        if len(wallet_data) < 5:
+            # update total balance for a regular wallet
+            wallet_data[2] = sum(wallet_data[:2])
+        else:
+            # update total balance for a bcw_wid
+            wallet_data[-1] = sum(wallet_data[:-1])
 
         db_manager.update_wallet_balance_db(wallet_id=wallet_id, wallet_data=wallet_data)
 
@@ -197,22 +210,29 @@ class MemPool:
             )
             tx_list = json.loads(tx_list)
 
-            snd_wid = tx_list[-1]
-            rcv_wid = tx_list[-2]
+            # todo: account for Btt, by updating rcv_wid to have bcw_wid included in index -1
+            # todo: also have snd_wid(which is the bcw_wid) to be included in "payable balance" and factored into
+            # todo: total balance of bcw_should also reflect this payable
+            # tx_list == [main_tx, signature, rcv_wid, sending_wid]
+            # if 'btt" then tx_list == [main_tx, signature, rcv_wid, sending_wid, "mc"]
+            snd_wid = tx_list[3]
+            rcv_wid = tx_list[2]
 
             # [tx_type, snd_or_rcv, main_tx, signature, fee, amt]
             # dictionary with hash and activity list returned pop() gets the specifiy activity list
             snd_wid_activities = db_manager.get_from_unconfirmed_db_wid(wallet_id=snd_wid, pop_from_value=msg_hash)
-
+            print(f"this is snd_wid_activities: {snd_wid_activities}")
             if snd_wid_activities:
                 self.update_wallet_balances_bcw_db(
                     wallet_id=snd_wid,
                     tx_hash=msg_hash,
                     activity_list=snd_wid_activities,
-                    db_manager=db_manager
+                    db_manager=db_manager,
+                    bcw_wid_or_rcv_wid=rcv_wid if snd_wid_activities[0] == "btt" else None
                 )
             if rcv_wid:
                 rcv_wid_activities = db_manager.get_from_unconfirmed_db_wid(wallet_id=rcv_wid, pop_from_value=msg_hash)
+                print(f"this is rcv_wid_activities: {rcv_wid_activities}")
                 if rcv_wid_activities:
                     self.update_wallet_balances_bcw_db(
                         wallet_id=rcv_wid,

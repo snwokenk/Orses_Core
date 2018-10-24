@@ -33,7 +33,7 @@ class NetworkListener(Protocol):
         d.addCallback(
             self.respond
         )
-        d.addErrback(lambda e: print(f"error occurred in NetworkListener,datReceived defferal, error is {e}"))
+        d.addErrback(lambda e: print(f"error occurred in NetworkListener,dataReceived defferal, error is {e}"))
 
     def respond(self, response):
         """
@@ -57,7 +57,7 @@ class NetworkListener(Protocol):
 
 class NetworkListenerFactory(Factory):
 
-    def __init__(self, spkn_msg_obj_creator, admin, q_obj):
+    def __init__(self, spkn_msg_obj_creator, admin, q_obj, reactor_inst):
         """
 
         :param spkn_msg_obj_creator: a callable class, this is used to instatiate a spkn_msg class for each connection
@@ -67,7 +67,13 @@ class NetworkListenerFactory(Factory):
         self.message_object = spkn_msg_obj_creator
         self.admin = admin
         self.q_object =q_obj
+        self.reactor_inst = reactor_inst
 
     def buildProtocol(self, addr):
         return NetworkListener(factory=self,
-                               message_object=self.message_object(q_obj=self.q_object, admin_instance=self.admin))
+                               message_object=self.message_object(
+                                   q_obj=self.q_object,
+                                   admin_instance=self.admin,
+                                   reactor_inst=self.reactor_inst
+                               )
+                               )
