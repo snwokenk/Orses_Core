@@ -107,7 +107,7 @@ class DigitalSigner:
             message = message.encode()
 
         try:
-            if not key:
+            if not key and isinstance(dict_of_privkey_numbers, dict):
                 key = ECC.construct(
                     curve="P-256",
                     point_x=dict_of_privkey_numbers["x"],

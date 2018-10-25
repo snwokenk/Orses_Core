@@ -6,6 +6,7 @@ from Orses_Network_Messages_Core.MemPool import MemPool
 from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
 from Orses_Database_Core.OrsesLevelDBManagement import OrsesLevelDBManager
+from Orses_Proxy_Core.ProxyCenter import ProxyCenter
 
 from twisted.internet.error import CannotListenError
 
@@ -61,9 +62,10 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: check proxycenter Protocol to verify it is not none
+# todo: check proxycenter Protocol to verify it is not none and also to pass the reactor inst to proxycenter, in
 # todo: Databases updated, verify enough time is being allowed for sending.
 # todo: check proxycenter wait_and_notify_of_blockchain_inclusion to verify making sure time.sleep not causing an issue
+# todo: to avoid issue find a way of passin reactor and using call wait
 
 # todo: check Btt validator to allow for inclusion into walletOrses compete, to allow for inclusion into blockchain
 # todo: also allow for btt_fee inclusion
@@ -286,6 +288,14 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     db_manager = OrsesLevelDBManager(admin_inst=admin)
     db_manager.load_required_databases()
     admin.load_db_manager(db_manager=db_manager)
+
+    # instantiate proxy center and load to admin
+    admin_proxy = ProxyCenter(
+        admin_inst=admin,
+        is_program_running=is_program_running
+    )
+
+    admin.load_proxy_center(proxy_center=admin_proxy)
 
     # instantiated Dummy Internet
     dummy_internet = DummyInternet()
@@ -558,6 +568,14 @@ def main(just_launched=False):
     db_manager = OrsesLevelDBManager(admin_inst=admin)
     db_manager.load_required_databases()
     admin.load_db_manager(db_manager=db_manager)
+
+    # instantiate proxy center and load to admin
+    admin_proxy = ProxyCenter(
+        admin_inst=admin,
+        is_program_running=is_program_running
+    )
+
+    admin.load_proxy_center(proxy_center=admin_proxy)
 
     # *** instantiate queue variables ***
     q_for_compete = multiprocessing.Queue() if (admin.isCompetitor is True and admin.currenty_competing is True) else None

@@ -65,10 +65,8 @@ class Admin:
         # util_dictionary, to keep miscellaneous things that can be used throughout the program
         self.util_dict = dict()
 
-        # instantiate proxy center class
-        self.proxy_center = ProxyCenter(
-            admin_inst=self
-        )
+        # Proxy center created in Start_Node main function ad loaded into admin
+        self.proxy_center = None
 
         self.__set_or_create_pki_pair()
 
@@ -216,6 +214,9 @@ class Admin:
 
     def get_db_manager(self):
         return self.db_manager
+
+    def load_proxy_center(self, proxy_center: ProxyCenter):
+        self.proxy_center = proxy_center
 
     def get_proxy_center(self):
         return self.proxy_center

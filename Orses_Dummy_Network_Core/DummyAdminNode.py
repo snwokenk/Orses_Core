@@ -8,6 +8,7 @@ from Orses_Network_Core.NetworkMessageSorter import NetworkMessageSorter
 from Orses_Dummy_Network_Core.DummyNetworkObjects import DummyNode
 from Orses_Competitor_Core.Orses_Compete_Algo import Competitor
 from Orses_Database_Core.OrsesLevelDBManagement import OrsesLevelDBManager
+from Orses_Proxy_Core.ProxyCenter import ProxyCenter
 
 
 import multiprocessing, queue, shutil, os, time, threading
@@ -136,6 +137,14 @@ class DummyAdminNode(DummyNode):
         db_manager.load_required_databases()
 
         self.admin.load_db_manager(db_manager=db_manager)
+
+        # instantiate proxy center and load to admin
+        admin_proxy = ProxyCenter(
+            admin_inst=self.admin,
+            is_program_running=self.is_program_running
+        )
+
+        self.admin.load_proxy_center(proxy_center=admin_proxy)
 
         # start compete(mining) process, if admin.isCompetitor is True. No need to check compete for virtual node
         print(f"in DummyAdminNode, is admin competitor {self.admin.isCompetitor}")

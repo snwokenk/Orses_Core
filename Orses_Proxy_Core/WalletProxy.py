@@ -173,7 +173,8 @@ class WalletProxy:
             asgn_stmt_dict=asgn_stmt_dict
         ).sign_and_return_bcw_initiated_token_transfer(bcw_proxy_privkey=self.bcw_proxy_privkey)
 
-        a_callable = lambda: self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
+        def a_callable():
+            return self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
 
         return ['defer', btt_dict, a_callable]
 
@@ -227,14 +228,14 @@ class WalletProxy:
         snd_deduction = (amt + fee)
         snd_tmp_bal[0] = snd_tmp_bal[0] - snd_deduction
         snd_tmp_bal[2] = snd_tmp_bal[0] + snd_tmp_bal[1]
-        self.db_manager.insert_into_wallet_balances_db(wallet_id=snd_wid)
+        self.db_manager.insert_into_wallet_balances_db(wallet_id=snd_wid, wallet_data=snd_tmp_bal)
 
         # update rcv balance
         rcv_tmp_bal = self.db_manager.get_from_wallet_balances_db(wallet_id=rcv_wid)
         rcv_tmp_bal[0] = rcv_tmp_bal[0] + amt
         rcv_tmp_bal[2] = rcv_tmp_bal[0] + rcv_tmp_bal[1]
         rcv_tmp_bal.insert(3, self.bcw_wid)  # specifically uses insert() to avoid Error if len == 3 (rather than 4)
-        self.db_manager.insert_into_wallet_balances_db(wallet_id=rcv_wid)
+        self.db_manager.insert_into_wallet_balances_db(wallet_id=rcv_wid, wallet_data=rcv_tmp_bal)
 
         # create an notification message
         notif_msg = dict()
@@ -242,8 +243,9 @@ class WalletProxy:
         notif_msg['type'] = "exec_asgn"
         notif_msg['msg_hash'] = asgn_stmt_dict["stmt_hsh"]
         notif_msg['proxy_sig'] = DigitalSigner.sign_with_provided_privkey(
-            dict_of_privkey_numbers=self.bcw_proxy_privkey,
-            message=asgn_stmt_dict["stmt_hsh"]
+            dict_of_privkey_numbers=None,
+            message=asgn_stmt_dict["stmt_hsh"],
+            key=self.bcw_proxy_privkey
 
         )
         notif_msg["proxy_id"] = self.admin_inst.admin_id

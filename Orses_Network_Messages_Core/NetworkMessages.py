@@ -16,7 +16,7 @@ class NetworkMessages:
     This class is passed as spk_msg_obj to NetworkListener
     """
 
-    def __init__(self, admin_instance, reactor_inst, q_obj=None, ):
+    def __init__(self, admin_instance, reactor_inst, protocol=None, q_obj=None, ):
 
         self.admin_instance=admin_instance
         self.reactor_inst = reactor_inst
@@ -28,6 +28,7 @@ class NetworkMessages:
         self.ack_msg = b'ack'
         self.reject_msg = b'rej'
         self.q_obj = q_obj
+        self.protocol = protocol
         self.end_convo = False
 
     def listen(self, msg):
@@ -48,7 +49,9 @@ class NetworkMessages:
                     netmsginst=self,
                     msg_type=type_key,
                     q_object=self.q_obj,
-                    admin_instance=self.admin_instance
+                    admin_instance=self.admin_instance,
+                    protocol=self.protocol,
+                    reactor_inst=self.reactor_inst
                 )
                 self.message_object.listen(msg)
             except KeyError:

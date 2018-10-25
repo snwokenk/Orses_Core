@@ -20,6 +20,7 @@ class NetworkListener(Protocol):
         super().__init__()
         self.factory = factory
         self.message_object = message_object  # of class NetworkMessages in NetworkMessages.py
+        self.message_object.protocol = self
 
     def dataReceived(self, data):
         print("rec: ", data)
@@ -70,10 +71,11 @@ class NetworkListenerFactory(Factory):
         self.reactor_inst = reactor_inst
 
     def buildProtocol(self, addr):
-        return NetworkListener(factory=self,
-                               message_object=self.message_object(
-                                   q_obj=self.q_object,
-                                   admin_instance=self.admin,
-                                   reactor_inst=self.reactor_inst
-                               )
-                               )
+        return NetworkListener(
+            factory=self,
+            message_object=self.message_object(
+                q_obj=self.q_object,
+                admin_instance=self.admin,
+                reactor_inst=self.reactor_inst
+            )
+        )

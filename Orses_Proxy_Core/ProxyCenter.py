@@ -10,9 +10,10 @@ import json, time
 
 
 class ProxyCenter:
-    def __init__(self, admin_inst):
+    def __init__(self, admin_inst, is_program_running):
 
         self.admin_inst = admin_inst
+        self.is_program_running = is_program_running
         self.db_manager = self.admin_inst.db_manager
 
         # dict_of_managing_bcw = {"wallet_id": WalletProxy Instance}
@@ -41,6 +42,10 @@ class ProxyCenter:
                 new_proxy=False,
                 overwrite=False
             )
+
+    def get_db_manager(self):
+
+        return self.admin_inst.get_db_manager()
 
     def initiate_new_proxy(self, bcw_wid: str, overwrite=False):
 
@@ -115,7 +120,7 @@ class ProxyCenter:
         :return:
         """
 
-    def execute_assignment_statement(self, asgn_stmt_dict, q_obj, wallet_pubkey=None, protocol=None, **kwargs):
+    def execute_assignment_statement(self, asgn_stmt_dict, q_obj, protocol, reactor_inst, wallet_pubkey=None, **kwargs):
         """
 
         asgn_stmt_dict = {
@@ -284,6 +289,8 @@ class ProxyCenter:
                 else:
                     response = False
 
+                print(f"In execute_assignment_statement, ProxyCenter.py, response is {response}")
+
                 # if response is a dict, then btt was included in blockchain and asgn_stmt executed
                 if isinstance(response, dict):
                     rsp_str = json.dumps(response)
@@ -293,6 +300,8 @@ class ProxyCenter:
                     return [False]
 
     def wait_and_notify_of_blockchain_inclusion(self, update_balance_callback, end_timestamp: int,**kwargs):
+
+        # todo: find out why code after time.sleep(60) does not execute
 
         """
 
@@ -311,10 +320,11 @@ class ProxyCenter:
               f"bcw_wid {bcw_wid}\n"
               f"end time {end_timestamp}\n"
               f"time.time {time.time()}")
-        while time.time() <= end_timestamp:
+        while time.time() <= end_timestamp and self.is_program_running.is_set() is True:
             print(f"waiting for blockchain inclusion, admin {self.admin_inst.admin_id}")
-            time.sleep(60)
-            tmp_bal = self.db_manager.get_from_wallet_balances_db(
+            time.sleep(30)
+            print(f"waiting for blockchain inclusion, admin {self.admin_inst.admin_id}, after 60 seconds")
+            tmp_bal = self.get_db_manager().get_from_wallet_balances_db(
                 wallet_id=snd_wid
             )
             print("***")

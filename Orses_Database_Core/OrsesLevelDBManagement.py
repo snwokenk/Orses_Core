@@ -642,6 +642,9 @@ class OrsesLevelDBManager:
         :param wallet_id: wallet id to update
         :param wallet_data: json_encoded wallet data of balances:
                             [int, int, int] = [free token balance, reserved_token_balance, total token]
+                            Or [int, int, int, string] = [free token balance, reserved_token_balance, total token, managing bcw]
+                            Or [int, int, int, int, int] = [free token balance, reserved_token_balance, payable balance, receivable balance,  total token]
+
         :return: bool, true if successul
         """
         # amounts are stored as ints of ntakiris ie 1 orses token = 10,000,000,000 (10 billion) ntakiris
