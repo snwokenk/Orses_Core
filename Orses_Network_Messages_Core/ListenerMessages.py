@@ -77,7 +77,7 @@ class ListenerForBalanceRequest(ListenerMessages):
 
     def __init__(self, messages_heard, netmsginst, msg_type, admin_instance, q_object=None, protocol=None, reactor_inst=None):
         super().__init__(messages_heard=messages_heard, netmsginst=netmsginst, msg_type=msg_type,
-                         admin_instance=admin_instance)
+                         admin_instance=admin_instance, protocol=protocol, reactor_inst=reactor_inst)
 
     def speak(self):
 

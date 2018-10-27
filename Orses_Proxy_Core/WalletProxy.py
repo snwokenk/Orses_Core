@@ -139,7 +139,18 @@ class WalletProxy:
     def execute_asgn_stmt_snd_managed(self, asgn_stmt_dict, stmt_list, snd_balance, wallet_pubkey=None):
         pass
 
-    def execute_asgn_stmt_rcv_managed(self, asgn_stmt_dict, stmt_list, snd_balance, snd_pending_tx, wallet_pubkey=None):
+    def execute_asgn_stmt_rcv_managed(self, asgn_stmt_dict, stmt_list, snd_balance, snd_pending_tx,
+                                      snd_bcw_manager: str, wallet_pubkey=None):
+        """
+
+        :param asgn_stmt_dict: full assignment statement dict sent by sender
+        :param stmt_list: string of main assignment statment turned to list
+        :param snd_balance: balance of sender's wallet
+        :param snd_pending_tx:
+        :param snd_bcw_manager: bcw managing sender's wallet, if none then sender's wallet directly on blockchain
+        :param wallet_pubkey:
+        :return:
+        """
 
         snd_wid = stmt_list[0]
         rcv_wid = stmt_list[1]
@@ -167,16 +178,26 @@ class WalletProxy:
         elif validator is False:
             return False
 
-        # create BCW initiated Token Transfer
-        btt_dict = BCWTokenTransfer(
-            wallet_proxy=self,
-            asgn_stmt_dict=asgn_stmt_dict
-        ).sign_and_return_bcw_initiated_token_transfer(bcw_proxy_privkey=self.bcw_proxy_privkey)
+
+        # create BCW initiated token transfer if directly on blockchain else
+
+        if snd_bcw_manager is None:
+            # create BCW initiated Token Transfer
+            tmp_dict = BCWTokenTransfer(
+                wallet_proxy=self,
+                asgn_stmt_dict=asgn_stmt_dict
+            ).sign_and_return_bcw_initiated_token_transfer(bcw_proxy_privkey=self.bcw_proxy_privkey)
+        # create a balance transfer request if managed by
+        elif isinstance(snd_bcw_manager, str):
+
+            # if not managed by
+            tmp_dict = {}
+
 
         def a_callable():
             return self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
 
-        return ['defer', btt_dict, a_callable]
+        return ['defer', tmp_dict, a_callable]
 
     def execute_asgn_stmt_none_managed(self, asgn_stmt_dict, stmt_list):
         pass

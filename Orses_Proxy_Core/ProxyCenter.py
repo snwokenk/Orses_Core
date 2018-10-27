@@ -232,8 +232,12 @@ class ProxyCenter:
                 return [False]
 
         elif snd_managed[0] is True and rcv_managed[0] is False:
+            # senders wallet managed by proxy's BCW and receiver's managed by another BCW or directly on the blockchain
+            # things to take into consideration is when a node is proxy for both BCW or for only one.
+            # Also if the
             pass
         elif snd_managed[0] is False and rcv_managed[0] is False:
+            #
             pass
         elif snd_managed[0] is False and rcv_managed[0] is True:
             rsp = wallet_proxy.execute_asgn_stmt_rcv_managed(
@@ -264,38 +268,45 @@ class ProxyCenter:
                 btt = rsp[1]
                 update_balance_callback = rsp[2]
 
-                # add BTT validator, this just validates local node
-                is_btt_validated = BTTValidator(
-                    admin_instance=self.admin_inst,
-                    btt_dict=btt,
-                    wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
-                    q_object=q_obj
-                ).check_validity()
+                if snd_managed[1] == "blockchain":
 
-                # wait and check for blockchain inclusion, then update
-                if is_btt_validated is True:
+                    # add BTT validator, this just validates local node
+                    is_btt_validated = BTTValidator(
+                        admin_instance=self.admin_inst,
+                        btt_dict=btt,
+                        wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
+                        q_object=q_obj
+                    ).check_validity()
 
-                    # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
-                    response = self.wait_and_notify_of_blockchain_inclusion(
-                        update_balance_callback=update_balance_callback,
-                        end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
-                        snd_wid=asgn_stmt_list[0],
-                        bcw_wid=asgn_stmt_list[2],
-                        protocol=protocol,
+                    # wait and check for blockchain inclusion, then update
+                    if is_btt_validated is True:
 
-                    )
+                        # asgn_stmt_list = [snd_wid, rcv_wid, bcw wid, amt, fee, timestamp, timelimit]
+                        response = self.wait_and_notify_of_blockchain_inclusion(
+                            update_balance_callback=update_balance_callback,
+                            end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
+                            snd_wid=asgn_stmt_list[0],
+                            bcw_wid=asgn_stmt_list[2],
+                            protocol=protocol,
 
-                # if btt not included in the blockchain on time, then a false is sent to token sender
+                        )
+
+
+                    else:
+                        response = False
+                # wallet managed by another BCW
                 else:
                     response = False
 
                 print(f"In execute_assignment_statement, ProxyCenter.py, response is {response}")
 
                 # if response is a dict, then btt was included in blockchain and asgn_stmt executed
+
                 if isinstance(response, dict):
                     rsp_str = json.dumps(response)
                     return [True, rsp_str]
 
+                # if btt not included in the blockchain on time, then a false is sent to token sender
                 else:
                     return [False]
 

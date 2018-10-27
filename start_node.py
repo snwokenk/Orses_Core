@@ -62,20 +62,6 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: check proxycenter Protocol to verify it is not none and also to pass the reactor inst to proxycenter, in
-# todo: Databases updated, verify enough time is being allowed for sending.
-# todo: check proxycenter wait_and_notify_of_blockchain_inclusion to verify making sure time.sleep not causing an issue
-# todo: to avoid issue find a way of passin reactor and using call wait
-
-# todo: check Btt validator to allow for inclusion into walletOrses compete, to allow for inclusion into blockchain
-# todo: also allow for btt_fee inclusion
-
-# todo: keep working on proxycenter, also refactor mempool, update_mempool, to correctly handle btt by inserting
-# todo: the BCW_WID into balance list at index 3. And also updating the BCW's payables balance
-
-# todo: when Walletproxy has to transfer token management using bcw initiated Token Transfer,
-# todo: it must be able to send the btt to the network and keep sending keep alive messages every 60 seconds until the
-# todo: until the BTT has been added to the blockchain. Once it is added it can now move on
 
 
 # todo: finish working on Proxycenter execute_assignment_statement(), with a way of requesting for wallet pubkey,
