@@ -5,7 +5,7 @@ conditions of an assignment statement
 """
 from Orses_Proxy_Core.WalletProxy import WalletProxy
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
-from Orses_Validator_Core.BTTValidator import BTTValidator
+from Orses_Validator_Core import BTTValidator, BTRValidator
 import json, time
 
 
@@ -266,15 +266,15 @@ class ProxyCenter:
             # callable is stored, btt message is sent to NetworkPropagtor for propagation
             # rsp = ['defer', btt_dict, a_callable]
             elif isinstance(rsp, list) and rsp[0] == "defer":
-                btt = rsp[1]
+                btt_or_btr_dict: dict = rsp[1]
                 update_balance_callback = rsp[2]
 
-                if snd_managed[1] == "blockchain":
+                if 'btt' in btt_or_btr_dict:
 
                     # add BTT validator, this just validates local node
-                    is_btt_validated = BTTValidator(
+                    is_btt_validated = BTTValidator.BTTValidator(
                         admin_instance=self.admin_inst,
-                        btt_dict=btt,
+                        btt_dict=btt_or_btr_dict,
                         wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
                         q_object=q_obj
                     ).check_validity()
@@ -296,6 +296,24 @@ class ProxyCenter:
                     else:
                         response = False
                 # wallet managed by another BCW
+                elif 'btr' in btt_or_btr_dict:
+
+                    is_btr_validated = BTRValidator.BTRValidator(
+                        admin_instance=self.admin_inst,
+                        btr_dict=btt_or_btr_dict,
+                        wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
+                        q_object=q_obj
+                    ).check_validity()
+
+                    if is_btr_validated is True:
+                        # todo: create a wait and notify after BCW final response
+                        response = self.wait_for_peer_proxy_node_final_response(
+                            update_balance_callback=update_balance_callback,
+                            end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
+                        )
+                    else:
+                        response = False
+
                 else:
                     response = False
 
@@ -311,7 +329,7 @@ class ProxyCenter:
                 else:
                     return [False]
 
-    def wait_and_notify_of_blockchain_inclusion(self, update_balance_callback, end_timestamp: int,**kwargs):
+    def wait_and_notify_of_blockchain_inclusion(self, update_balance_callback, end_timestamp: int, **kwargs):
 
         # todo: find out why code after time.sleep(60) does not execute
 
@@ -349,8 +367,10 @@ class ProxyCenter:
 
         return False
 
-    def wait_for_new_block(self):
-
+    def wait_for_peer_proxy_node_final_response(self, update_balance_callback, end_timestamp: int, **kwargs):
+        # todo: write logic that will wait for response response from peer node and then call the callback function
+        # todo: if response takes longer than end_timestmap will return False. A class which handles requesting from
+        # todo:L individual proxy nodes of a BCW_WID should be written
 
         pass
 

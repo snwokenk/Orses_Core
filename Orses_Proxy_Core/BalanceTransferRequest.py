@@ -31,15 +31,15 @@ from Orses_Proxy_Core.BaseProxyMessage import BaseProxyMessage
 
 class BalanceTransferRequest(BaseProxyMessage):
 
-    def __init__(self, wallet_proxy, asgn_stmt_dict, sending_bcw):
+    def __init__(self, wallet_proxy, asgn_stmt_dict, bcw_with_balance):
 
         super().__init__(wallet_proxy=wallet_proxy, asgn_stmt_dict=asgn_stmt_dict)
-        self.sending_bcw = sending_bcw  # The BCW transferring the balance
+        self.bcw_with_balance = bcw_with_balance  # The BCW transferring the balance
 
     def create_main_transaction(self):
         btr = {
             "asgn_stmt": self.asgn_stmt_dict,
-            'snd_bcw': self.sending_bcw,  # the BCW that is being requested to transfer balance
+            'snd_bcw': self.bcw_with_balance,  # the BCW that is being requested to transfer balance
 
         }
 

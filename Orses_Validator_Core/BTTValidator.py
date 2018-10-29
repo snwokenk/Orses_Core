@@ -1,22 +1,17 @@
 
-from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
+from Orses_Validator_Core.BaseProxyMessageValidator import BaseProxyMessageValidator
 
 import time, json
 
 
-class BTTValidator:
+class BTTValidator(BaseProxyMessageValidator):
 
-    def __init__(self, btt_dict, admin_instance, wallet_pubkey=None,  timelimit=300, q_object=None):
+    def __init__(self, btt_dict, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None):
 
-        self.admin_instance = admin_instance
-        self.mempool = admin_instance.get_mempool()
-        self.db_manager = self.admin_instance.get_db_manager()
-
-        # to maintain compatibility argument is called wallet_pubkey but should be bcw_proxy_pubkey
-        self.bcw_proxy_pubkey = wallet_pubkey
-        self.non_json_proxy_pubkey = None
         self.btt_dict = btt_dict
         self.btt = btt_dict['btt']
+
+        # required by base class
         self.snd_admin_id =btt_dict["admin_id"]
         self.signature = btt_dict["sig"]
         self.btt_hash = btt_dict['tx_hash']
@@ -29,34 +24,22 @@ class BTTValidator:
         self.bcw_wid = self.related_asgn_stmt_list[2]
 
         self.asgn_stmt_sndr = self.related_asgn_stmt_list[0]
-        self.btt_dict_json = json.dumps(self.btt)
-        self.timelimit = timelimit
-        self.q_object = q_object
+
+        # required by method
+        self.main_dict_json = json.dumps(self.btt)
+
         self.btt_fee = self.btt["fee"]
 
+        # call init of BaseClass
+        super().__init__(
+            admin_instance=admin_instance,
+            wallet_pubkey=wallet_pubkey,
+            time_limit=time_limit,
+            q_object=q_object
+        )
+
+        # inherited from Baseclass
         self.set_sending_wallet_pubkey()
-
-    def set_sending_wallet_pubkey(self):
-        """
-        used to retrieve the wallet's pubkey from storage
-        :return:
-        """
-        if self.bcw_proxy_pubkey is None:
-
-            # proxy id, is just bcw_wid+proxy's admin id
-            bcw_proxy_id = f"{self.bcw_wid}{self.snd_admin_id}"
-
-            self.non_json_proxy_pubkey = self.db_manager.get_proxy_pubkey(proxy_id=bcw_proxy_id)
-
-
-        else:
-            try:
-                self.non_json_proxy_pubkey = json.loads(self.bcw_proxy_pubkey)
-            except TypeError as e:
-                if isinstance(self.bcw_proxy_pubkey, dict):  # already a python object
-                    self.non_json_proxy_pubkey = self.bcw_proxy_pubkey
-                else:
-                    self.non_json_proxy_pubkey = False
 
     def check_validity(self):
         if not self.non_json_proxy_pubkey:  # if empty dict {}
@@ -69,7 +52,7 @@ class BTTValidator:
 
             # refactor this, to allow for inclusion into wallet of sender and BCW_WID wallet
             # sending_wid is the BCW and receiving id is the asgn stmt senders wid
-            rsp = self.db_manager.insert_into_unconfirmed_db(
+            self.db_manager.insert_into_unconfirmed_db(
                 tx_type="btt",
                 sending_wid=self.bcw_wid,
                 tx_hash=self.btt_hash,
@@ -87,29 +70,7 @@ class BTTValidator:
             self.q_object.put([f'e{self.btt_hash[:8]}', json.dumps(self.non_json_proxy_pubkey), self.btt_dict, False])
             return False
 
-    def check_signature_valid(self):
 
-        response = DigitalSignerValidator.validate_wallet_signature(msg=self.btt_dict_json,
-                                                                    wallet_pubkey=self.non_json_proxy_pubkey,
-                                                                    signature=self.signature)
-        print("sig check: ", response)
-        if response is True:
-            return True
-        else:
-            return False
-
-    def check_node_is_valid_proxy(self):
-        """
-        logic that checks that a node is a valid proxy
-        :return:
-        """
-
-        bcw_info = self.db_manager.get_from_bcw_db(
-            wallet_id=self.bcw_wid
-        )
-
-        if isinstance(bcw_info, list) and len(bcw_info) > 4:
-            return self.snd_admin_id in bcw_info[4]
 
 
 

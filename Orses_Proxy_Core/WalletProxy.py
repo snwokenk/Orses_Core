@@ -30,7 +30,7 @@ from Orses_Cryptography_Core.PKIGeneration import PKI
 from Orses_Validator_Core.AssignmentStatementValidator import AssignmentStatementValidator
 from Orses_Util_Core import  Filenames_VariableNames
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
-from Orses_Proxy_Core.BCWTokenTransfer import BCWTokenTransfer
+from Orses_Proxy_Core import BCWTokenTransfer, BalanceTransferRequest
 
 
 class WalletProxy:
@@ -178,23 +178,38 @@ class WalletProxy:
         elif validator is False:
             return False
 
-
         # create BCW initiated token transfer if directly on blockchain else
 
         if snd_bcw_manager is None:
             # create BCW initiated Token Transfer
-            tmp_dict = BCWTokenTransfer(
+            tmp_dict = BCWTokenTransfer.BCWTokenTransfer(
                 wallet_proxy=self,
                 asgn_stmt_dict=asgn_stmt_dict
             ).sign_and_return_bcw_initiated_token_transfer(bcw_proxy_privkey=self.bcw_proxy_privkey)
         # create a balance transfer request if managed by
-        elif isinstance(snd_bcw_manager, str):
+        elif isinstance(snd_bcw_manager, str) and snd_bcw_manager != self.bcw_wid:
 
             # if not managed by
-            tmp_dict = {}
+            tmp_dict = BalanceTransferRequest.BalanceTransferRequest(
+                wallet_proxy=self,
+                asgn_stmt_dict=asgn_stmt_dict,
+                bcw_with_balance=snd_bcw_manager
+            ).sign_and_return_balance_transfer_request(bcw_proxy_privkey=self.bcw_proxy_privkey)
 
+        else:
+            print(f"in WalletProxy.py, could not determine snd_bcw_manager: {snd_bcw_manager} OR\n"
+                  f"self.bcw_wid is same as local node: {snd_bcw_manager == self.bcw_wid}")
+            return False
 
         def a_callable():
+            if 'btr' in tmp_dict:
+                bcw_updated = self.update_bcw_balances(
+                    snd_bcw=snd_bcw_manager,
+                    rcv_bcw=self.bcw_wid
+                )
+            else:
+                return False
+
             return self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
 
         return ['defer', tmp_dict, a_callable]
@@ -278,3 +293,19 @@ class WalletProxy:
         notif_msg[scenario_type] = True  # executed using scenario 4, which is both sender and receiver managed by proxy node
 
         return notif_msg
+
+    def update_bcw_balances(self, snd_bcw, rcv_bcw, amt=None, type_of_balance='payable', **kwargs):
+        """
+
+        :param snd_bcw: the BCW wallet id to subtract balance from
+        :param rcv_bcw: the BCW wallet id to add balance to
+        :param amt: amount to transfer
+        :param type_of_balance: type of balance to update
+        :param kwargs[
+        :return:
+        """
+
+
+        return True
+
+
