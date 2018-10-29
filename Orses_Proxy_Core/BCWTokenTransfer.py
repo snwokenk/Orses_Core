@@ -17,8 +17,10 @@ import time, json
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Crypto.Hash import SHA256
 
+from Orses_Proxy_Core.BaseProxyMessage import BaseProxyMessage
 
-class BCWTokenTransfer:
+
+class BCWTokenTransfer(BaseProxyMessage):
 
     """
     BCWTokenTransfer = {
@@ -34,16 +36,15 @@ class BCWTokenTransfer:
     """
 
     def __init__(self, wallet_proxy, asgn_stmt_dict, fee=0.0000000001):
-        self.wallet_proxy = wallet_proxy
-        self.admin_inst = wallet_proxy.admin_inst
-        self.asgn_stmt_dict = asgn_stmt_dict
+
+        super().__init__(wallet_proxy=wallet_proxy, asgn_stmt_dict=asgn_stmt_dict)
         self.fee = fee
 
-    def create_btt(self):
+    def create_main_transaction(self):
 
         btt = {
             'asgn_stmt': self.asgn_stmt_dict,
-            'proxy_id': self.admin_inst.admin_id,
+            # 'proxy_id': self.admin_inst.admin_id,
             'timestamp': int(time.time()),
             'fee': self.fee
         }
@@ -52,28 +53,13 @@ class BCWTokenTransfer:
 
     def sign_and_return_bcw_initiated_token_transfer(self, bcw_proxy_privkey):
 
-        if bcw_proxy_privkey:
+        btt_dict, main_dict = self.sign_and_return_main_transaction(bcw_proxy_privkey=bcw_proxy_privkey)
 
-            btt = self.create_btt()
-            btt_json = json.dumps(btt)
-            signature = DigitalSigner.sign_with_provided_privkey(
-                dict_of_privkey_numbers=None,
-                message=btt_json,
-                key=bcw_proxy_privkey
-            )
-            tx_hash = SHA256.new(btt_json.encode()).hexdigest()
+        if btt_dict:
+            btt_dict['btt'] = main_dict
 
-            btt_dict = {
-                'btt': btt,
-                'sig': signature,
-                'tx_hash': tx_hash,
-                'asgn_hash': self.asgn_stmt_dict["stmt_hsh"],
-                'admin_id': self.admin_inst.admin_id
-            }
+        return btt_dict
 
-            return btt_dict
-        else:
-            return {}
 
 
 

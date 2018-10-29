@@ -3,7 +3,7 @@ This module will be used  propagate messages to other verification nodes or admi
 Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator, BTTValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator, BTTValidator, BTRValidator
 
 from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListener
 

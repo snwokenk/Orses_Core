@@ -6,21 +6,51 @@ before executing this request which transfers the management/balance of a wallet
 
 'Transfering a balance' involves transferring the payable balance of one BCW to another.
 
+
+main btr dict should have keys:
+asgn_stmt_dict  # receiving wid is found in asgn_stmt_dict
+sending bcw
+
+
+
+final btr dict keys:
+
+btr
+tx_hash (using json encoded btr
+asgn_stmt hash
+signature
+admin id
+
 """
 import time, json
 from Orses_Cryptography_Core.DigitalSigner import DigitalSigner
 from Crypto.Hash import SHA256
 
+from Orses_Proxy_Core.BaseProxyMessage import BaseProxyMessage
 
-class BalanceTransferRequest:
 
-    def __init__(self, wallet_proxy, asgn_stmt_dict):
-        self.wallet_proxy = wallet_proxy
-        self.admin_inst = wallet_proxy.admin_inst
-        self.asgn_stmt_dict = asgn_stmt_dict
+class BalanceTransferRequest(BaseProxyMessage):
 
-    def create_btr(self):
-        pass
+    def __init__(self, wallet_proxy, asgn_stmt_dict, sending_bcw):
+
+        super().__init__(wallet_proxy=wallet_proxy, asgn_stmt_dict=asgn_stmt_dict)
+        self.sending_bcw = sending_bcw  # The BCW transferring the balance
+
+    def create_main_transaction(self):
+        btr = {
+            "asgn_stmt": self.asgn_stmt_dict,
+            'snd_bcw': self.sending_bcw,  # the BCW that is being requested to transfer balance
+
+        }
+
+        return btr
 
     def sign_and_return_balance_transfer_request(self, bcw_proxy_privkey):
-        pass
+
+        btr_dict, main_dict = self.sign_and_return_main_transaction(bcw_proxy_privkey=bcw_proxy_privkey)
+
+        if btr_dict:
+            btr_dict['btr'] = main_dict
+
+        return btr_dict
+

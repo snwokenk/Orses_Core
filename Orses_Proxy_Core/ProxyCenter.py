@@ -245,7 +245,8 @@ class ProxyCenter:
                 stmt_list=asgn_stmt_list,
                 snd_balance=snd_balance,
                 wallet_pubkey=wallet_pubkey,
-                snd_pending_tx=snd_pending_tx
+                snd_pending_tx=snd_pending_tx,
+                snd_bcw_manager=snd_managed[-1]
             )
 
             if rsp is None and not kwargs:

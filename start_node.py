@@ -64,9 +64,9 @@ else:
 
 
 
-# todo: finish working on Proxycenter execute_assignment_statement(), with a way of requesting for wallet pubkey,
-# todo: while storing info needed to revalidate assignment statement with pubkey key
-
+# todo: Finish refactoring BaseProxyMessageValidator and btt/btr validators
+# todo: Finish up Balance Transfer Request Logic
+# todo: Finish up ProxyCenter logic for BTT when wallet is managed by another BCW
 
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
 # todo: running and maintaining BCWs that the admin node is a proxy of.
