@@ -56,6 +56,14 @@ class WalletProxy:
         # {batch_no: [wallet state hash,block_no_saved, amount of tokens volume, fee earned]}
         self.proxy_batch_with_wsh_dict = None
 
+        # [avail bal, reserved bal, payable bal, receivable bal, total bal]
+        self.type_of_balance_index_dict = {
+            "available": 0,
+            "reserved": 1,
+            "payable": 2,
+            "receivable": 3
+        }
+
         self.__set_or_create_pki_pair()
 
     def __set_or_create_pki_pair(self):
@@ -114,7 +122,6 @@ class WalletProxy:
 
     def execute_asgn_stmt_both_managed(self, asgn_stmt_dict, stmt_list, snd_balance, wallet_pubkey=None):
 
-
         # validate assignment statement
         validator = AssignmentStatementValidator(
             admin_instance=self.admin_inst,
@@ -171,11 +178,13 @@ class WalletProxy:
             asgn_stmt_list=stmt_list,
             snd_balance=snd_balance,
             wallet_pubkey=wallet_pubkey
-        ).check_validity()
+        )
 
-        if validator is None:
+        is_valid = validator.check_validity()
+
+        if is_valid is None:
             return None
-        elif validator is False:
+        elif is_valid is False:
             return False
 
         # create BCW initiated token transfer if directly on blockchain else
@@ -184,7 +193,8 @@ class WalletProxy:
             # create BCW initiated Token Transfer
             tmp_dict = BCWTokenTransfer.BCWTokenTransfer(
                 wallet_proxy=self,
-                asgn_stmt_dict=asgn_stmt_dict
+                asgn_stmt_dict=asgn_stmt_dict,
+                asgn_sender_pubkey=validator.sending_wallet_pubkey
             ).sign_and_return_bcw_initiated_token_transfer(bcw_proxy_privkey=self.bcw_proxy_privkey)
         # create a balance transfer request if managed by
         elif isinstance(snd_bcw_manager, str) and snd_bcw_manager != self.bcw_wid:
@@ -193,7 +203,9 @@ class WalletProxy:
             tmp_dict = BalanceTransferRequest.BalanceTransferRequest(
                 wallet_proxy=self,
                 asgn_stmt_dict=asgn_stmt_dict,
-                bcw_with_balance=snd_bcw_manager
+                bcw_with_balance=snd_bcw_manager,
+                asgn_sender_pubkey=validator.sending_wallet_pubkey
+
             ).sign_and_return_balance_transfer_request(bcw_proxy_privkey=self.bcw_proxy_privkey)
 
         else:
@@ -201,13 +213,27 @@ class WalletProxy:
                   f"self.bcw_wid is same as local node: {snd_bcw_manager == self.bcw_wid}")
             return False
 
-        def a_callable():
-            if 'btr' in tmp_dict:
+        def a_callable(tmp_dict1=tmp_dict, **kwargs):
+            """
+
+            :param tmp_dict1: tmp_dict
+            :param kwargs: if btr
+            :return:
+            """
+            if 'btr' in tmp_dict1 and "amt" in kwargs:
                 bcw_updated = self.update_bcw_balances(
                     snd_bcw=snd_bcw_manager,
-                    rcv_bcw=self.bcw_wid
+                    rcv_bcw=self.bcw_wid,
+                    amt=kwargs['amt'],
+                    type_of_balance='payable' if 'type_of_balance ' not in kwargs else kwargs["type_of_balance"]
+
                 )
+                if not bcw_updated:
+                    return False
+            elif 'btt' in tmp_dict:
+                pass
             else:
+                print(f"in WalletProxy.py, a_callable, no btt or btr or no 'amt' in kwargs: {kwargs}")
                 return False
 
             return self.update_balance(stmt_list=stmt_list, asgn_stmt_dict=asgn_stmt_dict, scenario_type='sc2')
@@ -294,7 +320,7 @@ class WalletProxy:
 
         return notif_msg
 
-    def update_bcw_balances(self, snd_bcw, rcv_bcw, amt=None, type_of_balance='payable', **kwargs):
+    def update_bcw_balances(self, snd_bcw: str, rcv_bcw: str, amt: int, type_of_balance='payable', **kwargs):
         """
 
         :param snd_bcw: the BCW wallet id to subtract balance from
@@ -306,6 +332,25 @@ class WalletProxy:
         """
 
 
-        return True
+        # bcw balance == [avail bal, reserved bal, payable bal, receivable bal, total bal]
+        snd_bcw_bal = self.db_manager.get_from_wallet_balances_db(
+            wallet_id=snd_bcw
+        )
+
+        rcv_bcw_bal = self.db_manager.get_from_wallet_balances_db(
+            wallet_id=rcv_bcw
+        )
+        n = self.type_of_balance_index_dict.get(type_of_balance, None)
+
+        if n:
+            snd_bcw_bal[n], rcv_bcw_bal[n] = snd_bcw_bal[n] - abs(amt), rcv_bcw_bal[n] + abs(amt)
+            snd_bcw_bal[-1], rcv_bcw_bal[-1] = sum(snd_bcw_bal[:-1]), sum(rcv_bcw_bal[:-1])
+
+            return self.db_manager.update_wallet_balance_db(
+                wallet_id=None,
+                wallet_data=None,
+                list_of_multiple_wid=[[snd_bcw, snd_bcw_bal], [rcv_bcw, rcv_bcw_bal]]
+            )
+        return False
 
 

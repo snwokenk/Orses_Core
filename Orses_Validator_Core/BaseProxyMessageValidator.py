@@ -5,10 +5,12 @@ contains a baseclass in which
 import json
 
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
+from Orses_Validator_Core import AssignmentStatementValidator
+from Orses_Wallet_Core.WalletsInformation import WalletInfo
 
 
 class BaseProxyMessageValidator:
-    def __init__(self, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None):
+    def __init__(self, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None, asgn_validated=False):
         """
         BaseClass for messages originated by ProxyNode for purpose of fulfilling an assignment statement
         :param admin_instance: instance of Admin class of ProxyNode
@@ -27,6 +29,7 @@ class BaseProxyMessageValidator:
         self.non_json_proxy_pubkey = None
         self.timelimit = time_limit
         self.q_object = q_object
+        self.asgn_validated = asgn_validated
 
     def check_validity(self):
         # override
@@ -57,7 +60,7 @@ class BaseProxyMessageValidator:
 
     def check_node_is_valid_proxy(self):
         """
-        logic that checks that a node is a valid proxy
+        logic that checks that the sending Node is a valid proxy for the BCW used in the assignment statement
         :return:
         """
 
@@ -80,4 +83,21 @@ class BaseProxyMessageValidator:
             return True
         else:
             return False
+
+    def validate_asgn_stmt(self):
+
+        if self.asgn_validated is True or self.asgn_validated is None:  # None means no need to validated
+            is_validated = True
+        else:
+            is_validated = AssignmentStatementValidator.AssignmentStatementValidator(
+                admin_instance=self.admin_instance,
+                asgn_stmt_dict=self.related_asgn_stmt_dict,
+                snd_balance=WalletInfo.get_lesser_of_wallet_balance(
+                    admin_inst=self.admin_instance,
+                    wallet_id=self.asgn_stmt_sndr
+                ),
+                wallet_pubkey=self.asgn_sender_pubkey
+            ).check_validity()
+
+        print(f"in ProxyMessageValidator: is assignment statement valid: {is_validated}")
 

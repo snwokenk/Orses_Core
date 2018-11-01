@@ -63,8 +63,8 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: finish update_bcw_balances method, which updates rcv and snd BCW balance after Balance Transfer Req.
-# todo: finish btr validator
+# todo: finish btr validator, refactor WalletProxy allowing for
+# todo: inclusion of asgn_stmt into self.current_list_of_stmt_hash
 # todo: Finish up Balance Transfer Request Logic
 # todo: Finish up ProxyCenter logic for BTT when wallet is managed by another BCW
 

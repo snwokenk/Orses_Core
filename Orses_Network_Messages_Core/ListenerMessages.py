@@ -126,7 +126,7 @@ class ListenerForSendingTokens(ListenerMessages):
         """
 
         try:
-            print("in listener")
+            print("in speak")
 
             if self.messages_heard and self.messages_heard[-1] == self.last_msg:
                 self.netmsginst.end_convo = True

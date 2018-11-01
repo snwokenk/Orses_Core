@@ -616,23 +616,39 @@ class OrsesLevelDBManager:
 
             return wallet_balance
 
-    def update_wallet_balance_db(self, wallet_id: str, wallet_data: list):
+    def update_wallet_balance_db(self, wallet_id: (str, list), wallet_data: list, list_of_multiple_wid=None):
         """
         use this when you're sure database exist.
         :param wallet_id:
         :param wallet_data:
+        :param list_of_multiple_wid
+        :type list_of_multiple_wid: list
         :return:
         """
 
         try:
+            db = self.databases["wallet_balances"]
+        except KeyError as e:
+            print(f"KeyError occured in OrsesLevelDBManagement.py, update_wallet_balance_db. error: {e}")
+            return False
+        except plyvel.Error as e:
+            print(f"error occured in OrsesLevelDBManagement.py, update_wallet_balance_db. error: {e}")
+            return False
+
+        if isinstance(list_of_multiple_wid, list):
+            try:
+                with db.write_batch(transaction=True) as wb:
+                    for list_data in list_of_multiple_wid:
+                        key = list_data[0].encode()
+                        data = json.dumps(list_data[1]).encode()
+                        wb.put(key, data)
+            except Exception as e:
+                print(f"error occured in OrsesLevelDBManagement.py, update_wallet_balance_db. error: {e}")
+                return False
+
+        else:
             wallet_data = json.dumps(wallet_data)
             self.databases["wallet_balances"].put(key=wallet_id.encode(), value=wallet_data.encode())
-
-        except KeyError:
-            return False
-
-        except plyvel.Error:
-            return False
 
         return True
 

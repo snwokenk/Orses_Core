@@ -1,19 +1,26 @@
 
-from Orses_Validator_Core.BaseProxyMessageValidator import BaseProxyMessageValidator
+from Orses_Validator_Core import BaseProxyMessageValidator, AssignmentStatementValidator
+
+
 
 import time, json
 
 
-class BTTValidator(BaseProxyMessageValidator):
+class BTTValidator(BaseProxyMessageValidator.BaseProxyMessageValidator):
 
-    def __init__(self, btt_dict, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None):
+    def __init__(self, btt_dict, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None, asgn_validated=False):
 
         self.btt_dict = btt_dict
         self.btt = btt_dict['btt']
 
         # required by base class
-        self.snd_admin_id =btt_dict["admin_id"]
+        self.snd_admin_id = btt_dict["admin_id"]
+
         self.signature = btt_dict["sig"]
+
+        # required by validate_asgn_stmt() method in base class
+        self.asgn_sender_pubkey = btt_dict["a_snd_pubkey"]
+
         self.btt_hash = btt_dict['tx_hash']
         self.related_asgn_stmt_dict = self.btt['asgn_stmt']
 
@@ -35,7 +42,9 @@ class BTTValidator(BaseProxyMessageValidator):
             admin_instance=admin_instance,
             wallet_pubkey=wallet_pubkey,
             time_limit=time_limit,
-            q_object=q_object
+            q_object=q_object,
+            asgn_validated=asgn_validated
+
         )
 
         # inherited from Baseclass
@@ -47,8 +56,7 @@ class BTTValidator(BaseProxyMessageValidator):
         elif self.non_json_proxy_pubkey is False:
             return False
 
-        if self.check_signature_valid() is True and self.check_node_is_valid_proxy():
-
+        if self.check_signature_valid() is True and self.check_node_is_valid_proxy() and self.validate_asgn_stmt():
 
             # refactor this, to allow for inclusion into wallet of sender and BCW_WID wallet
             # sending_wid is the BCW and receiving id is the asgn stmt senders wid
@@ -69,6 +77,8 @@ class BTTValidator(BaseProxyMessageValidator):
         else:
             self.q_object.put([f'e{self.btt_hash[:8]}', json.dumps(self.non_json_proxy_pubkey), self.btt_dict, False])
             return False
+
+
 
 
 

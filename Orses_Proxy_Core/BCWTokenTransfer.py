@@ -35,10 +35,11 @@ class BCWTokenTransfer(BaseProxyMessage):
     }
     """
 
-    def __init__(self, wallet_proxy, asgn_stmt_dict, fee=0.0000000001):
+    def __init__(self, wallet_proxy, asgn_stmt_dict, asgn_sender_pubkey, fee=0.0000000001):
 
         super().__init__(wallet_proxy=wallet_proxy, asgn_stmt_dict=asgn_stmt_dict)
         self.fee = fee
+        self.asgn_sender_pubkey = asgn_sender_pubkey
 
     def create_main_transaction(self):
 
@@ -57,6 +58,7 @@ class BCWTokenTransfer(BaseProxyMessage):
 
         if btt_dict:
             btt_dict['btt'] = main_dict
+            btt_dict['a_snd_pubkey'] = self.asgn_sender_pubkey
 
         return btt_dict
 

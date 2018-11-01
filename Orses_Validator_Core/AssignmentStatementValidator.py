@@ -34,7 +34,7 @@ class AssignmentStatementValidator:
                 x_int = int.from_bytes(x_int, "big")
         :param q_object: a queue.Queue instance (or similar)
 
-        :param snd_balance: list containing [available bal, reserved balance,
+        :param snd_balance: list containing [available bal, reserved balance, total balance]
         """
         self.admin_instance = admin_instance
         self.mempool = admin_instance.get_mempool()

@@ -276,7 +276,8 @@ class ProxyCenter:
                         admin_instance=self.admin_inst,
                         btt_dict=btt_or_btr_dict,
                         wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
-                        q_object=q_obj
+                        q_object=q_obj,
+                        asgn_validated=True
                     ).check_validity()
 
                     # wait and check for blockchain inclusion, then update
@@ -302,7 +303,8 @@ class ProxyCenter:
                         admin_instance=self.admin_inst,
                         btr_dict=btt_or_btr_dict,
                         wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
-                        q_object=q_obj
+                        q_object=q_obj,
+                        asgn_validated=True
                     ).check_validity()
 
                     if is_btr_validated is True:
