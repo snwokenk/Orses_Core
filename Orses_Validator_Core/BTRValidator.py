@@ -79,7 +79,8 @@ class BTRValidator(BaseProxyMessageValidator):
         if (self.check_node_is_valid_proxy() and self.check_signature_valid() and self.check_both_bcw_valid() and
                 self.validate_asgn_stmt()):
 
-            # todo: add to a tmp database, this database is closed out once a hash state is saved on the blockchain
+            # todo: allow for insertion in wallet proxy db (by receiver of BTR
+            # todo: this can be done by passing a callable which does all the additions, subtractions and insertions
             return True
         else:
             return False

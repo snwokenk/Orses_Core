@@ -299,6 +299,18 @@ class WalletProxy:
         rcv_tmp_bal.insert(3, self.bcw_wid)  # specifically uses insert() to avoid Error if len == 3 (rather than 4)
         self.db_manager.insert_into_wallet_balances_db(wallet_id=rcv_wid, wallet_data=rcv_tmp_bal)
 
+        # insert into current list of stmt hsh
+        # this list is saved in file with a dict like data structure(and acts similar to a block), the data can be
+        # transmitted to peer nodes requesting for it OR a merkle proof can be sent which anyone can verify that a
+        # transaction was part of the Wallet State Hash
+        self.current_list_of_stmt_hash.append(asgn_stmt_dict['stmt_hsh'])
+
+        # todo: insert asgn_hash to walletproxy db for assignment stmt hash, each should include, batch no.
+
+        db = self.db_manager.insert_into_db(
+            db_name=
+        )
+
         # create an notification message
         notif_msg = dict()
 
@@ -316,7 +328,9 @@ class WalletProxy:
         notif_msg["fee"] = fee
         notif_msg['snd'] = snd_wid
         notif_msg['rcv'] = rcv_wid
-        notif_msg[scenario_type] = True  # executed using scenario 4, which is both sender and receiver managed by proxy node
+
+        # executed using scenario 4, which is both sender and receiver managed by proxy node
+        notif_msg[scenario_type] = True
 
         return notif_msg
 

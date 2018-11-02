@@ -1,4 +1,4 @@
-import plyvel, os, json
+import plyvel, os, json, traceback
 
 
 class OrsesLevelDBManager:
@@ -73,7 +73,96 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
-    def get_from_bcw_db(self, wallet_id, recursive_count=0):
+
+    def insert_into_db(self, db_name: str, key: str, data, in_folder=None, create_if_missing=True):
+        """
+
+        :param db_name: name of database
+        :param key: Key used to store db
+        :param data: data needed to store db
+        :param in_folder: name of folder to put database in (path)
+        :param recursive_count: number of recursion, first call is at 0
+        :return:
+        """
+
+        db = self.get_db_from_databases_dict(db_name=db_name, in_folder=in_folder, create_if_missing=create_if_missing)
+
+        if db is not None:
+            try:
+                key = key.encode()
+                data = json.dumps(data).encode()
+
+            except (AttributeError, KeyError) as e:
+                print(print(f"in insert_into_db, error occured {e}"))
+                return False
+            else:
+                db.put(key, data)
+
+                return True
+        else:
+            return False
+
+    def get_from_db(self, db_name: str, key: str, in_folder=None):
+
+        db = self.get_db_from_databases_dict(db_name=db_name, in_folder=in_folder,create_if_missing=False)
+
+        if db is None:
+            return None
+        else:
+
+            data: bytes = db.get(key.encode())
+            if data is None:
+                return []
+            else:
+                data = json.loads(data.decode())
+
+                return data
+
+    def get_db_from_databases_dict(self, db_name, create_if_missing, in_folder=None, recursive_count=0):
+        """
+
+        :param db_name: name of database
+        :param create_if_missing: create database if missing
+        :param in_folder: what folder the db is in
+        :param recursive_count: used to limit recursion to 1
+        :return: a leveldb plyvel instance
+        """
+
+        # get db from self.databases, if not there load it into it
+        try:
+            db = self.databases[db_name]
+        except KeyError as e:
+            self.load_db(name=db_name, in_folder=in_folder, create_if_missing=create_if_missing)
+
+            if recursive_count < 1:
+                recursive_count += 1
+
+                return self.get_db_from_databases_dict(
+                    db_name=db_name,
+                    create_if_missing=create_if_missing,
+                    in_folder=in_folder,
+                    recursive_count=recursive_count
+                )
+            else:
+                print(f"in get_db_from_databases_dict, could not load db in self.databases\n"
+                      f"traceback should be printed")
+                traceback.print_tb(e.__traceback__)
+
+                return None
+
+        # verify db loaded is a Database instance else return None
+        if isinstance(db, plyvel.DB):
+            return db
+
+        else:
+            return None
+
+
+
+
+
+
+    def get_from_bcw_db(self, wallet_id, create_if_missing=False, recursive_count=0):
         """
         returns
         :param wallet_id:
@@ -81,33 +170,18 @@ class OrsesLevelDBManager:
         :return:
         """
 
-        # todo: finish up
-        try:
-            # bcw info list tx_hash of req, time of creation, time of expiration, block number rsv was added,
-            # list of proxies, rsv dict]
-            wallet_activity = self.databases["BCWs"].get(key=wallet_id.encode())
-
-        except KeyError:
-            # load up db
-            if recursive_count < 1:
-                recursive_count += 1
-                self.load_db(name="BCWs", create_if_missing=False)
-                return self.get_from_bcw_db(wallet_id=wallet_id, recursive_count=recursive_count)
-            else:
-                print(f"in get_from_bcw_db, unconfirmed_msgs_wid could not be loaded")
-                return []
-
-        except plyvel.Error:
-            print(f"Error in OrsesLevelDBManager, BCWs DB does not exist")
+        db = self.get_db_from_databases_dict(db_name="BCWs", create_if_missing=create_if_missing)
+        if db is None:
             return []
 
-        else:
-            if wallet_activity:
-                wallet_activity = json.loads(wallet_activity.decode())
+        wallet_activity = db.get(key=wallet_id.encode())
 
-                return wallet_activity
-            else:
-                return []
+        if wallet_activity:
+            wallet_activity = json.loads(wallet_activity.decode())
+
+            return wallet_activity
+        else:
+            return []
 
     def insert_into_bcw_db(self, wallet_id: str, tx_hash: str, rsv_req_dict: dict, signature: str, value=None,
                            recursive_count=0, block_number=None):
@@ -160,23 +234,26 @@ class OrsesLevelDBManager:
                                  block_number, proxy_list, rsv_req_dict]
                 value = json.dumps(bcw_info_list)
 
+                # get db with db_name
+                db1 = self.get_db_from_databases_dict(db_name="BCW_Proxies", create_if_missing=False)
+
+                if db1 is not None:
+                    for adminid in proxy_list:
+                        proxy_id = f"{wallet_id}{adminid}"
+
+                        # an empty dict is put in place, this is replaced when the actual node responds with a unique
+                        # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
+                        # proxy for BCW
+                        db1.put(key=proxy_id.encode(), value=b'{}')
 
 
-                # create individual proxy db with concatenated bcw_wid and admin id of proxy
-                for adminid in proxy_list:
-                    proxy_id = f"{wallet_id}{adminid}"
-
-                    # an empty dict is put in place, this is replaced when the actual node responds with a unique
-                    # pubkey for use with BCW, if it doesn't then, it could mean admin node has refused to become a
-                    # proxy for BCW
-                    self.databases["BCW_Proxies"].put(key=proxy_id.encode(), value=b'{}')
-
-
-                    # check if admin in admin list is current node
-                    if adminid == self.admin_inst.admin_id:
-                        self.admin_inst.proxy_center.initiate_new_proxy(
-                            bcw_wid=wallet_id
-                        )
+                        # check if admin in admin list is current node
+                        if adminid == self.admin_inst.admin_id:
+                            self.admin_inst.proxy_center.initiate_new_proxy(
+                                bcw_wid=wallet_id
+                            )
+                else:
+                    return False
 
 
             elif value:
@@ -189,27 +266,14 @@ class OrsesLevelDBManager:
             print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
             return False
 
-        try:
-            self.databases["BCWs"].put(key=wallet_id.encode(), value=value.encode())
 
-            # todo: insert proxies of BCW into BCW_Proxies db
+        # get db and insert or return None if db not able to be loaded
+        db = self.get_db_from_databases_dict(db_name="BCWs", create_if_missing=True)
 
-        except KeyError:
-
-            if recursive_count < 1:
-                print(f"")
-                recursive_count += 1
-                self.load_db(name="BCWs")
-                return self.insert_into_bcw_db(
-                    wallet_id=wallet_id,
-                    tx_hash=tx_hash,
-                    rsv_req_dict=rsv_req_dict,
-                    signature=signature,
-                    recursive_count=recursive_count
-                )
-            else:
-                print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: not able to load 'BCWs' db")
-                return False
+        if db is None:
+            return False
+        else:
+            db.put(wallet_id.encode(), value=value.encode())
 
         return True
 

@@ -63,7 +63,7 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: finish btr validator, refactor WalletProxy allowing for
+# todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file
 # todo: inclusion of asgn_stmt into self.current_list_of_stmt_hash
 # todo: Finish up Balance Transfer Request Logic
 # todo: Finish up ProxyCenter logic for BTT when wallet is managed by another BCW
