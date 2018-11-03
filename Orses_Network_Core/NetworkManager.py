@@ -26,7 +26,7 @@ class NetworkManager:
         #     filename=self.addresses_file,
         #     in_folder=admin.fl.get_username_folder_path()
         # )
-        self.addresses = self.admin.known_addresses
+        self.addresses = self.admin.get_known_addresses()
         self.listening_port = veri_listening_port
         if admin.is_sandbox is True:
 
@@ -69,10 +69,12 @@ class NetworkManager:
                 return False
         self.Listening_Port_Veri = reactor_instance.listenTCP(self.listening_port, self.veri_listening_factory)
         print(f"in NetworkManager.py addresses {self.addresses}")
-        for i in self.addresses:
+        for admin_id in self.addresses:
+            addr_list = self.addresses[admin_id]
+            self.veri_connecting_factory.change_peer_admin_id(peer_admin_id=admin_id)
             temp_p = reactor_instance.connectTCP(
-                host=i,
-                port=self.addresses[i],
+                host=addr_list[0],
+                port=addr_list[1],
                 factory=self.veri_connecting_factory
             )
             self.Connected_Port_Veri.append(temp_p)

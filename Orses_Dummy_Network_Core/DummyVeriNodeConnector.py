@@ -13,6 +13,7 @@ class DummyVeriNodeConnector(DummyProtocol):
         self.addr = addr
         self.sending_convo = 0
         self.receiving_convo = 0
+        self.peer_admin_id = factory.peer_admin_id
 
     def dataReceived(self, data):
         """
@@ -50,7 +51,7 @@ class DummyVeriNodeConnector(DummyProtocol):
         # Network propagator has access to methods and variables of this instance and even factory using self.factory
         # add_protocol() uses self.proto_id as key, and list [self, {"hearer":{}, "speaker": {}}]
         print("connection made: ", self.addr)
-        self.network_sorter.add_protocol(self)
+        self.network_sorter.add_protocol(self, peer_admin_id=self.peer_admin_id)
 
     def connectionLost(self, reason="ConnectionDone"):
         # removes self from connected protocol, this del entry in dict with protocol
@@ -65,12 +66,16 @@ class DummyVeriNodeConnector(DummyProtocol):
 class DummyVeriNodeConnectorFactory(DummyClientFactory):
 
     def __init__(self, q_object_from_protocol, network_sorter,
-                 number_of_connections_wanted=2):
+                 number_of_connections_wanted=2, peer_admin_id=None):
         super().__init__()
         self.q_object_from_protocol = q_object_from_protocol
         self.number_of_wanted_connections = number_of_connections_wanted
         self.number_of_connections = 0
         self.network_sorter = network_sorter
+        self.peer_admin_id = peer_admin_id
+
+    def change_peer_admin_id(self, peer_admin_id: str):
+        self.peer_admin_id = peer_admin_id
 
     def clientConnectionFailed(self, connector, reason):
         print(reason)

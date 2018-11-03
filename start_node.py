@@ -63,7 +63,9 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: in add_protocol have a way of storing protocol_admin_id with protocol, finish up NetworkMessageSorter
+# todo: in NetworkMessageSorter, refactor create message sender, to address that main key is now admin_id an not ip addr
+# todo: in NetworkMessageSorter, when address is being stored, store it in proper format {admin_id: [host, port]}
+
 # todo: in order to move forward, have a way of storing admin id, with protocol, when adding protocol (networkmessagesorter)
 # todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file
 # todo: inclusion of asgn_stmt into self.current_list_of_stmt_hash
@@ -400,7 +402,8 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         is_sandbox=True,
         q_object_to_competing_process=q_for_compete,
-        admin_inst=admin
+        admin_inst=admin,
+        is_root_node=True
     )
 
     # *** start propagator manager in another thread ***
@@ -672,7 +675,8 @@ def main(just_launched=False):
         q_object_between_initial_setup_propagators=q_for_initial_setup,
         is_sandbox=False,
         q_object_to_competing_process=q_for_compete,
-        admin_inst=admin
+        admin_inst=admin,
+        is_root_node=True
     )
 
     # *** start propagator manager in another thread ***

@@ -1,3 +1,5 @@
+import time, os, pathlib, json, shutil
+
 from Orses_Cryptography_Core.PKIGeneration import PKI
 from Orses_Database_Core.CreateDatabase import CreateDatabase
 from Orses_Database_Core.StoreData import StoreData
@@ -8,7 +10,7 @@ from Orses_Proxy_Core.ProxyCenter import ProxyCenter
 
 
 from Crypto.Hash import SHA256, RIPEMD160
-import time, os, pathlib, json
+
 
 
 # TODO; make sure created database is same as database name to store and retrieve data
@@ -44,7 +46,7 @@ class Admin:
         self.pubkey = None
         self.privkey = None
         self.pki = None
-        self.fl = None
+        self.fl: FileAction = None
         self.newAdmin = newAdmin
         self.isNewAdmin = newAdmin
         self.isCompetitor = isCompetitor
@@ -132,11 +134,49 @@ class Admin:
 
         elif self.isNewAdmin is False:
             pass
-
     def __create_admin_id(self):
 
         step1 = SHA256.new(self.pubkey).digest()
         return "VID-" + RIPEMD160.new(step1).hexdigest()
+
+    def update_default_address_to_include_admin_id_root_node(self):
+        """
+        This might only be necessary for testing.
+        In Live network, address files will automatically include admin_id with Host/Port
+        :return:
+        """
+
+        if self.is_sandbox is True:
+            addr_file_name = "Default_Addresses_Sandbox"
+        else:
+            addr_file_name = "Default_Addresses"
+
+        path_of_main_addr = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), addr_file_name)
+
+        # add admin_id into "Default_Addresses_Sandbox" file
+
+        addr_dict = self.fl.open_file_from_json(path_of_main_addr)
+
+        if addr_dict:
+            host: str = list(addr_dict)[0]
+            if host[0].upper() != "V":
+                updated_addr_dict = {self.admin_id: [host, addr_dict[host]]}
+            else:
+                # is already in {admin_id: {host: port}} format
+                updated_addr_dict = {self.admin_id: addr_dict[host]}
+
+            self.fl.save_json_into_file(filename=path_of_main_addr, python_json_serializable_object=updated_addr_dict)
+
+        # try:
+        #     shutil.copy(src=path_of_main_addr, dst=self.fl.get_username_folder_path())
+        # except FileExistsError:
+        #     print("In NetworkPropagator.py, __init__: Default Address Already folder already exists")
+        # else:
+        #     self.known_addresses = self.fl.get_addresses()
+
+    def get_known_addresses(self):
+
+        return self.known_addresses
 
     def load_startup_files(self):
         # todo: implement a way to change startup file settings when it's already been set

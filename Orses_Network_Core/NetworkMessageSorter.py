@@ -9,6 +9,7 @@ bk_connected wallet being used)
 
 """
 from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnector
+from Orses_Network_Core.VeriNodeConnector import VeriNodeConnector
 from Orses_Validator_Core.ConnectedNodeValidator import ConnectedNodeValidator
 import json, copy
 
@@ -27,7 +28,7 @@ class NetworkMessageSorter:
         self.non_validated_connected_protocols_dict = dict()
         self.validated_conn_protocols_dict = dict()
 
-    def add_protocol(self, protocol):
+    def add_protocol(self, protocol, peer_admin_id=None):
         # todo: rather than connecting to protocols dict,
         # todo: add to a preliminary dict until validated, then add to protocols dict
         # adds connected protocol, key as protocol_id,  value:
@@ -43,12 +44,13 @@ class NetworkMessageSorter:
         # self.network_prop_inst.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         # self.network_prop_inst.convo_dict[protocol.proto_id] = dict()
 
-        if isinstance(protocol, DummyVeriNodeConnector):
+        if isinstance(protocol, (DummyVeriNodeConnector, VeriNodeConnector)):
             # must send a validator message to complete connection on both ends
             self.network_prop_inst.reactor_instance.callInThread(
                 self.create_sender_message,
                 protocol=protocol,
-                admin_inst=self.admin
+                admin_inst=self.admin,
+                peer_admin_id=peer_admin_id
             )
 
             print(f"in NetworkMessageSorter.py Listener Protocol Created When Connected {protocol}")
@@ -138,7 +140,7 @@ class NetworkMessageSorter:
 
         print("in NetworkMessageSorter.py Sorter Ended")
 
-    def create_sender_message(self, protocol, admin_inst):
+    def create_sender_message(self, protocol, admin_inst, peer_admin_id):
 
         if protocol.proto_id in self.convo_dict and self.convo_dict[protocol.proto_id]:
             # only one convo should be had which is validatorMessage
@@ -170,7 +172,8 @@ class NetworkMessageSorter:
                      "3": len(knw_addr)
                      },
                     list(knw_addr)
-                ]
+                ],
+                peer_admin_id=peer_admin_id
 
             )
 
@@ -216,7 +219,7 @@ class NetworkMessageSorter:
 
 class NodeValidatorSender:
     def __init__(self, protocol, convo_id, message_list, propagator_inst, msg_sorter_inst: NetworkMessageSorter,
-                 admin_inst):
+                 admin_inst, peer_admin_id):
         # {"1": software_hash_list, "2": ip address, "3": number of known address}
         self.msg_sorter_inst = msg_sorter_inst
         self.main_msg = message_list[0]
@@ -237,6 +240,7 @@ class NodeValidatorSender:
         self.other_convo_id = None  # in listen() get other convo_id
         self.convo_id = [self.other_convo_id, self.local_convo_id]
         self.sent_first_msg = False
+        self.peer_admin_id = peer_admin_id
 
     def speak(self, rsp=None):
 
@@ -260,7 +264,7 @@ class NodeValidatorSender:
                         self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
                         self.msg_sorter_inst.add_protocol_to_all(
                             protocol=self.protocol,
-                            admin_id_for_protocol=self.pe
+                            admin_id_for_protocol=self.peer_admin_id
                         )
                 except KeyError:
                     pass
@@ -294,7 +298,10 @@ class NodeValidatorSender:
                     try:
                         del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
                         self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
-                        self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol, admin_id_for_protocol=)
+                        self.msg_sorter_inst.add_protocol_to_all(
+                            protocol=self.protocol,
+                            admin_id_for_protocol=self.peer_admin_id
+                        )
                     except KeyError:
                         pass
 

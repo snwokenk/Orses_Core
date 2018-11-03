@@ -23,11 +23,12 @@ class NetworkPropagator:
 
     def __init__(self, mempool, q_object_connected_to_validator, q_for_propagate, reactor_instance,
                  q_object_between_initial_setup_propagators, is_sandbox=False, q_object_to_competing_process=None,
-                 admin_inst=None):
+                 admin_inst=None, is_root_node=False):
         """
 
         :param q_object_connected_to_validator: q object used to get validated messages from Message validators
         :param q_object_to_competing_process: q object used to send new validated messages to competing process,
+        :param is_adamic_node: bool, Node is the First in A Network
         if active
         """
         # set mempool object shared with BlockchainPropagator
@@ -60,6 +61,8 @@ class NetworkPropagator:
 
         self.network_manager = None
 
+        if is_root_node is True:
+            admin_inst.update_default_address_to_include_admin_id_root_node()
         self.copy_main_default_address_to_admin()
 
     def copy_main_default_address_to_admin(self):
