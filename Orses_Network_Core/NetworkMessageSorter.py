@@ -53,10 +53,11 @@ class NetworkMessageSorter:
 
             print(f"in NetworkMessageSorter.py Listener Protocol Created When Connected {protocol}")
 
-    def add_protocol_to_all(self, protocol):
+    def add_protocol_to_all(self, protocol, admin_id_for_protocol):
         """
         when node validated add it to
         :param protocol:
+        :param admin_id_for_protocol: admin_id of protocol
         :return:
         """
 
@@ -87,6 +88,8 @@ class NetworkMessageSorter:
                     print(f"\n-----\nError in {__file__}\nMessage causing Error: {msg}\n"
                           f"Exception raised: {e}")
                     continue
+
+            # *** This handles getting connected protocol validated ***
             if msg[0] in self.non_validated_connected_protocols_dict:  # if in it, then peer node not yet validated
                 protocol_id = msg[0]
                 msg_data = msg[1]  # [type(b or n), convo id, etc]
@@ -109,6 +112,8 @@ class NetworkMessageSorter:
                 else:
                     print(f"in NetworkMessageSorter, Node Not Validated and No Options Available")
                     pass
+
+            # *** This handles validated connected protocol ***
             elif msg[0] in self.validated_conn_protocols_dict:
 
                 try:  # check what type of message, if 'n' then networkpropagator, if 'b' then blockchainpropagator
@@ -238,7 +243,7 @@ class NodeValidatorSender:
         if self.end_convo is False:
             if self.sent_first_msg is False and rsp is None:
                 self.sent_first_msg = True
-                self.speaker(msg=f'e{self.admin_inst.admin_name}')
+                self.speaker(msg=f'e{self.admin_inst.admin_id}')
             elif rsp is not None:
                 self.speaker(msg=rsp)
 
@@ -253,7 +258,10 @@ class NodeValidatorSender:
                     del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
                     if msg[-1] == self.last_msg:
                         self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
-                        self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
+                        self.msg_sorter_inst.add_protocol_to_all(
+                            protocol=self.protocol,
+                            admin_id_for_protocol=self.pe
+                        )
                 except KeyError:
                     pass
                 return
@@ -286,7 +294,7 @@ class NodeValidatorSender:
                     try:
                         del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
                         self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
-                        self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
+                        self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol, admin_id_for_protocol=)
                     except KeyError:
                         pass
 
@@ -353,6 +361,7 @@ class NodeValidatorReceiver:
         self.propagator_inst = propagatorInst
         self.protocol = protocol
         self.end_convo_reason = None
+        self.peer_admin_id = None
 
     def listen(self, msg):
         print(f"in Networkmessagesorter.py, listen, networkmessagereceiver msg\n"
@@ -366,7 +375,8 @@ class NodeValidatorReceiver:
                 except KeyError:
                     pass
             elif self.received_first_msg is False and isinstance(msg[-1], str):  # "e{adminId}" ie. "e"
-                if msg[-1][1:] in self.admin_instance.fl.get_blacklisted_admin():
+                self.peer_admin_id = msg[-1][1:]
+                if self.peer_admin_id in self.admin_instance.fl.get_blacklisted_admin():
                     self.speak(rsp=False)
                 else:
                     self.speak()
@@ -386,9 +396,12 @@ class NodeValidatorReceiver:
                 if rsp is True:
                     known_addr_peer = msg[-1]["3"]
                     known_addr_local = len(self.known_addr)
+
+                    # check if other node should send known addresses list
                     if known_addr_peer > 3 and known_addr_local > 3:  # no need to send
                         self.speak(rsp=self.last_msg)
-                    else:  # todo: minimize to only sending 7 addresses
+
+                    else:  # more addresses needed
                         rsp_dict = dict()
                         rsp_dict['1'] = self.need_to_receive_addr = known_addr_local <= 3
                         try:
@@ -438,7 +451,10 @@ class NodeValidatorReceiver:
                             try:
                                 del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
                                 self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
-                                self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
+                                self.msg_sorter_inst.add_protocol_to_all(
+                                    protocol=self.protocol,
+                                    admin_id_for_protocol=self.peer_admin_id
+                                )
                             except KeyError:
                                 pass
                         else:
@@ -451,7 +467,10 @@ class NodeValidatorReceiver:
                 try:
                     del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
                     self.msg_sorter_inst.validated_conn_protocols_dict[self.protocol.proto_id] = self.protocol
-                    self.msg_sorter_inst.add_protocol_to_all(protocol=self.protocol)
+                    self.msg_sorter_inst.add_protocol_to_all(
+                        protocol=self.protocol,
+                        admin_id_for_protocol=self.peer_admin_id
+                    )
                 except KeyError:
                     pass
                 self.end_convo = True

@@ -10,6 +10,7 @@ Each walletProxy should have:
 admin instance of main node
 wallet id of Blockchain Connected Wallet
 pubkey and private key unique
+a db that stores the hash of each assignment statement, balance transfer request
 
 new_mode = If the proxy was just created then this is set to True but default is False
 
@@ -52,6 +53,9 @@ class WalletProxy:
         self.current_proxy_batch_no = None
 
         self.current_list_of_stmt_hash = list()
+
+        # tmp dict, if not able to insert into db
+        self.tmp_dict_for_tx = dict()
 
         # {batch_no: [wallet state hash,block_no_saved, amount of tokens volume, fee earned]}
         self.proxy_batch_with_wsh_dict = None
@@ -119,6 +123,60 @@ class WalletProxy:
             self.current_proxy_batch_no = batch_no
         if batch_no_with_wsh_details:
             self.proxy_batch_with_wsh_dict = batch_no_with_wsh_details
+
+    def insert_into_current_batch_db(self, key, data):
+
+        # **** DO NOT USE DIRECTLY ***
+        # INSTEAD USE self.store_tx_with_current_batch_no()
+
+        return self.db_manager.insert_into_db(
+            db_name=str(self.current_proxy_batch_no),
+            key=key,
+            data=data,
+            in_folder=self.bcw_folder_name
+
+        )
+
+    def insert_into_tmp_dict(self, key, data):
+        """
+        use this if self.insert_into_current_batch_db returns false
+        :param key: tx_hash
+        :param data: data
+        :return:
+        """
+        # **** DO NOT USE DIRECTLY ***
+        # INSTEAD USE self.store_tx_with_current_batch_no()
+
+        # tmp dict == {batch_no: {key: data}}
+        try:
+            self.tmp_dict_for_tx[str(self.current_proxy_batch_no)][key] = data
+
+        except KeyError as e:
+            print(f"in walletproxy.py, insert_into_tmp_dict, fixing KeyError {e}")
+            self.tmp_dict_for_tx[str(self.current_proxy_batch_no)] = {
+                key: data
+            }
+
+        return True
+
+    def store_tx_with_current_batch_no(self, key, data):
+        """
+        Inserts into current batch db, if not able to then inserts into a tmp dict
+        :param key: key to store with data (of if not able to store in dict
+        :param data:
+        :return:
+        """
+        # tmp dict == {batch_no: {key: data}}
+        if self.insert_into_current_batch_db(key, data) is False:
+            return self.insert_into_tmp_dict(
+                key=key,
+                data=data
+            )
+
+        return True
+
+
+
 
     def execute_asgn_stmt_both_managed(self, asgn_stmt_dict, stmt_list, snd_balance, wallet_pubkey=None):
 
@@ -220,6 +278,8 @@ class WalletProxy:
             :param kwargs: if btr
             :return:
             """
+
+
             if 'btr' in tmp_dict1 and "amt" in kwargs:
                 bcw_updated = self.update_bcw_balances(
                     snd_bcw=snd_bcw_manager,
@@ -230,7 +290,16 @@ class WalletProxy:
                 )
                 if not bcw_updated:
                     return False
+
+                # insert into list for use in Wallet Hash State
+                self.current_list_of_stmt_hash.append(tmp_dict1['tx_hash'])
+                self.store_tx_with_current_batch_no(
+                    key=tmp_dict1["tx_hash"],
+                    data=tmp_dict1
+                )
+
             elif 'btt' in tmp_dict:
+                # No need to store btt or insert hash for use in Wallet state hash because it is stored on blockchain.
                 pass
             else:
                 print(f"in WalletProxy.py, a_callable, no btt or btr or no 'amt' in kwargs: {kwargs}")
@@ -268,7 +337,7 @@ class WalletProxy:
         else:
             return ''
 
-    def update_balance(self, stmt_list, asgn_stmt_dict, scenario_type):
+    def update_balance(self, stmt_list, asgn_stmt_dict, scenario_type, ):
         """
 
         :param stmt_list:
@@ -305,10 +374,11 @@ class WalletProxy:
         # transaction was part of the Wallet State Hash
         self.current_list_of_stmt_hash.append(asgn_stmt_dict['stmt_hsh'])
 
-        # todo: insert asgn_hash to walletproxy db for assignment stmt hash, each should include, batch no.
+        # store stmt
 
-        db = self.db_manager.insert_into_db(
-            db_name=
+        self.store_tx_with_current_batch_no(
+            key=asgn_stmt_dict['stmt_hsh'],
+            data=asgn_stmt_dict
         )
 
         # create an notification message

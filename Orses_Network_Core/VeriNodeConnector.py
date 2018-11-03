@@ -37,7 +37,7 @@ class VeriNodeConnector(Protocol):
         :return:
         """
 
-        # when data is received it is sent to Propagator process with self, process then checks
+        # when data is received it is sent to NetworkMessageSorter process with self, process then checks
         # its connected_protocols_dict to find where self is a key. data == encoded json list. This list can be:
         # a: [propagator type, convo id, convo]
         # the propagator type can be either 'n', 'h', 's'. n is new convo, 'h' convo from hearer,

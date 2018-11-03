@@ -63,14 +63,18 @@ else:
     print("All Required Packages Installed")
 
 
+# todo: in add_protocol have a way of storing protocol_admin_id with protocol, finish up NetworkMessageSorter
+# todo: in order to move forward, have a way of storing admin id, with protocol, when adding protocol (networkmessagesorter)
 # todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file
 # todo: inclusion of asgn_stmt into self.current_list_of_stmt_hash
 # todo: Finish up Balance Transfer Request Logic
 # todo: Finish up ProxyCenter logic for BTT when wallet is managed by another BCW
 
+
 # todo: write logic for assignment statements, by creating a proxy node class, this class will be responsible for
 # todo: running and maintaining BCWs that the admin node is a proxy of.
 
+# todo: find a way to note nodes not running compatible software for now end convo in NetworkMessageSorter.py
 
 # todo: create a block validator which validates newly created block from others
 # todo: this validator first checks that transactions in the block are part of its validated transactions

@@ -73,7 +73,6 @@ class OrsesLevelDBManager:
         for i in req_db_list:
             self.load_db(name=i, create_if_missing=True)
 
-
     def insert_into_db(self, db_name: str, key: str, data, in_folder=None, create_if_missing=True):
         """
 

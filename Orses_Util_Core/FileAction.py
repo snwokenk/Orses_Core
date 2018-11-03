@@ -161,7 +161,7 @@ class FileAction:
     def get_block_data_folder_path(self):
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.block_folder)
 
-    def update_addresses(self, address_list):
+    def update_addresses(self, address_list, ):
         """
         updates address list file and Admin.known_addresses with new address
         :param address_list:
