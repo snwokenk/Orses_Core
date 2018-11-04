@@ -151,14 +151,13 @@ class NetworkMessageSorter:
             peer_addr = protocol.transport.getPeer()
             knw_addr = copy.deepcopy(admin_inst.known_addresses)
             try:
-                knw_addr.pop(host_addr.host)
+                knw_addr.pop(self.admin.admin_id, None)
             except KeyError:
                 pass
             try:
-                knw_addr.pop(peer_addr.host)
+                knw_addr.pop(peer_admin_id, None)
             except KeyError:
                 pass
-
 
             sender = NodeValidatorSender(
                 protocol=protocol,
@@ -168,10 +167,10 @@ class NetworkMessageSorter:
                 admin_inst=admin_inst,
                 message_list=[
                     {"1": ConnectedNodeValidator.get_hash_of_important_files(admin_inst),
-                     "2": [host_addr.host, host_addr.port],
+                     "2": {self.admin.admin_id: [host_addr.host, host_addr.port]},
                      "3": len(knw_addr)
                      },
-                    list(knw_addr)
+                    knw_addr
                 ],
                 peer_admin_id=peer_admin_id
 
@@ -223,7 +222,7 @@ class NodeValidatorSender:
         # {"1": software_hash_list, "2": ip address, "3": number of known address}
         self.msg_sorter_inst = msg_sorter_inst
         self.main_msg = message_list[0]
-        self.addr_list = message_list[1]
+        self.addr_dict = message_list[1]  # {admin_id: [ip addr, port]}
         self.not_compatible_msg = "ntc"
         self.admin_inst = admin_inst
         self.propagator_inst = propagator_inst
@@ -289,11 +288,11 @@ class NodeValidatorSender:
 
                 msg_dict = msg[-1]
 
-                if isinstance(msg_dict["2"], list):  # addresses of peer node
-                    self.admin_inst.fl.update_addresses(address_list=msg_dict["2"])
+                if isinstance(msg_dict["2"], (list, dict)):  # addresses of peer node
+                    self.admin_inst.fl.update_addresses(address_dict=msg_dict["2"])
 
                 if msg_dict["1"] is True:  # other node wants tocal address list
-                    self.speak(self.addr_list)
+                    self.speak(self.addr_dict)
                 else:
                     try:
                         del self.msg_sorter_inst.non_validated_connected_protocols_dict[self.protocol.proto_id]
@@ -399,9 +398,9 @@ class NodeValidatorReceiver:
                     ).check_validity()
                 except KeyError:  # wrong tx message sent (or invalid format maybe using different version)
                     rsp = False
-
+                print(f"message_sorter, in receive, rsp {rsp}")
                 if rsp is True:
-                    known_addr_peer = msg[-1]["3"]
+                    known_addr_peer = msg[-1]["3"]  # number of addresses known by peer
                     known_addr_local = len(self.known_addr)
 
                     # check if other node should send known addresses list
@@ -422,7 +421,7 @@ class NodeValidatorReceiver:
                     self.speak(self.not_compatible_msg)
 
             elif self.need_to_receive_addr is True:
-                if isinstance(msg[-1], list):
+                if isinstance(msg[-1], (dict, list)):
                     self.admin_instance.fl.update_addresses(msg[-1])
 
                 self.speak(self.last_msg)

@@ -161,21 +161,29 @@ class FileAction:
     def get_block_data_folder_path(self):
         return os.path.join(self.__username_folder_path, Filenames_VariableNames.block_folder)
 
-    def update_addresses(self, address_list, ):
+    def update_addresses(self, address_dict, ):
         """
         updates address list file and Admin.known_addresses with new address
-        :param address_list:
+        :param address_dict: should be {admin_id: [ip addr, port]}
         :return:
         """
-        addr_filename = self.get_address_file_path()
-        addr_data = self.open_file_from_json(filename=addr_filename)
 
-        for ip_address in address_list:
-            print("in File action ip address updates", ip_address, address_list)
-            if ip_address not in addr_data:
-                addr_data.update({ip_address: 55602})
+        addr_filename = self.get_address_file_path()
+
+        # todo: this can cause some issues, if multiple connections happen at once, same file opened in memory and
+        # todo: only change saved is the last. use Admin_inst's known_addresses for addr data
+        # addr_data = self.open_file_from_json(filename=addr_filename)
+
+        # addr_data == {admin_id: [ip address, port]}
+        addr_data = self.admin.get_known_addresses()
+
+        for admin_id in address_dict:
+            print("in File action ip address updates", admin_id, address_dict)
+            if admin_id not in addr_data:
+
                 try:
-                    self.admin.known_addresses.update({ip_address[0]: 55602})
+                    addr_data[admin_id] = address_dict[admin_id]  # admin_id: [ip address, port]
+                    self.admin.known_addresses[admin_id] = address_dict[admin_id]
                 except AttributeError:
                     pass
 
