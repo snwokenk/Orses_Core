@@ -4,6 +4,7 @@ Proxy center is used to load WalletProxy instances and call certain methods need
 conditions of an assignment statement
 """
 from Orses_Proxy_Core.WalletProxy import WalletProxy
+from  Orses_Proxy_Core.ProxyNetworkCommunicator import ProxyNetworkCommunicator
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Validator_Core import BTTValidator, BTRValidator
 import json, time
@@ -27,6 +28,10 @@ class ProxyCenter:
 
         # message sent by protocol center telling peer node to wait
         self.wait_msg = b'wait'
+
+        self.proxy_communicator = ProxyNetworkCommunicator(
+            proxy_center_inst=self
+        )
 
     def __load_proxy_center(self):
 
@@ -308,10 +313,15 @@ class ProxyCenter:
                     ).check_validity()
 
                     if is_btr_validated is True:
+
+
+
                         # todo: create a wait and notify after BCW final response
-                        response = self.wait_for_peer_proxy_node_final_response(
+                        response = self.wait_for_bcw_proxy_nodes_final_response(
                             update_balance_callback=update_balance_callback,
                             end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
+                            msg=btt_or_btr_dict,
+                            bcw_wid=snd_managed[1]
                         )
                     else:
                         response = False
@@ -369,14 +379,14 @@ class ProxyCenter:
 
         return False
 
-    def wait_for_peer_proxy_node_final_response(self, update_balance_callback, end_timestamp: int, **kwargs):
-        # todo: write logic that will wait for response response from peer node and then call the callback function
-        # todo: if response takes longer than end_timestmap will return False. A class which handles requesting from
-        # todo:L individual proxy nodes of a BCW_WID should be written
+    def wait_for_bcw_proxy_nodes_final_response(self, update_balance_callback, end_timestamp: int, msg, bcw_wid,
+                                                **kwargs):
 
-
-        # todo: there should be a way in which
-        pass
+        # THIS IS A BLOCKING CODE. WILL WAIT TILL RESPONSE IS RECEIVED FROM A VALID PROXY NODE OF BCW
+        response = self.proxy_communicator.send_to_bcw(
+            bcw_wid=bcw_wid,
+            msg=msg
+        )
 
 
 

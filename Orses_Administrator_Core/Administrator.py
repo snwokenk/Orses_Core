@@ -58,17 +58,31 @@ class Admin:
         self.compatible_hashes = None  # set compatible hashes
         self.known_addresses = None
 
+
+        # **** Load classes into Admin from start_node.py, This allows for use of useful classes by all processes ****
+
         # if db manager is used, then method self.load_db_manager() is used to laod db manager instance
         self.db_manager = None
 
         # if mempool is used then self.load_mempool_instance() is used
         self.mempool = None
 
+        # Proxy center created in Start_Node main function ad loaded into admin
+        self.proxy_center = None
+
+        # blockchain propagator
+        self.bk_propagator = None
+
+        # network_propagator
+        self.net_propagator = None
+
+        # network sorter
+        self.net_sorter = None
+
         # util_dictionary, to keep miscellaneous things that can be used throughout the program
         self.util_dict = dict()
 
-        # Proxy center created in Start_Node main function ad loaded into admin
-        self.proxy_center = None
+
 
         self.__set_or_create_pki_pair()
 
@@ -244,6 +258,15 @@ class Admin:
         else:
             return None
 
+    def load_bk_propagator(self, bk_propagator):
+        self.bk_propagator = bk_propagator
+
+    def load_net_propagator(self, net_propagator):
+        self.net_propagator = net_propagator
+
+    def load_net_sorter(self, net_sorter):
+        self.net_sorter = net_sorter
+
     def load_db_manager(self, db_manager):
         """
         used to load an already instantiated leveldb into Administrator class
@@ -256,6 +279,11 @@ class Admin:
         return self.db_manager
 
     def load_proxy_center(self, proxy_center: ProxyCenter):
+        """
+        load proxy center into Admin
+        :param proxy_center:
+        :return:
+        """
         self.proxy_center = proxy_center
 
     def get_proxy_center(self):

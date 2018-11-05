@@ -63,10 +63,11 @@ else:
     print("All Required Packages Installed")
 
 
-# todo: in NetworkMessageSorter, refactor create message sender, to address that main key is now admin_id an not ip addr
-# todo: in NetworkMessageSorter, when address is being stored, store it in proper format {admin_id: [host, port]}
 
 # todo: in order to move forward, have a way of storing admin id, with protocol, when adding protocol (networkmessagesorter)
+# todo: finish up new class ProxyNetworkCommunicator, class will allow proxy to directly communicate with other nodes
+
+
 # todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file
 # todo: inclusion of asgn_stmt into self.current_list_of_stmt_hash
 # todo: Finish up Balance Transfer Request Logic
@@ -476,6 +477,11 @@ def sandbox_main(number_of_nodes: int, reg_network_sandbox=False, preferred_no_o
     # *** set propagator's network manager variable to network manager instance ***
     propagator.network_manager = network_manager
 
+    # load propagator classes and sorter
+    admin.load_bk_propagator(blockchain_propagator)
+    admin.load_net_propagator(propagator)
+    admin.load_net_sorter(network_message_sorter)
+
     # **** CREATE OTHER NODE INSTANCES **** #
 
     node_dict = create_node_instances(
@@ -746,6 +752,11 @@ def main(just_launched=False):
 
     # *** set propagator's network manager variable to network manager instance ***
     propagator.network_manager = network_manager
+
+    # load propagator classes and sorter
+    admin.load_bk_propagator(blockchain_propagator)
+    admin.load_net_propagator(propagator)
+    admin.load_net_sorter(network_message_sorter)
 
     # create wallets balance db with genesis block, if does not exist
     db_manager.create_load_wallet_balances_from_genesis_block()
