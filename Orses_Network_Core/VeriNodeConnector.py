@@ -27,6 +27,7 @@ class VeriNodeConnector(Protocol):
         self.receiving_convo = 0
         self.peer_admin_id = factory.peer_admin_id
 
+
     def dataReceived(self, data):
         """
         when data is received it is sent to Propagator process with self, process then checks

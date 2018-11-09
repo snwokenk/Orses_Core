@@ -15,6 +15,7 @@ class VeriNodeListener(Protocol):
         self.factory = factory
         self.q_object = factory.q_object_from_protocol
         self.addr = addr
+        self.peer_admin_id = None
 
     def dataReceived(self, data):
         """

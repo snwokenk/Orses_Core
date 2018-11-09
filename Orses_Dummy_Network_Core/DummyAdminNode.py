@@ -255,6 +255,11 @@ class DummyAdminNode(DummyNode):
         # *** set propagator's network manager variable to network manager instance ***
         propagator.network_manager = network_manager
 
+        # load propagator classes and sorter
+        self.admin.load_bk_propagator(blockchain_propagator)
+        self.admin.load_net_propagator(propagator)
+        self.admin.load_net_sorter(network_message_sorter)
+
         db_manager.create_load_wallet_balances_from_genesis_block()
 
 

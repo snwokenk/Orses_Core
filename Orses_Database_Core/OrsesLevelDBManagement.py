@@ -156,17 +156,13 @@ class OrsesLevelDBManager:
         else:
             return None
 
-
-
-
-
-
-    def get_from_bcw_db(self, wallet_id, create_if_missing=False, recursive_count=0):
+    def get_from_bcw_db(self, wallet_id, create_if_missing=False):
         """
         returns
         :param wallet_id:
         :param recursive_count: number of recursion
-        :return:
+        :return:  [tx_hash,rsv_req_dict["rsv_req"]["time"], rsv_req_dict["rsv_req"]["exp"],
+                                 block_number, proxy_list, rsv_req_dict]
         """
 
         db = self.get_db_from_databases_dict(db_name="BCWs", create_if_missing=create_if_missing)
@@ -254,7 +250,6 @@ class OrsesLevelDBManager:
                 else:
                     return False
 
-
             elif value:
                 value = json.dumps(value)
             else:
@@ -264,7 +259,6 @@ class OrsesLevelDBManager:
         except Exception as e:
             print(f"in in insert_into_bcw_db, OrseslevelDBManagement.py: error occured: {e}")
             return False
-
 
         # get db and insert or return None if db not able to be loaded
         db = self.get_db_from_databases_dict(db_name="BCWs", create_if_missing=True)

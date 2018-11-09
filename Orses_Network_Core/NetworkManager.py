@@ -1,9 +1,10 @@
+import traceback
+
 from Orses_Network_Core.VeriNodeConnector import VeriNodeConnectorFactory
 from Orses_Network_Core.VeriNodeListener import VeriNodeListenerFactory
 from Orses_Network_Core.NetworkListener import NetworkListenerFactory
 from Orses_Network_Messages_Core.NetworkMessages import NetworkMessages
-from Orses_Util_Core.FileAction import FileAction
-from Orses_Util_Core import Filenames_VariableNames
+
 
 # for sandbox mode
 from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnectorFactory
@@ -18,6 +19,7 @@ class NetworkManager:
         self.admin = admin
         self.databases_created = False if admin is None else True # db created when admin created, imported or loaded
         self.reg_network_sandbox = reg_network_sandbox
+        self.reactor_inst = reactor_inst
         # get sandbox address or live address
         # self.addresses_file = Filenames_VariableNames.default_addr_list_sandbox if self.admin.is_sandbox is True else \
         #     Filenames_VariableNames.default_addr_list
@@ -63,6 +65,7 @@ class NetworkManager:
         # use this to store connected ports
         self.Connected_Port_Veri = list()
 
+
     def run_veri_node_network(self, reactor_instance):
         if self.admin.is_sandbox:
             if not isinstance(reactor_instance, DummyReactor):
@@ -97,20 +100,62 @@ class NetworkManager:
             print("Exception in NetworkManager.py, close_all_ports()")
 
         print("stopped listening on ports")
-    # def run_protocol(self, protocol, data, cmd="write"):
-    #     """
-    #     must run with reactor.callFromThread
-    #
-    #     :param protocol: a connected instance of Twisted Protocol, should be connected to another verification node
-    #     :param data: encoded(bytes) to write to connected protocol
-    #     :param cmd: "write" or "end_con"
-    #     :return: None
-    #     """
-    #
-    #     if cmd == "end_con":
-    #         protocol.loseConnection()
-    #     else:
-    #         protocol.write(data)
+
+    def get_addresses(self):
+        return self.admin.known_addresses
+
+    def get_address_of_admin_id(self, admin_id, addresses_dict=None):
+
+        addresses_dict = self.get_addresses() if addresses_dict is None else addresses_dict
+
+        return addresses_dict.get(admin_id, [])
+
+    def connect_to_a_admin(self, admin_id, addresses_dict=None):
+
+        addresses_dict = self.get_addresses() if addresses_dict is None else addresses_dict
+
+
+        try:
+            self.reactor_inst.connectTCP(
+                host=addresses_dict[admin_id][0],
+                port=addresses_dict[admin_id][1],
+                factory=self.veri_connecting_factory
+            )
+        except KeyError as e:
+            print(f"error occurred in NetworkManager connect_to_admin {e}\n"
+                  f"printing traceback: ")
+            traceback.print_tb(e.__traceback__)
+
+            return False
+
+        return True
+
+    def connect_to_admins(self, list_of_admins, get_addr_for_unknown=False):
+        """
+
+        :param list_of_admins: list of admin ids to connect to
+        :param get_addr_for_unknown: if this is True, then send a request to other nodes
+        :return:
+        """
+
+        addresses_dict = self.get_addresses()
+
+        unconnected_admins = list()
+
+        for a_id in list_of_admins:
+            if self.connect_to_a_admin(admin_id=a_id, addresses_dict=addresses_dict) is False:
+                unconnected_admins.append(a_id)
+
+        if unconnected_admins:
+            if get_addr_for_unknown is True:
+                # todo: have a way of querying other nodes ( pattern should be request/response
+                pass
+            else:
+                return unconnected_admins
+        else:
+            return True
+
+
 
 
 

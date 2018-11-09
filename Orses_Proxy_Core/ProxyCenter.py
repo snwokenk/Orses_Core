@@ -298,7 +298,6 @@ class ProxyCenter:
 
                         )
 
-
                     else:
                         response = False
                 # wallet managed by another BCW
@@ -321,7 +320,8 @@ class ProxyCenter:
                             update_balance_callback=update_balance_callback,
                             end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
                             msg=btt_or_btr_dict,
-                            bcw_wid=snd_managed[1]
+                            bcw_wid=snd_managed[1],
+                            reactor_inst=reactor_inst
                         )
                     else:
                         response = False
@@ -380,7 +380,7 @@ class ProxyCenter:
         return False
 
     def wait_for_bcw_proxy_nodes_final_response(self, update_balance_callback, end_timestamp: int, msg, bcw_wid,
-                                                **kwargs):
+                                                reactor_inst, **kwargs):
 
         # THIS IS A BLOCKING CODE. WILL WAIT TILL RESPONSE IS RECEIVED FROM A VALID PROXY NODE OF BCW
         response = self.proxy_communicator.send_to_bcw(

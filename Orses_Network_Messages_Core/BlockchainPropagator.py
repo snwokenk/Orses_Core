@@ -105,6 +105,7 @@ class BlockChainPropagator:
         # self.convo_id = 0
         self.connected_protocols_dict = dict()
         self.connected_protocols_dict_of_pubkey = dict()
+        self.connected_protocols_admin_id = dict()
 
         # This is used by initial setup BUT
         # It is updated every time a new block is accepted by node
@@ -156,16 +157,17 @@ class BlockChainPropagator:
         # (if user has requested program to exit or quit
         self.is_program_running = is_program_running
 
-
-    def add_protocol(self, protocol):
+    def add_protocol(self, protocol, peer_admin_id=None):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, dict(speaker, hearer keys), number of convo(goes to 999 and resets)]
-        self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
+        self.connected_protocols_dict[protocol.proto_id] = [protocol, 0]
         self.convo_dict[protocol.proto_id] = dict()
         self.connected_protocols_dict_of_pubkey[protocol.proto_id] = None
+        self.connected_protocols_admin_id[peer_admin_id] = protocol.proto_id
 
+    # todo: **********  Delete protocol id in self.connected_protocols_admin_id
     def remove_protocol(self, protocol):
-
+        del self.connected_protocols_admin_id[protocol.peer_admin_id]
         del self.connected_protocols_dict[protocol.proto_id]
         del self.convo_dict[protocol.proto_id]
         del self.connected_protocols_dict_of_pubkey[protocol.proto_id]

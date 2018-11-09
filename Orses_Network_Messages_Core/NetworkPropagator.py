@@ -46,6 +46,7 @@ class NetworkPropagator:
         # convo_dict[protocol_id] = {convo_id: statementsender/statementreceiver}
         self.convo_dict = dict()
         self.connected_protocols_dict = dict()
+        self.connected_protocols_admin_id = dict()
 
 
         # dict with reason+hash previews as dict keys( this can be updated using binary search Tree) will do for now
@@ -59,11 +60,22 @@ class NetworkPropagator:
         self.message_from_other_veri_node_dict = dict()
         self.reactor_instance = reactor_instance
 
-        self.network_manager = None
+        self.__network_manager = None
 
         if is_root_node is True:
             admin_inst.update_default_address_to_include_admin_id_root_node()
         self.copy_main_default_address_to_admin()
+
+    @property
+    def network_manager(self):
+        return self.__network_manager
+
+    @network_manager.setter
+    def network_manager(self, value):
+
+        # only set to value if it is None
+        if self.__network_manager is None:
+            self.__network_manager = value
 
     def copy_main_default_address_to_admin(self):
 
@@ -83,14 +95,15 @@ class NetworkPropagator:
     def copy_or_created_banned_admin_list(self):
         pass
 
-    def add_protocol(self, protocol):
+    def add_protocol(self, protocol, peer_admin_id=None):
 
         # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 20000 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
+        self.connected_protocols_admin_id[peer_admin_id] = protocol.proto_id
 
     def remove_protocol(self, protocol):
-
+        del self.connected_protocols_admin_id[protocol.peer_admin_id]
         del self.connected_protocols_dict[protocol.proto_id]
         del self.convo_dict[protocol.proto_id]
 

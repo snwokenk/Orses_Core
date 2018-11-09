@@ -63,8 +63,7 @@ else:
     print("All Required Packages Installed")
 
 
-
-# todo: in order to move forward, have a way of storing admin id, with protocol, when adding protocol (networkmessagesorter)
+# todo: finish connect_to_admins in NetworkManager.py, have a way of searching for admin_id addresses on the network
 # todo: finish up new class ProxyNetworkCommunicator, class will allow proxy to directly communicate with other nodes
 
 

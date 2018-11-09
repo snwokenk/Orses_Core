@@ -270,10 +270,13 @@ class Admin:
     def load_db_manager(self, db_manager):
         """
         used to load an already instantiated leveldb into Administrator class
-        :param db: instance
+        :param db_manager: instance
         :return:
         """
         self.db_manager = db_manager
+
+    def get_net_propagator(self):
+        return self.net_propagator
 
     def get_db_manager(self):
         return self.db_manager

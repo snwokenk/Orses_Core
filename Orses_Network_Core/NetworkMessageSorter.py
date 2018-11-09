@@ -55,6 +55,10 @@ class NetworkMessageSorter:
 
             print(f"in NetworkMessageSorter.py Listener Protocol Created When Connected {protocol}")
 
+    def remove_protocol(self, protocol):
+        self.blockchain_prop_inst.remove_protocol(protocol=protocol)
+        self.network_prop_inst.remove_protocol(protocol=protocol)
+
     def add_protocol_to_all(self, protocol, admin_id_for_protocol):
         """
         when node validated add it to
@@ -63,11 +67,16 @@ class NetworkMessageSorter:
         :return:
         """
 
+        # set admin_id in VeriNodeListener class (or resets for connector)
+        protocol.peer_admin_id = admin_id_for_protocol
+
         # add to blockchain propagator connected dict
-        self.blockchain_prop_inst.add_protocol(protocol=protocol)
+        self.blockchain_prop_inst.add_protocol(protocol=protocol, peer_admin_id=admin_id_for_protocol)
 
         # add to network propagaor
-        self.network_prop_inst.add_protocol(protocol=protocol)
+        self.network_prop_inst.add_protocol(protocol=protocol, peer_admin_id=admin_id_for_protocol)
+
+
 
     def run_sorter(self):
         """
