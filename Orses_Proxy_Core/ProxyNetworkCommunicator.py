@@ -66,12 +66,9 @@ class ProxyNetworkCommunicator:
             return curr_conn_proxy_dict
         else:  # no proxy of BCW_wid is currently connected
 
-            # todo: complete
+            # todo: complete this logic
             propagator = self.admin_inst.get_net_propagator()
-            net_manager = propagator.network_manager
 
-
-            return net_manager.
 
     def get_reactor(self):
         return self.admin_inst.net_propagator.reactor_instance

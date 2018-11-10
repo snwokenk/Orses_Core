@@ -76,14 +76,12 @@ class NetworkMessageSorter:
         # add to network propagaor
         self.network_prop_inst.add_protocol(protocol=protocol, peer_admin_id=admin_id_for_protocol)
 
-
-
     def run_sorter(self):
         """
         :return:
         """
 
-        #todo: add message receiver for Node Validator
+        # todo: add message receiver for Node Validator
         while True:
             msg = self.q_object_from_protocol.get()  # msg = [protocol id, data], data = [type(b or n), convo id, etc]
 
@@ -138,6 +136,10 @@ class NetworkMessageSorter:
                         self.q_for_propagate.put(msg)  # goes to NetworkPropagator.py, run_propagator_convo_manager
                     elif msg[1][0] == 'b':
                         self.q_for_bk_propagate.put(msg)  # goes to BlockchainPropagator.py, run_propagator_convo_manager
+                    elif msg[1][0] == "q":
+                        # todo: have a way of calling Query class
+                        pass
+
                     else:
                         print("in NetworkMessageSorter.py, msg could not be sent to any process", msg)
                 except IndexError as e:

@@ -601,5 +601,3 @@ class StatementReceiver(PropagatorMessageReceiver):
                 self.speaker(msg=rsp)
 
 
-
-
