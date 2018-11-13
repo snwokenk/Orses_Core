@@ -12,6 +12,7 @@ another instance could be to instantiate a new NetworkPropagator class whenever 
 received and set
 
 """
+# todo: when protocol disconnected, write logic that deletes protocol id from validated protocols in Message Sorter
 
 
 class VeriNodeConnector(Protocol):

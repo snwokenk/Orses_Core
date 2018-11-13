@@ -62,10 +62,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: NetworkQuery should be imported and called from any where.
-# todo: finish connect_to_admins in NetworkManager.py, have a way of searching for admin_id addresses on the network
-# todo: finish up new class ProxyNetworkCommunicator, class will allow proxy to directly communicate with other nodes
-
+# todo: finish up send_to_bcw() in ProxyNetworkCommunicator
 
 # todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file
 # todo: inclusion of asgn_stmt into self.current_list_of_stmt_hash

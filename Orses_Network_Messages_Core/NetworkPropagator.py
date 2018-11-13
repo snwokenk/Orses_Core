@@ -100,7 +100,7 @@ class NetworkPropagator:
         # adds connected protocol, key as protocol_id,  value: list [protocol object, number of convo(goes to 20000 and resets)]
         self.connected_protocols_dict.update({protocol.proto_id: [protocol, 0]})
         self.convo_dict[protocol.proto_id] = dict()
-        self.connected_protocols_admin_id[peer_admin_id] = protocol.proto_id
+        self.connected_protocols_admin_id[peer_admin_id] = protocol
 
     def remove_protocol(self, protocol):
         del self.connected_protocols_admin_id[protocol.peer_admin_id]

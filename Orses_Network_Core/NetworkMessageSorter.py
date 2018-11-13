@@ -8,17 +8,19 @@ Messges for Network Propagator are transaction messages and assignment statement
 bk_connected wallet being used)
 
 """
+import json, copy
+
 from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnector
 from Orses_Network_Core.VeriNodeConnector import VeriNodeConnector
 from Orses_Validator_Core.ConnectedNodeValidator import ConnectedNodeValidator
-import json, copy
+from Orses_Network_Messages_Core.NetworkQuery import NetworkQuery, QuerySender
 
 
 class NetworkMessageSorter:
     def __init__(self, q_object_from_protocol, q_for_bk_propagate, q_for_propagate, n_propagator_inst,
                  b_propagator_inst, node=None, admin=None):
         self.node = node
-        self.admin = admin if admin is not None else self.node.admin
+        self.admin_inst = admin if admin is not None else self.node.admin
         self.network_prop_inst = n_propagator_inst
         self.blockchain_prop_inst = b_propagator_inst
         self.q_for_propagate = q_for_propagate
@@ -49,7 +51,7 @@ class NetworkMessageSorter:
             self.network_prop_inst.reactor_instance.callInThread(
                 self.create_sender_message,
                 protocol=protocol,
-                admin_inst=self.admin,
+                admin_inst=self.admin_inst,
                 peer_admin_id=peer_admin_id
             )
 
@@ -114,7 +116,7 @@ class NetworkMessageSorter:
                         self.create_receiver_message,
                         msg=msg_data,
                         protocol=self.non_validated_connected_protocols_dict[protocol_id][0],
-                        admin_inst=self.admin,
+                        admin_inst=self.admin_inst,
 
                     )
 
@@ -136,9 +138,14 @@ class NetworkMessageSorter:
                         self.q_for_propagate.put(msg)  # goes to NetworkPropagator.py, run_propagator_convo_manager
                     elif msg[1][0] == 'b':
                         self.q_for_bk_propagate.put(msg)  # goes to BlockchainPropagator.py, run_propagator_convo_manager
-                    elif msg[1][0] == "q":
-                        # todo: have a way of calling Query class
-                        pass
+                    elif msg[1][0] == "q":  # msg = [protocol id, ['q', convo id, type of msg (req OR rsp), msg]
+
+                        self.network_prop_inst.reactor_instance.callInThread(
+                            self.handle_query,
+                            msg=msg
+                        )
+                        continue
+
 
                     else:
                         print("in NetworkMessageSorter.py, msg could not be sent to any process", msg)
@@ -162,7 +169,7 @@ class NetworkMessageSorter:
             peer_addr = protocol.transport.getPeer()
             knw_addr = copy.deepcopy(admin_inst.known_addresses)
             try:
-                knw_addr.pop(self.admin.admin_id, None)
+                knw_addr.pop(self.admin_inst.admin_id, None)
             except KeyError:
                 pass
             try:
@@ -178,7 +185,7 @@ class NetworkMessageSorter:
                 admin_inst=admin_inst,
                 message_list=[
                     {"1": ConnectedNodeValidator.get_hash_of_important_files(admin_inst),
-                     "2": {self.admin.admin_id: [host_addr.host, host_addr.port]},
+                     "2": {self.admin_inst.admin_id: [host_addr.host, host_addr.port]},
                      "3": len(knw_addr)
                      },
                     knw_addr
@@ -224,6 +231,34 @@ class NetworkMessageSorter:
             self.convo_dict[protocol.proto_id] = {convo_id[0]: receiver}
             receiver.listen(msg=msg)
 
+    def handle_query(self, msg):
+        """
+        Should be run in non reactor thread using callInThread
+        :param msg: [protocol id, ['q', convo id, type of msg (req OR rsp), msg]
+        :return:
+        """
+
+        # todo complete handle_query
+        # get protocol
+        protocol = self.validated_conn_protocols_dict.get(msg[0], None)
+        if protocol is None:
+            return
+
+        convo_id = msg[1][1]
+        type_of_msg = msg[1][2]
+        req_or_response_msg = msg[1][2]
+
+        if type_of_msg == 'req':  # a request
+            NetworkQuery.respond_to_a_query(
+                query_msg=req_or_response_msg,
+                admin_inst=self.admin_inst,
+                protocol=protocol
+            )
+        elif type_of_msg == 'rsp':
+
+            NetworkQuery.receive_query_response(
+                query_msg=req_or_response_msg
+            )
 
 # helper functions
 

@@ -5,6 +5,7 @@ Hold query class, with static methods meant to get query response
 
 class QueryClass:
 
+
     @staticmethod
     def request_msg_network_addr_by_admin_id(peer_admin_id):
         """
@@ -39,15 +40,13 @@ class QueryClass:
         return ['2', list_of_peer_admin_id]
 
     @staticmethod
-    def get_network_addresses_by_admin_id(admin_inst, *args):
+    def get_network_addresses_by_admin_id(admin_inst, list_of_peer_admin_id):
         """
 
-        :param peer_admin_id: peer admin whose address is needed
+        :param list_of_peer_admin_id: list of peer admins whose address is needed
         :param admin_inst: admin instance of local node
-        :return:
+        :return: list either [[admin_id, [host, port], ...] or empty list
         """
-
-        list_of_peer_admin_id = args[0]
 
         known_addresses: dict = admin_inst.known_addresses
 
@@ -63,8 +62,6 @@ class QueryClass:
             return []
 
         return list_of_addresses
-
-
 
 
 # keys represent query id which can be used to get callable for a specified query

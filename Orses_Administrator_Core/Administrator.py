@@ -275,6 +275,9 @@ class Admin:
         """
         self.db_manager = db_manager
 
+    def get_net_sorter(self):
+        return self.net_sorter
+
     def get_net_propagator(self):
         return self.net_propagator
 

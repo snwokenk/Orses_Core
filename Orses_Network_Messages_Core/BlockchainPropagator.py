@@ -163,7 +163,7 @@ class BlockChainPropagator:
         self.connected_protocols_dict[protocol.proto_id] = [protocol, 0]
         self.convo_dict[protocol.proto_id] = dict()
         self.connected_protocols_dict_of_pubkey[protocol.proto_id] = None
-        self.connected_protocols_admin_id[peer_admin_id] = protocol.proto_id
+        self.connected_protocols_admin_id[peer_admin_id] = protocol
 
     # todo: **********  Delete protocol id in self.connected_protocols_admin_id
     def remove_protocol(self, protocol):

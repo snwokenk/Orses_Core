@@ -1,4 +1,4 @@
-import traceback
+import traceback, multiprocessing, time
 
 from Orses_Network_Core.VeriNodeConnector import VeriNodeConnectorFactory
 from Orses_Network_Core.VeriNodeListener import VeriNodeListenerFactory
@@ -54,7 +54,7 @@ class NetworkManager:
             )
         self.regular_listening_factory = NetworkListenerFactory(spkn_msg_obj_creator=NetworkMessages, admin=admin,
                                                                 q_obj=q_object_to_validator, reactor_inst=reactor_inst)
-        self.propagator = net_msg_sorter
+        self.net_msg_sorter = net_msg_sorter
         self.regular_listening_port = reg_listening_port
 
 
@@ -110,50 +110,122 @@ class NetworkManager:
 
         return addresses_dict.get(admin_id, [])
 
-    def connect_to_a_admin(self, admin_id, addresses_dict=None):
+    def connect_to_an_admin(self, admin_id, addresses_dict=None, wait_till_validated=True):
 
         addresses_dict = self.get_addresses() if addresses_dict is None else addresses_dict
 
-
         try:
-            self.reactor_inst.connectTCP(
+
+            self.reactor_inst.callFromThread(
+                self.reactor_inst.connectTCP,
                 host=addresses_dict[admin_id][0],
                 port=addresses_dict[admin_id][1],
                 factory=self.veri_connecting_factory
             )
+            # self.reactor_inst.connectTCP(
+            #     host=addresses_dict[admin_id][0],
+            #     port=addresses_dict[admin_id][1],
+            #     factory=self.veri_connecting_factory
+            # )
         except KeyError as e:
             print(f"error occurred in NetworkManager connect_to_admin {e}\n"
                   f"printing traceback: ")
             traceback.print_tb(e.__traceback__)
 
             return False
+        else:
+            if wait_till_validated is True:
+                q_obj = multiprocessing.Queue()
+
+                self.reactor_inst.callInThread(
+                    self.wait_till_connected_admin_validated,
+                    admin_id=admin_id,
+                    q_obj=q_obj
+
+                )
+
+                return q_obj.get()
 
         return True
 
-    def connect_to_admins(self, list_of_admins, get_addr_for_unknown=False):
+    def connect_to_admins(self, list_of_admins, addresses_dict=None, wait_till_validated=True):
         """
 
-        :param list_of_admins: list of admin ids to connect to
-        :param get_addr_for_unknown: if this is True, then send a request to other nodes
-        :return:
+        :param list_of_admins: list of admins to connect to
+        :param addresses_dict:
+        :param wait_till_validated: bool, if to wait till connections have been validated
+        :return: list of connected admins (if wait till validated is True then list is connected and validated)
         """
 
-        addresses_dict = self.get_addresses()
+        addresses_dict = self.get_addresses() if addresses_dict is None else addresses_dict
 
         unconnected_admins = list()
+        connected_nonvalidate_admins = list()
 
         for a_id in list_of_admins:
-            if self.connect_to_a_admin(admin_id=a_id, addresses_dict=addresses_dict) is False:
+            if self.connect_to_an_admin(admin_id=a_id, addresses_dict=addresses_dict, wait_till_validated=False) is False:
                 unconnected_admins.append(a_id)
-
-        if unconnected_admins:
-            if get_addr_for_unknown is True:
-                # todo: have a way of querying other nodes ( pattern should be request/response
-                pass
             else:
-                return unconnected_admins
+                connected_nonvalidate_admins.append(a_id)
+
+
+        # wait till connection has been validated by NetworkMessageSorter (running compatible software)
+        if connected_nonvalidate_admins:
+
+            if wait_till_validated is True:
+                connected_validated = list()
+                q_obj = multiprocessing.Queue()
+                for i in range(len(connected_nonvalidate_admins)):
+                    self.reactor_inst.callInThread(
+                        self.wait_till_connected_admin_validated,
+                        admin_id=connected_nonvalidate_admins[i],
+                        q_obj=q_obj
+                    )
+
+                    rsp = q_obj.get()
+                    if rsp is True:
+                        connected_validated.append(connected_nonvalidate_admins[i])
+                        continue
+                return connected_validated
+            else:
+                return connected_nonvalidate_admins
+
         else:
+            return []
+
+
+
+    def check_if_connected_admin_validated(self, admin_id, q_obj):
+
+        if admin_id in self.admin.get_net_propagator().connected_protocols_admin_id:
+            q_obj.put(True)
             return True
+        return False
+
+    def wait_till_connected_admin_validated(self, admin_id, wait_time=5, q_obj=None):
+        count = 0
+        while count <= 1:
+            q = multiprocessing.Queue()
+
+            self.check_if_connected_admin_validated(admin_id=admin_id, q_obj=q)
+
+            if q.get() is True:
+                if q_obj:
+                    q_obj.put(True)
+                return True
+            count+=1
+            time.sleep(wait_time)
+        if q_obj:
+            q_obj.put(False)
+        return False
+
+
+
+
+
+
+
+
 
 
 
