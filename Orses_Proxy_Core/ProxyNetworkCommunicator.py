@@ -2,6 +2,7 @@
 used by proxies to communicate directly with other proxies.
 
 """
+import multiprocessing, json
 
 from Orses_Network_Messages_Core.NetworkQuery import NetworkQuery
 from Orses_Network_Messages_Core.QueryClass import QueryClass
@@ -22,8 +23,14 @@ class ProxyNetworkCommunicator:
         # bcw to proxies dict mapping BCW to proxies
         self.bcw_to_proxy = dict()
 
+        self.proxy_to_convo = dict() #{bcw_wid: {proxy_id: }}
+
     def get_db_manager(self):
         return self.admin_inst.get_db_manager()
+
+    def get_reactor(self):
+
+        return self.admin_inst.get_net_propagator().network_manager.reactor_inst
 
     def get_proxies_of_bcw(self, bcw_wid):
         # used to get BCW proxies, returns a list
@@ -55,7 +62,13 @@ class ProxyNetworkCommunicator:
         :return:
         """
 
-        list_of_bcw_proxies = self.get_proxies_of_bcw(bcw_wid=bcw_wid)
+        list_of_bcw_proxies = self.bcw_to_proxy.get(bcw_wid, None)
+
+        if list_of_bcw_proxies is None:
+            list_of_bcw_proxies = self.get_proxies_of_bcw(bcw_wid=bcw_wid)
+            self.bcw_to_proxy[bcw_wid] = list_of_bcw_proxies
+
+
         conn_protocols_dict = self.get_conn_protocols_from_propagator()
         dict_of_connected_proxies = {p_id: conn_protocols_dict[p_id] for p_id in list_of_bcw_proxies if p_id in conn_protocols_dict}
         return [list_of_bcw_proxies, dict_of_connected_proxies]
@@ -106,15 +119,6 @@ class ProxyNetworkCommunicator:
 
             return {}
 
-
-
-
-    def get_reactor(self):
-        return self.admin_inst.net_propagator.reactor_instance
-
-    def conn_to_proxy(self):
-        pass
-
     def send_to_bcw(self, bcw_wid, msg):
         """
 
@@ -127,12 +131,84 @@ class ProxyNetworkCommunicator:
         """
         # get connected proxies
         # this is a potentially blocking code (do not run in reactor thread (use callInThread)
-        dict_of_connecated_proxies: dict = self.get_currently_connected_proxies(bcw_wid=bcw_wid)
+        dict_of_connected_proxies: dict = self.get_currently_connected_proxies(bcw_wid=bcw_wid)
 
         try:
-            proxy_id_protocol = dict_of_connecated_proxies.popitem()
+            proxy_id_protocol = dict_of_connected_proxies.popitem()
         except KeyError:
             return False
 
-        # todo: finish up this function
+        q_obj = multiprocessing.Queue()
 
+        pms =  ProxyMessageSender(
+            msg=msg,
+            bcw_wid=bcw_wid,
+            proxy_communicator_inst=self,
+            protocol=proxy_id_protocol,
+            q_obj=q_obj
+        )
+        pms.speak()
+
+    def receive_from_bcw(self, msg):
+        pass
+
+
+
+
+class ProxyMessageSender:
+
+    convo_id = 0
+    instances_of_class = dict()  # {convo_id: instance of Proxy_message}
+
+    def __init__(self, msg, bcw_wid, proxy_communicator_inst, protocol, q_obj=None):
+        self.q_obj = q_obj
+        self.proxy_communicator_inst = proxy_communicator_inst
+        self.protocol = protocol
+        self.bcw_wid = bcw_wid
+        self.msg = msg
+        self.reactor = proxy_communicator_inst.get_reactor()
+        self.first_msg_sent = False
+        self.convo_ended = False
+        self.convo_id = self.__get_convo_id()
+        self.prop_type = 'p'
+        self.type_of_msg = 'snd'
+
+    def __get_convo_id(self):
+
+        while True:
+            convo_id = ProxyMessageSender.convo_id
+            if convo_id not in ProxyMessageSender.instances_of_class:
+                ProxyMessageSender.instances_of_class[convo_id] = self
+                break
+            else:
+                an_instance: ProxyMessageSender = ProxyMessageSender.instances_of_class[convo_id]
+
+                if an_instance.convo_ended is True:
+                    ProxyMessageSender.instances_of_class[convo_id] = self
+                    break
+                else:
+                    ProxyMessageSender.convo_id += 1
+                    continue
+
+        return convo_id
+
+    def speak(self):
+
+        reactor = self.reactor
+
+        reactor.callFromThread(
+            self.protocol.transport.write,
+            json.dumps([self.prop_type, self.convo_id, self.type_of_msg, self.msg]).encode()
+
+        )
+
+    def listen(self, response):
+
+        self.convo_ended = True
+        self.q_obj.put(response)
+
+
+class ProxyMessageResponder:
+    def __init__(self, msg, protocol):
+        self.protocol = protocol
+        self.msg = msg

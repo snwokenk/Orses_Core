@@ -13,7 +13,8 @@ import json, copy
 from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnector
 from Orses_Network_Core.VeriNodeConnector import VeriNodeConnector
 from Orses_Validator_Core.ConnectedNodeValidator import ConnectedNodeValidator
-from Orses_Network_Messages_Core.NetworkQuery import NetworkQuery, QuerySender
+from Orses_Network_Messages_Core.NetworkQuery import NetworkQuery
+from Orses_Proxy_Core.ProxyNetworkCommunicator import ProxyMessageSender
 
 
 class NetworkMessageSorter:
@@ -238,15 +239,13 @@ class NetworkMessageSorter:
         :return:
         """
 
-        # todo complete handle_query
         # get protocol
         protocol = self.validated_conn_protocols_dict.get(msg[0], None)
         if protocol is None:
             return
-
-        convo_id = msg[1][1]
-        type_of_msg = msg[1][2]
-        req_or_response_msg = msg[1][2]
+        main_msg = msg[1]
+        type_of_msg = main_msg[2]
+        req_or_response_msg = main_msg[3]
 
         if type_of_msg == 'req':  # a request
             NetworkQuery.respond_to_a_query(
@@ -257,10 +256,33 @@ class NetworkMessageSorter:
         elif type_of_msg == 'rsp':
 
             NetworkQuery.receive_query_response(
-                query_msg=req_or_response_msg
+                query_msg=main_msg
             )
 
+    def handle_proxy_convo(self, msg):
+        """
+        Should be run in non reactor thread using callInThread
+        :param msg: [protocol id, ['q', convo id, type of msg (snd OR rcv), msg]
+        :return:
+        """
+
+        # get protocol
+        protocol = self.validated_conn_protocols_dict.get(msg[0], None)
+        if protocol is None:
+            return
+
+        main_msg = msg[1]
+        type_of_msg = main_msg[2]
+        snd_or_rcv_msg = main_msg[3]
+
+        if type_of_msg == "snd":
+            pass
+        elif type_of_msg == "rsp":
+            pass
+
+
 # helper functions
+
 
 class NodeValidatorSender:
     def __init__(self, protocol, convo_id, message_list, propagator_inst, msg_sorter_inst: NetworkMessageSorter,
