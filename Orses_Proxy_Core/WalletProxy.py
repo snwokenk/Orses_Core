@@ -261,7 +261,7 @@ class WalletProxy:
             tmp_dict = BalanceTransferRequest.BalanceTransferRequest(
                 wallet_proxy=self,
                 asgn_stmt_dict=asgn_stmt_dict,
-                bcw_with_balance=snd_bcw_manager,
+                sending_bcw=snd_bcw_manager,
                 asgn_sender_pubkey=validator.sending_wallet_pubkey
 
             ).sign_and_return_balance_transfer_request(bcw_proxy_privkey=self.bcw_proxy_privkey)
@@ -424,6 +424,8 @@ class WalletProxy:
         rcv_bcw_bal = self.db_manager.get_from_wallet_balances_db(
             wallet_id=rcv_bcw
         )
+
+        # retrieve type of balance to update
         n = self.type_of_balance_index_dict.get(type_of_balance, None)
 
         if n:

@@ -52,6 +52,16 @@ class ProxyCenter:
 
         return self.admin_inst.get_db_manager()
 
+    def get_proxy_communicator(self):
+        return self.proxy_communicator
+
+    def get_a_proxy_pubkey(self, bcw_wid, admin_id_of_proxy):
+        bcw_proxy_id = f"{bcw_wid}{admin_id_of_proxy}"
+
+        proxy_pubkey = self.db_manager.get_proxy_pubkey(proxy_id=bcw_proxy_id)
+
+        return proxy_pubkey
+
     def initiate_new_proxy(self, bcw_wid: str, overwrite=False):
 
         # initiate walletProxy
@@ -93,11 +103,16 @@ class ProxyCenter:
         )
         pubkey = loaded_proxy.get_pubkey()
         if pubkey:
+            self.dict_of_managing_bcw[bcw_wid] = loaded_proxy
             return loaded_proxy
 
         else:
             print(f"in load_a_proxy, Could not load proxy pubkey/privkey. WID is {bcw_wid}")
             return None
+
+    def get_a_proxy(self, bcw_wid):
+
+        return self.dict_of_managing_bcw.get(bcw_wid, None)
 
     def load_administered_proxies(self):
 
@@ -109,9 +124,7 @@ class ProxyCenter:
             in_folder=self.admin_inst.fl.get_proxy_center_folder_path()
         )
         for bcw_wid in bcw_administered_list:
-            loaded_proxy = self.load_a_proxy(bcw_wid=bcw_wid)
-            if loaded_proxy:
-                self.dict_of_managing_bcw[bcw_wid] = loaded_proxy
+            self.load_a_proxy(bcw_wid=bcw_wid)
 
         if self.dict_of_managing_bcw:
             return True

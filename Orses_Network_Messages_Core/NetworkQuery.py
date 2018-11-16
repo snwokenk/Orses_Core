@@ -159,7 +159,8 @@ class QueryResponder:
         def listen_in_another_thread():
             convo_id = query_msg[1]
             main_msg = query_msg[2]
-            a_callable = dict_of_query_callable.get(main_msg[0])
+            query_id = main_msg[0]
+            a_callable = dict_of_query_callable.get(query_id)
 
             if isinstance(query_msg[1], list):
                 response = a_callable(admin_inst=self.admin_inst, *query_msg[1])
@@ -169,7 +170,9 @@ class QueryResponder:
 
             self.speak(response=response, convo_id=convo_id)
 
-        self.propagator_inst.reactor_instance.callFromThread()
+        self.propagator_inst.reactor_instance.callFromThread(
+
+        )
 
     def speak(self, response, convo_id):
 

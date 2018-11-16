@@ -6,6 +6,53 @@ import multiprocessing, json
 
 from Orses_Network_Messages_Core.NetworkQuery import NetworkQuery
 from Orses_Network_Messages_Core.QueryClass import QueryClass
+from Orses_Validator_Core import BTRValidator
+
+
+class BCWMessageExecutor:
+    """
+    will have a library of methods used to execute messages(ie Balance Transfer Request) for a BCW
+    """
+
+    def execute_message(self, msg):
+        pass
+
+    # this should be called in receive_from_bcw
+    def execute_btr_msg(self, admin_inst, msg):
+        """
+        used to execute a btr message
+        :param msg:
+        :return:
+        """
+
+        if 'btr' in msg:
+            Validator = BTRValidator.BTRValidator(
+                admin_instance=admin_inst,
+                btr_dict=msg
+            )
+
+            is_valid = Validator.check_validity()
+
+            # local node does not have BCW proxy pubkey
+            if is_valid is None:
+                query_msg = QueryClass.request_bcw_proxy_pubkey(
+                    bcw_wid=msg['btr']['snd_bcw'],
+                    admin_id_of_proxy=msg['admin_id']
+                )
+
+                # todo: complete
+                pubkey = NetworkQuery.send_a_query(
+
+                )
+
+                pass
+        else:
+            print(f"in BCWMessageExecutor, ProxyNetworkCommunuicator.py")
+
+
+        # divide into useful parts
+
+
 
 class ProxyNetworkCommunicator:
     def __init__(self, proxy_center_inst):
@@ -87,8 +134,7 @@ class ProxyNetworkCommunicator:
         else:  # no proxy of BCW_wid is currently connected
 
             # create message
-            query_msg = QueryClass.get_network_addresses_by_admin_id(
-                admin_inst=self.admin_inst,
+            query_msg = QueryClass.request_msg_network_addresses_by_admin_id(
                 list_of_peer_admin_id=list_of_bcw_wid_proxies
             )
             # get addresses of bcw proxies
@@ -140,7 +186,7 @@ class ProxyNetworkCommunicator:
 
         q_obj = multiprocessing.Queue()
 
-        pms =  ProxyMessageSender(
+        pms = ProxyMessageSender(
             msg=msg,
             bcw_wid=bcw_wid,
             proxy_communicator_inst=self,
@@ -151,8 +197,6 @@ class ProxyNetworkCommunicator:
 
     def receive_from_bcw(self, msg):
         pass
-
-
 
 
 class ProxyMessageSender:
@@ -207,8 +251,21 @@ class ProxyMessageSender:
         self.convo_ended = True
         self.q_obj.put(response)
 
+    @classmethod
+    def get_instance_of_class(cls, convo_id):
+        return cls.instances_of_class.get(convo_id, None)
+
 
 class ProxyMessageResponder:
-    def __init__(self, msg, protocol):
+    def __init__(self, msg, protocol, proxy_communicator_inst, q_obj=None):
         self.protocol = protocol
         self.msg = msg
+        self.q_obj = q_obj
+        self.proxy_communicator_inst = proxy_communicator_inst
+        self.protocol = protocol
+        self.reactor = proxy_communicator_inst.get_reactor()
+        self.convo_id = msg[1]
+
+    def listen(self, msg):
+        pass
+

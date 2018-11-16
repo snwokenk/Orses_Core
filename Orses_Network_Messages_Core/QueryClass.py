@@ -63,6 +63,40 @@ class QueryClass:
 
         return list_of_addresses
 
+    @staticmethod
+    def request_bcw_proxy_pubkey(bcw_wid, admin_id_of_proxy):
+        return ['3', [bcw_wid, admin_id_of_proxy]]
+
+    @staticmethod
+    def get_bcw_proxy_pubkey(admin_inst, bcw_wid, admin_id_of_proxy):
+        """
+
+        :param admin_inst: an admin_inst
+        :param bcw_wid: wallet id of BCW represented
+        :param admin_id_of_proxy: admin id of proxy representing BCW
+        :return:
+        """
+
+        proxy_center = admin_inst.get_proxy_center()
+
+        if proxy_center:
+            wallet_proxy = proxy_center.get_a_proxy(bcw_wid=bcw_wid)
+
+            # local node not a proxy of bcw_wid, check dict
+            if wallet_proxy is None:
+               pubkey = proxy_center.get_a_proxy_pubkey(
+                   bcw_wid=bcw_wid,
+                   admin_id_of_proxy=admin_id_of_proxy
+               )
+            else:
+                pubkey = wallet_proxy.get_pubkey()
+        else:
+            pubkey = {}
+
+        return pubkey
+
+
+
 
 # keys represent query id which can be used to get callable for a specified query
 dict_of_query_callable = dict()
@@ -70,6 +104,7 @@ dict_of_query_callable = dict()
 # arguments are admin_id, local admin instance
 dict_of_query_callable['1'] = QueryClass.get_network_addr_by_admin_id
 dict_of_query_callable['2'] = QueryClass.get_network_addresses_by_admin_id
+dict_of_query_callable['3'] = QueryClass.get_bcw_proxy_pubkey
 
 
 if __name__ == '__main__':

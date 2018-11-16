@@ -29,7 +29,7 @@ class BTRValidator(BaseProxyMessageValidator):
         self.signature = btr_dict["sig"]
 
         # required by validate_asgn_stmt() method in base class
-        self.asgn_sender_pubkey = btr_dict["a_snd_pubkey"]
+        self.asgn_sender_pubkey = btr_dict["a_snd_pk"]
         self.btt_hash = btr_dict['tx_hash']
         self.related_asgn_stmt_dict = self.btr['asgn_stmt']
 

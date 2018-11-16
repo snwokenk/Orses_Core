@@ -62,6 +62,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: complete execute_btr_msg in ProxyNetworkCommunicator.py
 # todo: finish ProxyMessageResponder class and receive_from_bcw() method in ProxyNetworkCommunicator
 # todo: ProxyMessageResponder should be able to determine message and then validate message
 # todo: can follow structure of NetworkQuery

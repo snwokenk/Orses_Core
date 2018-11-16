@@ -14,7 +14,7 @@ from Orses_Dummy_Network_Core.DummyVeriNodeConnector import DummyVeriNodeConnect
 from Orses_Network_Core.VeriNodeConnector import VeriNodeConnector
 from Orses_Validator_Core.ConnectedNodeValidator import ConnectedNodeValidator
 from Orses_Network_Messages_Core.NetworkQuery import NetworkQuery
-from Orses_Proxy_Core.ProxyNetworkCommunicator import ProxyMessageSender
+from Orses_Proxy_Core.ProxyNetworkCommunicator import ProxyMessageSender, ProxyMessageResponder
 
 
 class NetworkMessageSorter:
@@ -272,12 +272,30 @@ class NetworkMessageSorter:
             return
 
         main_msg = msg[1]
+        convo_id = main_msg[1]
         type_of_msg = main_msg[2]
         snd_or_rcv_msg = main_msg[3]
 
         if type_of_msg == "snd":
+            proxy_center = self.admin_inst.get_proxy_center()
+
+            # respond to a send message
+            ProxyMessageResponder(
+                msg=main_msg,
+                protocol=protocol,
+                proxy_communicator_inst=proxy_center.get_proxy_communicator()
+
+            )
             pass
         elif type_of_msg == "rsp":
+
+            # receive a response
+            instance_of_pms: ProxyMessageSender = ProxyMessageSender.get_instance_of_class(convo_id=convo_id)
+
+            if isinstance(instance_of_pms, ProxyMessageSender):
+                instance_of_pms.listen(
+                    response=snd_or_rcv_msg
+                )
             pass
 
 
