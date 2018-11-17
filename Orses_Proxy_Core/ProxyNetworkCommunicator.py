@@ -18,7 +18,7 @@ class BCWMessageExecutor:
         pass
 
     # this should be called in receive_from_bcw
-    def execute_btr_msg(self, admin_inst, msg):
+    def execute_btr_msg(self, admin_inst, protocol, msg):
         """
         used to execute a btr message
         :param msg:
@@ -28,6 +28,7 @@ class BCWMessageExecutor:
         if 'btr' in msg:
             Validator = BTRValidator.BTRValidator(
                 admin_instance=admin_inst,
+                send_network_notif=True,  # will send notification message to network if valid
                 btr_dict=msg
             )
 
@@ -40,10 +41,32 @@ class BCWMessageExecutor:
                     admin_id_of_proxy=msg['admin_id']
                 )
 
-                # todo: complete
-                pubkey = NetworkQuery.send_a_query(
+                # BLOCKING CODE, execute_btr_msg() SHOULD BE RUNNING IN NON REACTOR THREAD
+                proxy_pubkey = NetworkQuery.send_a_query(
+                    query_msg=query_msg,
+                    admin_inst=admin_inst,
+                    protocol=protocol
 
                 )
+
+                if proxy_pubkey:
+                    Validator = BTRValidator.BTRValidator(
+                        admin_instance=admin_inst,
+                        btr_dict=msg,
+                        send_network_notif=True,
+                        wallet_pubkey=proxy_pubkey  # named 'wallet_pubkey' for compatibility but takes proxy_pubkey
+                    )
+
+                    is_valid = Validator.check_validity()
+
+                    if is_valid is True:
+                        # return notification message,
+                        pass
+
+                    else:
+                        return False
+
+
 
                 pass
         else:
@@ -51,7 +74,6 @@ class BCWMessageExecutor:
 
 
         # divide into useful parts
-
 
 
 class ProxyNetworkCommunicator:

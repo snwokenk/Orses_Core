@@ -17,7 +17,8 @@ class BTRValidator(BaseProxyMessageValidator):
     They go under BCW activities which is used to derived the Merkle Root for a BCW's wallet hash state
     """
 
-    def __init__(self, btr_dict, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None, asgn_validated=False):
+    def __init__(self, btr_dict, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None, asgn_validated=False,
+                 send_network_notif=False):
 
 
         self.btr_dict = btr_dict

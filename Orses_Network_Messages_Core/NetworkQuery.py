@@ -26,7 +26,6 @@ class NetworkQuery:
         """
         for protocol in list_of_protocols:
 
-
             rsp = cls.send_a_query(
                 query_msg=query_msg,
                 admin_inst=admin_inst,
@@ -170,8 +169,8 @@ class QueryResponder:
 
             self.speak(response=response, convo_id=convo_id)
 
-        self.propagator_inst.reactor_instance.callFromThread(
-
+        self.propagator_inst.reactor_instance.callInThread(
+            listen_in_another_thread
         )
 
     def speak(self, response, convo_id):
