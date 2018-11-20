@@ -20,7 +20,7 @@ class BTRValidator(BaseProxyMessageValidator):
     def __init__(self, btr_dict, admin_instance, wallet_pubkey=None, time_limit=300, q_object=None, asgn_validated=False,
                  send_network_notif=False):
 
-
+        self.send_network_notif = send_network_notif
         self.btr_dict = btr_dict
         self.btr = btr_dict['btr']
 
@@ -68,6 +68,12 @@ class BTRValidator(BaseProxyMessageValidator):
             None
         )
 
+    def get_wallet_proxy_of_bcw(self):
+        """
+        used to get wallet proxy of receiving bcw
+        :return:
+        """
+
     def check_validity(self):
         if not self.non_json_proxy_pubkey:  # if empty dict {}
             return None
@@ -82,6 +88,10 @@ class BTRValidator(BaseProxyMessageValidator):
 
             # todo: allow for insertion in wallet proxy db (by receiver of BTR
             # todo: this can be done by passing a callable which does all the additions, subtractions and insertions
+            # todo: send notification message
+            if self.send_network_notif is True:
+                self.q_object.put([f'a{self.stmt_hash[:8]}', self.non_json_proxy_pubkey, self.asgn_stmt_dict, True])
+
             return True
         else:
             return False

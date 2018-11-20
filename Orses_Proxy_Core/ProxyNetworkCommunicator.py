@@ -24,12 +24,16 @@ class BCWMessageExecutor:
         :param msg:
         :return:
         """
-
+        # todo: add q_obj allowing to broadcast notification message
         if 'btr' in msg:
+            net_propagator = admin_inst.get_net_propagator()
+            q_obj_to_propagator_initiator = net_propagator.q_object_validator
             Validator = BTRValidator.BTRValidator(
                 admin_instance=admin_inst,
                 send_network_notif=True,  # will send notification message to network if valid
-                btr_dict=msg
+                btr_dict=msg,
+                q_object=q_obj_to_propagator_initiator
+
             )
 
             is_valid = Validator.check_validity()
@@ -45,7 +49,8 @@ class BCWMessageExecutor:
                 proxy_pubkey = NetworkQuery.send_a_query(
                     query_msg=query_msg,
                     admin_inst=admin_inst,
-                    protocol=protocol
+                    protocol=protocol,
+
 
                 )
 
@@ -54,7 +59,8 @@ class BCWMessageExecutor:
                         admin_instance=admin_inst,
                         btr_dict=msg,
                         send_network_notif=True,
-                        wallet_pubkey=proxy_pubkey  # named 'wallet_pubkey' for compatibility but takes proxy_pubkey
+                        wallet_pubkey=proxy_pubkey,  # named 'wallet_pubkey' for compatibility but takes proxy_pubkey
+                        q_object=q_obj_to_propagator_initiator
                     )
 
                     is_valid = Validator.check_validity()
