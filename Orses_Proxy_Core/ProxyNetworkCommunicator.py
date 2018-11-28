@@ -18,7 +18,7 @@ class BCWMessageExecutor:
         pass
 
     # this should be called in receive_from_bcw
-    def execute_btr_msg(self, admin_inst, protocol, msg):
+    def execute_btr_msg(self, proxy_center, protocol, msg):
         """
         used to execute a btr message
         :param msg:
@@ -26,10 +26,10 @@ class BCWMessageExecutor:
         """
         # todo: add q_obj allowing to broadcast notification message
         if 'btr' in msg:
-            net_propagator = admin_inst.get_net_propagator()
+            net_propagator = proxy_center.admin_inst.get_net_propagator()
             q_obj_to_propagator_initiator = net_propagator.q_object_validator
             Validator = BTRValidator.BTRValidator(
-                admin_instance=admin_inst,
+                proxy_center=proxy_center,
                 send_network_notif=True,  # will send notification message to network if valid
                 btr_dict=msg,
                 q_object=q_obj_to_propagator_initiator
@@ -48,7 +48,7 @@ class BCWMessageExecutor:
                 # BLOCKING CODE, execute_btr_msg() SHOULD BE RUNNING IN NON REACTOR THREAD
                 proxy_pubkey = NetworkQuery.send_a_query(
                     query_msg=query_msg,
-                    admin_inst=admin_inst,
+                    admin_inst=proxy_center.admin_inst,
                     protocol=protocol,
 
 
@@ -56,7 +56,7 @@ class BCWMessageExecutor:
 
                 if proxy_pubkey:
                     Validator = BTRValidator.BTRValidator(
-                        admin_instance=admin_inst,
+                        proxy_center=proxy_center,
                         btr_dict=msg,
                         send_network_notif=True,
                         wallet_pubkey=proxy_pubkey,  # named 'wallet_pubkey' for compatibility but takes proxy_pubkey
@@ -66,8 +66,7 @@ class BCWMessageExecutor:
                     is_valid = Validator.check_validity()
 
                     if is_valid is True:
-                        # return notification message,
-                        pass
+                        return Validator.btr_notif_msg
 
                     else:
                         return False

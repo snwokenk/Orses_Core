@@ -24,7 +24,8 @@ class BaseProxyMessageValidator:
         self.mempool = admin_instance.get_mempool()
         self.db_manager = self.admin_instance.get_db_manager()
 
-        # to maintain compatibility argument is called wallet_pubkey but should be bcw_proxy_pubkey
+        # to maintain compatibility argument is called wallet_pubkey but should be bcw_proxy_pubkey of the proxy
+        # sending the BTR
         self.bcw_proxy_pubkey = wallet_pubkey
         self.non_json_proxy_pubkey = None
         self.timelimit = time_limit

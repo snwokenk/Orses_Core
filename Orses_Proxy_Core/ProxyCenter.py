@@ -317,7 +317,7 @@ class ProxyCenter:
                 elif 'btr' in btt_or_btr_dict:
 
                     is_btr_validated = BTRValidator.BTRValidator(
-                        admin_instance=self.admin_inst,
+                        proxy_center=self,
                         btr_dict=btt_or_btr_dict,
                         wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
                         q_object=q_obj,

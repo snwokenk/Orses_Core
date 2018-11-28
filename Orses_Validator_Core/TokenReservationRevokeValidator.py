@@ -3,6 +3,7 @@ from Crypto.Hash import SHA256, RIPEMD160
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 from Orses_Database_Core import RetrieveData, StoreData
+from Orses_Util_Core.OrsesTokenMath import OrsesTokenMath
 import time, json
 
 
@@ -16,7 +17,8 @@ class TokenReservationRevokeValidator:
         self.non_json_wallet_pubkey = None
         self.rvk_req_json = json.dumps(tkn_rvk_dict["rvk_req"])
         self.fee = tkn_rvk_dict["rvk_req"]["fee"]
-        self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
+        # self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
+        self.ntakiri_fee = OrsesTokenMath.convert_orses_tokens_to_ntakiris(self.fee)
         self.timestamp = tkn_rvk_dict["rvk_req"]["time"]
         self.client_id = tkn_rvk_dict["client_id"]
         self.wallet_id = tkn_rvk_dict["rvk_req"]["req_wid"]

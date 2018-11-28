@@ -3,7 +3,8 @@ This module will be used  propagate messages to other verification nodes or admi
 Messages are gotten from
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
-    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator, BTTValidator, BTRValidator
+    TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator, BTTValidator, \
+    NotificationMessageValidator, BTRValidator
 
 from Orses_Dummy_Network_Core.DummyVeriNodeListener import DummyVeriNodeListener
 
@@ -17,6 +18,7 @@ validator_dict['c'] = TokenReservationRequestValidator.TokenReservationRequestVa
 validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeValidator
 validator_dict['f'] = MiscMessagesValidator.MiscMessagesValidator
 validator_dict['e'] = BTTValidator.BTTValidator
+validator_dict['g'] = NotificationMessageValidator.NotificationMessageValidator
 
 
 class NetworkPropagator:
@@ -150,7 +152,7 @@ class NetworkPropagator:
                             print(f"in Networkpropagator, should be sending to compete process")
                             # rsp[0][0] = 0 index of reason msg which is either a, b, c or d
                             self.q_object_compete.put([reason_msg,rsp[2]]) if rsp[3] is True else None
-                        elif reason_msg == "a":
+                        elif reason_msg == 'a':
                             print(f"Received an assignment statement, BCW logic not yet implemented")
                             continue
 
@@ -311,8 +313,8 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
     print(f"in NetworkPropagtor.py, message receiver creator, msg {msg}")
 
     # a: assignment statement validator, b:token transfer validator, c:token reservation request validator,
-    # d:token reservation request validator, e: BCW initiated token transfer
-    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in {'a', 'b', 'c', 'd', 'f', 'e'}:
+    # d:token reservation request validator, e: BCW initiated token transfer, g: notification message
+    if isinstance(msg[-1], str) and msg[-1] and msg[-1][0] in validator_dict:
         statement_validator = validator_dict[msg[-1][0]]
 
     else:  # send end message
@@ -323,8 +325,6 @@ def msg_receiver_creator(protocol_id, msg, propagator_inst: NetworkPropagator, a
             propagator_instance=propagator_inst
         )
         return
-
-    # todo: move this while loop into a function, which returns a convo id
 
     # get untaken convo_id for new message
     convo_id[0] = get_convo_id(protocol_id=protocol_id, propagator_inst=propagator_inst)
@@ -364,8 +364,9 @@ def msg_sender_creator(rsp, propagator_inst: NetworkPropagator, admin_inst):
     """
     reason = rsp[0][0]
     # a is assignment statement, b is token transfer transaction, c is token reservation request,
-    # d is token reservation revoke, f is misc messages, e is BCW intiated tranfer transaction (btt)
-    if reason not in {'a', 'b', 'c', 'd', 'f', 'e'}:
+    # d is token reservation revoke, f is misc messages, e is BCW intiated tranfer transaction (btt),
+    # g is notification messages
+    if reason not in validator_dict:
         return None
 
     # todo: check he message_from_other

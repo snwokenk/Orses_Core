@@ -319,6 +319,12 @@ class WalletProxy:
         else:
             return {}
 
+    def get_privkey(self):
+        if self.bcw_proxy_privkey:
+            return self.bcw_proxy_privkey
+        else:
+            return {}
+
     def sign_a_message(self, msg: str, enc="base85"):
         """
         used to sign a message

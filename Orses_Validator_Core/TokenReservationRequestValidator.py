@@ -4,6 +4,7 @@ from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidator
 from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 from Orses_Database_Core import RetrieveData, StoreData
+from Orses_Util_Core.OrsesTokenMath import OrsesTokenMath
 import time, json
 
 
@@ -17,9 +18,11 @@ class TokenReservationRequestValidator:
         self.tkn_rsv_dict = tkn_rsv_dict
         self.rsv_req_json = json.dumps(tkn_rsv_dict["rsv_req"])
         self.amount = tkn_rsv_dict["rsv_req"]["amt"]
-        self.ntakiri_amount = int(round(float(self.amount), 10) * 1e10)
+        # self.ntakiri_amount = int(round(float(self.amount), 10) * 1e10)
+        self.ntakiri_amount = OrsesTokenMath.convert_orses_tokens_to_ntakiris(amt=self.amount)
         self.fee = tkn_rsv_dict["rsv_req"]["fee"]
-        self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
+        # self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
+        self.ntakiri_fee = OrsesTokenMath.convert_orses_tokens_to_ntakiris(amt=self.fee)
         self.timestamp = tkn_rsv_dict["rsv_req"]["time"]
         self.reservation_expiration = tkn_rsv_dict["rsv_req"]["exp"]
         self.wallet_pubkey = wallet_pubkey

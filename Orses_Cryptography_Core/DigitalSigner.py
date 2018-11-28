@@ -98,6 +98,7 @@ class DigitalSigner:
         {'x': large int, 'y': large int, 'd': large int}
 
         :param message: str or bytes
+        :param key: private key provided
         :return: signature
         """
 

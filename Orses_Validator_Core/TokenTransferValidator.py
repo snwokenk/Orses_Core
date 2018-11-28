@@ -4,6 +4,7 @@ from Orses_Cryptography_Core.DigitalSignerValidator import DigitalSignerValidato
 from Orses_Cryptography_Core.PKIGeneration import WalletPKI
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Database_Core import RetrieveData, StoreData
+from Orses_Util_Core.OrsesTokenMath import OrsesTokenMath
 
 import time, json
 
@@ -24,9 +25,11 @@ class TokenTransferValidator:
         self.tx_hash = transfer_tx_dict["tx_hash"]
         self.timestamp = transfer_tx_dict["ttx"]["time"]
         self.amt = transfer_tx_dict["ttx"]["amt"]
-        self.ntakiri_amount = int(round(float(self.amt), 10) * 1e10)
+        # self.ntakiri_amount = int(round(float(self.amt), 10) * 1e10)
+        self.ntakiri_amount = OrsesTokenMath.convert_orses_tokens_to_ntakiris(self.amt)
         self.fee = transfer_tx_dict["ttx"]["fee"]
-        self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
+        # self.ntakiri_fee = int(round(float(self.fee), 10) * 1e10)
+        self.ntakiri_fee = OrsesTokenMath.convert_orses_tokens_to_ntakiris(self.fee)
         self.timelimit = timelimit
         self.unknown_wallet = True if wallet_pubkey else False
         self.q_object = q_object
