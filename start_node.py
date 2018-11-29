@@ -62,9 +62,7 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: complete execute_btr_msg in ProxyNetworkCommunicator.py
-# todo: finish ProxyMessageResponder class and receive_from_bcw() method in ProxyNetworkCommunicator
-# todo: ProxyMessageResponder should be able to determine message and then validate message
+# todo: finish wait_for_bcw_proxy_nodes_final_response, allowing proxy to send proxy to proxy messages
 # todo: can follow structure of NetworkQuery
 
 # todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file

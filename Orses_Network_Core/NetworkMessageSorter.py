@@ -139,14 +139,18 @@ class NetworkMessageSorter:
                         self.q_for_propagate.put(msg)  # goes to NetworkPropagator.py, run_propagator_convo_manager
                     elif msg[1][0] == 'b':
                         self.q_for_bk_propagate.put(msg)  # goes to BlockchainPropagator.py, run_propagator_convo_manager
-                    elif msg[1][0] == "q":  # msg = [protocol id, ['q', convo id, type of msg (req OR rsp), msg]
+                    elif msg[1][0] == 'q':  # msg = [protocol id, ['q', convo id, type of msg (req OR rsp), msg]
 
                         self.network_prop_inst.reactor_instance.callInThread(
                             self.handle_query,
                             msg=msg
                         )
                         continue
-
+                    elif msg[1][0] == 'p':  # msg = [protocol id, ['p', convo id, type of msg (req OR rsp), msg]
+                        self.network_prop_inst.reactor_instance.callInThread(
+                            self.handle_proxy_convo,
+                            msg=msg
+                        )
 
                     else:
                         print("in NetworkMessageSorter.py, msg could not be sent to any process", msg)
@@ -261,6 +265,7 @@ class NetworkMessageSorter:
 
     def handle_proxy_convo(self, msg):
         """
+        SHOULD BE RUN IN A NON REACTOR THREAD USING callInThread
         Should be run in non reactor thread using callInThread
         :param msg: [protocol id, ['q', convo id, type of msg (snd OR rcv), msg]
         :return:

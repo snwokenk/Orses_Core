@@ -80,7 +80,7 @@ class BTRValidator(BaseProxyMessageValidator):
             self.bcw_wid if asgn_validated is True else self.transferring_bcw,
             None
         )
-        self.btr_notif_msg: dict = None
+        self.btr_notif_msg: dict = {}
 
     def get_wallet_proxy_of_bcw(self, bcw_wid):
         """
@@ -124,7 +124,7 @@ class BTRValidator(BaseProxyMessageValidator):
             # todo: this can be done by passing a callable which does all the additions, subtractions and insertions
             # todo: send notification message
             if self.send_network_notif is True:
-                self.btr_notif_msg = BTRNotificationMessage(
+                notif_msg = BTRNotificationMessage(
                     proxy_center=self.proxy_center,
                     msg_snd=self.bcw_wid,
                     msg_rcv=self.transferring_bcw, # btr is sent to transferring bcw,
@@ -135,11 +135,11 @@ class BTRValidator(BaseProxyMessageValidator):
                     bcw_proxy_pubkey=self.get_wallet_proxy_pubkey(bcw_wid=self.transferring_bcw)
 
                 )
-                notif_msg = self.btr_notif_msg.sign_and_return_balance_transfer_request_notif(
+                self.btr_notif_msg = notif_msg.sign_and_return_balance_transfer_request_notif(
                     bcw_proxy_privkey=self.get_wallet_proxy_privkey(bcw_wid=self.transferring_bcw)
 
                 )
-                if notif_msg:
+                if self.btr_notif_msg:
 
                     self.q_object.put(
                         [

@@ -69,10 +69,11 @@ class NetworkQuery:
         qs.send(query_msg=query_msg)
 
         # *** when response is sent, NetworkMessageSorter will call the receive() associated with convo
-        # *** id. This in turn calls the callback function
+        # *** id. This in turn calls the callback function.
+        # *** if no callback function was provided, a local lambda function is used an function blocks to receive input
         if callable(a_callable) is False:
             try:
-                # will block for 15 seconds
+                # will block for 15 seconds and wait for other side to respond(shouldn't take more than 2 seconds)
                 rsp = q.get(timeout=15)
             except Empty:
                 print(f"Other node did not respond on time, in NetworkQuery")

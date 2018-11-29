@@ -18,7 +18,8 @@ class BCWMessageExecutor:
         pass
 
     # this should be called in receive_from_bcw
-    def execute_btr_msg(self, proxy_center, protocol, msg):
+    @staticmethod
+    def execute_btr_msg(proxy_center, protocol, msg):
         """
         used to execute a btr message
         :param msg:
@@ -63,19 +64,19 @@ class BCWMessageExecutor:
                         q_object=q_obj_to_propagator_initiator
                     )
 
-                    is_valid = Validator.check_validity()
+                    Validator.check_validity()
 
-                    if is_valid is True:
-                        return Validator.btr_notif_msg
+                    # if is_valid is True:
+                    #     return Validator.btr_notif_msg
+                    #
+                    # else:
+                    #     return False
 
-                    else:
-                        return False
+            return Validator.btr_notif_msg  # btr_notif_msg is empty is Validation is False
 
-
-
-                pass
         else:
             print(f"in BCWMessageExecutor, ProxyNetworkCommunuicator.py")
+            return None
 
 
         # divide into useful parts
@@ -101,6 +102,9 @@ class ProxyNetworkCommunicator:
 
     def get_db_manager(self):
         return self.admin_inst.get_db_manager()
+
+    def get_proxy_center(self):
+        return self.proxy_center_inst
 
     def get_reactor(self):
 
@@ -241,8 +245,8 @@ class ProxyMessageSender:
         self.first_msg_sent = False
         self.convo_ended = False
         self.convo_id = self.__get_convo_id()
-        self.prop_type = 'p'
-        self.type_of_msg = 'snd'
+        self.prop_type = 'p'  # used by networkmessagesorter to know it is a proxy to proxy message 'q' is for query
+        self.type_of_msg = 'snd'  # says message is from sender
 
     def __get_convo_id(self):
 
@@ -292,7 +296,30 @@ class ProxyMessageResponder:
         self.protocol = protocol
         self.reactor = proxy_communicator_inst.get_reactor()
         self.convo_id = msg[1]
+        self.main_msg = msg[-1]  # the main message ie btr = {'btr': a dict, 'sig': ...}
+        self.prop_type = 'p'
+        self.type_of_msg = 'rsp'
 
-    def listen(self, msg):
-        pass
+    def listen(self):
+        if 'btr' in self.main_msg:
+            response = BCWMessageExecutor.execute_btr_msg(
+                proxy_center=self.proxy_communicator_inst.get_proxy_center(),
+                protocol=self.protocol,
+                msg=self.main_msg
+            )
+        else:
+            response = None
+
+        self.speak(msg=response)
+
+    def speak(self, msg=None):
+        reactor = self.reactor
+
+        reactor.callFromThread(
+            self.protocol.transport.write,
+            json.dumps([self.prop_type, self.convo_id, self.type_of_msg, msg]).encode()
+
+        )
+
+
 
