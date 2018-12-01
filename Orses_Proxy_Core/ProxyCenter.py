@@ -8,6 +8,7 @@ from  Orses_Proxy_Core.ProxyNetworkCommunicator import ProxyNetworkCommunicator
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
 from Orses_Validator_Core import BTTValidator, BTRValidator
 import json, time
+from queue import Queue, Empty
 
 
 class ProxyCenter:
@@ -321,14 +322,16 @@ class ProxyCenter:
                         btr_dict=btt_or_btr_dict,
                         wallet_pubkey=wallet_proxy.bcw_proxy_pubkey,
                         q_object=q_obj,
-                        asgn_validated=True
+                        asgn_validated=True,
+                        send_network_notif=False
                     ).check_validity()
 
                     if is_btr_validated is True:
 
 
-
-                        # todo: create a wait and notify after BCW final response
+                        # response should be a notif message if btr executed or None
+                        # if a notif message, propagate(no assumption other side propagated) to network AND
+                        # send to asgn_stmt sender an executed assignment statement notification message
                         response = self.wait_for_bcw_proxy_nodes_final_response(
                             update_balance_callback=update_balance_callback,
                             end_timestamp=int(asgn_stmt_list[5]) + int(asgn_stmt_list[6]),
@@ -336,6 +339,10 @@ class ProxyCenter:
                             bcw_wid=snd_managed[1],
                             reactor_inst=reactor_inst
                         )
+
+                        # notif dict, validate notif dict
+                        if isinstance(response, dict):
+                            pass
                     else:
                         response = False
 
@@ -396,10 +403,19 @@ class ProxyCenter:
                                                 reactor_inst, **kwargs):
 
         # THIS IS A BLOCKING CODE. WILL WAIT TILL RESPONSE IS RECEIVED FROM A VALID PROXY NODE OF BCW
-        response = self.proxy_communicator.send_to_bcw(
+        q_obj_to_receive_response = self.proxy_communicator.send_to_bcw(
             bcw_wid=bcw_wid,
             msg=msg
         )
+
+        try:
+
+            # should be the main message NO convo id etc, but the main message (usually a Notification message)
+            response = q_obj_to_receive_response.get(timeout=15)
+        except Empty:
+            response = {}
+
+        return response
 
 
 
