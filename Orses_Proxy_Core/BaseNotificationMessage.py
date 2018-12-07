@@ -24,8 +24,8 @@ class BaseNotificationMessage:
 
         :param proxy_center: instance of proxy_center
         :param type_of_msg: type of message executed an being notified ie if BTR executed then type is 'btr'
-        :param msg_snd: admin id of proxy that sent btr
-        :param msg_rcv: admin id of
+        :param msg_snd: wallet id (either a BCW or regular wallet) that sent message (directly or through proxy)
+        :param msg_rcv: wallet id (either a BCW or regular wallet) that receive message (directly or through proxy)
         :param msg: msg relating to notification ie BTC asgn_stmt
         """
         self.msg_rcv = msg_rcv

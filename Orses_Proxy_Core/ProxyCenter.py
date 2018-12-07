@@ -6,7 +6,7 @@ conditions of an assignment statement
 from Orses_Proxy_Core.WalletProxy import WalletProxy
 from  Orses_Proxy_Core.ProxyNetworkCommunicator import ProxyNetworkCommunicator
 from Orses_Wallet_Core.WalletsInformation import WalletInfo
-from Orses_Validator_Core import BTTValidator, BTRValidator
+from Orses_Validator_Core import BTTValidator, BTRValidator, NotificationMessageValidator
 import json, time
 from queue import Queue, Empty
 
@@ -342,7 +342,9 @@ class ProxyCenter:
 
                         # notif dict, validate notif dict
                         if isinstance(response, dict):
-                            pass
+                            notif_validator = NotificationMessageValidator.NotificationMessageValidator(
+
+                            )
                     else:
                         response = False
 

@@ -62,7 +62,8 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
-# todo: finish wait_for_bcw_proxy_nodes_final_response, allowing proxy to send proxy to proxy messages
+# todo: finish up NotificationMessageValidator and add bcw and proxy id into notification message
+# todo: finish wait_for_bcw_proxy_nodes_final_response, allowing proxy to send proxy-to-proxy messages
 # todo: can follow structure of NetworkQuery
 
 # todo: finish btr validator, refactor WalletProxy allowing for asgn_stmt and btr inclusion into dbs and file
