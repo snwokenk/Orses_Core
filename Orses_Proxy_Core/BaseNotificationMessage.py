@@ -35,7 +35,7 @@ class BaseNotificationMessage:
         self.hash_of_msg = msg["tx_hash"] if "tx_hash" in msg else (msg["stmt_hsh"] if "stmt_hsh" in msg else None)
         self.type_of_msg = type_of_msg
         self.value = value
-        self.value_sndr = value_sender
+        self.value_sndr = value_sender  # who is the value sender either (sndr for original msg sender or rcv
         self.type_of_value = type_of_value  # 'payable', 'reserved' etc
         self.admin_inst = self.proxy_center.admin_inst
 
@@ -51,7 +51,6 @@ class BaseNotificationMessage:
 
     def sign_and_return_notif_msg(self, bcw_proxy_privkey):
         """
-
         :param bcw_proxy_privkey: the privkey associated with the proxy-bcw
         :return: dict of notif msg
         """
@@ -59,7 +58,6 @@ class BaseNotificationMessage:
         main_notif_msg = self.create_notif_msg()
 
         if bcw_proxy_privkey and main_notif_msg:
-
 
             signature = DigitalSigner.sign_with_provided_privkey(
                 dict_of_privkey_numbers=None,
@@ -75,7 +73,6 @@ class BaseNotificationMessage:
                 "time": int(time.time()),
                 "tx_hash": tx_hash,  # hash of notif message
             }
-
 
             return notif_dict, main_notif_msg
         else:

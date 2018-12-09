@@ -62,6 +62,9 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+# todo: add signature of original message in Notificaiton message,
+# todo: this should be verified by provided pubkey of original message sender
+
 # todo: finish up NotificationMessageValidator and add bcw and proxy id into notification message
 # todo: finish wait_for_bcw_proxy_nodes_final_response, allowing proxy to send proxy-to-proxy messages
 # todo: can follow structure of NetworkQuery

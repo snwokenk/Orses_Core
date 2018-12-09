@@ -3,13 +3,13 @@ from Orses_Proxy_Core.BaseNotificationMessage import BaseNotificationMessage
 
 class BTRNotificationMessage(BaseNotificationMessage):
 
-    def __init__(self, proxy_center, msg_snd, msg_rcv, msg, bcw_proxy_pubkey, value: int,
-                 value_sender='sndr', type_of_msg='btr_notif'):
+    def __init__(self, proxy_center, msg_snd, msg_rcv, msg, bcw_proxy_pubkey, administering_bcw, value: int,
+                 value_sender='rcv', type_of_msg='btr_notif'):
         """
 
         :param proxy_center:
-        :param msg_snd: bcw sending message (the value receiving bcw)
-        :param msg_rcv: bcw receiving the message (the value transferring BCW)
+        :param msg_snd: bcw that sent message (btr message NOT notification) ( (the value receiving bcw)
+        :param msg_rcv: bcw that received the message (the value transferring BCW)
         :param msg:
         :param bcw_proxy_pubkey: pubkey of proxy representing the transferring bcw
         :param value:
@@ -17,6 +17,7 @@ class BTRNotificationMessage(BaseNotificationMessage):
         :param type_of_msg:
         """
 
+        self.administering_bcw = administering_bcw
         self.bcw_proxy_pubkey = bcw_proxy_pubkey
         self.notif_msg = None
         self.type_of_value = 'payable'
@@ -38,7 +39,9 @@ class BTRNotificationMessage(BaseNotificationMessage):
             if btr_notif_dict:
 
                 btr_notif_dict["notif_msg"] = main_dict
-                btr_notif_dict["bcw_proxy_pubkey"] = self.bcw_proxy_pubkey
+                # btr_notif_dict["bcw_proxy_pubkey"] = self.bcw_proxy_pubkey
+                btr_notif_dict["snd_bcw"] = self.administering_bcw
+                btr_notif_dict["admin_id"] = self.admin_inst.admin_id
 
                 self.notif_msg = btr_notif_dict
 

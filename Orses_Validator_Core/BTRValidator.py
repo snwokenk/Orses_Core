@@ -48,13 +48,11 @@ class BTRValidator(BaseProxyMessageValidator):
         # self.value = float(self.related_asgn_stmt_list[3]) + self.related_asgn_stmt_list[4]
         self.value = self.amt + self.fee
 
-        # bcw wid requesting to receive value Required by base class
+        # bcw wid requesting to receive value *Required by base class*
         self.bcw_wid = self.related_asgn_stmt_list[2]
 
-        # BCW meant to sent value to requesting bcw
+        # BCW meant to send value to requesting bcw
         self.transferring_bcw = self.btr['snd_bcw']
-
-
 
         self.managed_wallet = self.related_asgn_stmt_list[0]  # wallet which sent the assignment statment
 
@@ -130,6 +128,7 @@ class BTRValidator(BaseProxyMessageValidator):
                     msg_rcv=self.transferring_bcw, # btr is sent to transferring bcw,
                     msg=self.btr_dict,
                     value=self.value,
+                    administering_bcw=self.transferring_bcw,
                     # use self.get_wallet_proxy_of_bcw with self.transferring bcw
                     # bcw_proxy_pubkey of local node creating notif message not
                     bcw_proxy_pubkey=self.get_wallet_proxy_pubkey(bcw_wid=self.transferring_bcw)

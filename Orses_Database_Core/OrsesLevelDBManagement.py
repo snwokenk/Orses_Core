@@ -273,7 +273,7 @@ class OrsesLevelDBManager:
     def get_proxy_pubkey(self, proxy_id: str):
         """
 
-        :param proxy_id: a concatenation of admin_id+walletid
+        :param proxy_id: a concatenation of "walletid+adminid"
         :return: pubkey dict
         """
 
