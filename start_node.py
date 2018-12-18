@@ -62,6 +62,10 @@ except VersionConflict as ee:
 else:
     print("All Required Packages Installed")
 
+
+# todo: this branch will involve a major refactoring of how 2 nodes talk to each other.
+# todo: The refactoring will allow communication to be
+
 # todo: add signature of original message in Notificaiton message,
 # todo: this should be verified by provided pubkey of original message sender
 

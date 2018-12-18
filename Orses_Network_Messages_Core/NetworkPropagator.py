@@ -1,6 +1,10 @@
 """
 This module will be used  propagate messages to other verification nodes or admin nodes.
 Messages are gotten from
+
+NetworkRequester:
+
+used to send a request message and receive a response
 """
 from Orses_Validator_Core import AssignmentStatementValidator, TokenTransferValidator, \
     TokenReservationRequestValidator, TokenReservationRevokeValidator, MiscMessagesValidator, BTTValidator, \
@@ -19,6 +23,10 @@ validator_dict['d'] = TokenReservationRevokeValidator.TokenReservationRevokeVali
 validator_dict['f'] = MiscMessagesValidator.MiscMessagesValidator
 validator_dict['e'] = BTTValidator.BTTValidator
 validator_dict['g'] = NotificationMessageValidator.NotificationMessageValidator
+
+
+
+
 
 
 class NetworkPropagator:
